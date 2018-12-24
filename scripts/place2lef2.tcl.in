@@ -1,0 +1,113 @@
+#!TCLSH_PATH
+#---------------------------------------------------------------------------
+# place2lef2.tcl ---
+#
+# Read a GrayWolf .pl1 cell placement output file into Magic, using
+# cells from the LEF database.  If there are feedthroughs, then we also
+# need the .pin file so we know where to draw the two pins of the feedthrough.
+#
+# Source this file into Magic and then call function "place2lef <cellname>"
+#
+# Written by Tim Edwards, July 25, 2006, for MultiGiG, Inc.
+#
+# Modified from place2lef.tcl:  This version assumes the existance of the
+# LEF views of each digital cell if the LEF file is not specified, and also
+# does not generate twfeed cells.
+#---------------------------------------------------------------------------
+
+proc place2lef {topcell {leffile {}} {refdir "."}} {
+
+   addpath ../digital
+   box values 0 0 0 0
+
+   set topname [file rootname $topcell]
+   set pl1name ${refdir}/${topname}.pl1
+   set pinname ${refdir}/${topname}.pin
+
+   if [catch {open $pl1name r} fpl1] {
+      puts stderr "Error: can't open file $pl1name for input"
+      return
+   }
+
+   if {$leffile != {}} {
+      set lefname [file rootname $leffile]
+      if {[file dirname ${lefname}] == "."} {
+         set lefname ${refdir}/${lefname}.lef
+      } else {
+         set lefname ${lefname}.lef
+      }
+
+      if {[glob -nocomplain -- $lefname] == {}} {
+         set leflist [glob ${refdir}/*.lef]
+         if {[llength $leflist] == 1} {
+            set lefname [lindex $leflist 0]
+         } else {
+	    puts stderr "Error: Couldn't find LEF file ${lefname} and"
+	    puts stderr "no (or too many) LEF files in reference directory ${refdir}"
+         }
+      }
+
+      if [catch {lef read $lefname}] {
+         puts stderr "Error reading LEF file ${lefname}"
+         return
+      }
+   }
+
+   while {[gets $fpl1 line] >= 0} {
+      # Each line in the file is <instance> <llx> <lly> <urx> <ury> <orient> <row>
+      regexp \
+      {^[ \t]*([^ ]+)[ \t]+([^ ]+)[ \t]+([^ ]+)[ \t]+([^ ]+)[ \t]+([^ ]+)[ \t]+([^ ]+)} \
+	$line lmatch instance llx lly urx ury orient
+      switch $orient {
+         0 {set ostr ""}
+         1 {set ostr "v"}
+         2 {set ostr "h"}
+         3 {set ostr "180"}
+         4 {set ostr "90h"}
+         5 {set ostr "90v"}
+         6 {set ostr "270"}
+         7 {set ostr "90"}
+      }
+
+      # Handle the "cells" named "twpin_*"
+
+      if {[string equal -length 6 $instance twpin_]} {
+         set llxnm [expr {$llx * 25}]
+         set llynm [expr {$lly * 25}]
+         set urxnm [expr {$urx * 25}]
+         set urynm [expr {$ury * 25}]
+	 set labname [string range $instance 6 end]
+	 box size 0.50um 0.50um
+	 box position ${llxnm}nm ${llynm}nm
+	 box move ne 0.50um
+	 paint m2
+	 label $labname n m2
+      } else {
+
+         # Ignore the cells named "twfeed*"
+
+         if {![string equal -length 6 $instance twfeed]} {
+
+            # Get cellname from instance name.
+            regsub {([^_]+)_[\d]+} $instance {\1} cellname
+
+            set llxnm [expr {$llx * 25}]
+            set llynm [expr {$lly * 25}]
+	
+            box position ${llxnm}nm ${llynm}nm
+            if {$ostr == ""} {
+               getcell $cellname
+            } else {
+               getcell $cellname $ostr
+            }
+            identify $instance
+         }
+      }
+   }
+
+   close $fpl1
+
+   view
+   select top cell
+   expand
+}

@@ -1,0 +1,254 @@
+#!TCLSH_PATH
+#
+# Usage:
+#	powerbus.tcl <rootname> <leffile> <fillcell>
+#
+# Take the existing <rootname>.cel file for graywolf input,
+# and add fixed-placement fill cells for power bus stripes.
+#
+#------------------------------------------------------------
+# Written by Tim Edwards, July 17, 2016
+#------------------------------------------------------------
+# LEF dimensions are microns unless otherwise stated.
+#------------------------------------------------------------
+namespace path {::tcl::mathop ::tcl::mathfunc}
+
+if {$argc != 3} {
+   puts stderr "Bad argument list"
+   puts stderr "Usage: powerbus.tcl <rootname> <leffile> <fillcell>"
+   exit 1
+}
+
+set units 100
+
+set cellname [file rootname [lindex $argv 0]]
+
+set celfile ${cellname}.cel
+set annofile ${cellname}.acel
+set lefname [lindex $argv 1]
+set fillcell [lindex $argv 2]
+
+if [catch {open $lefname r} flef] {
+   puts stderr "Error: can't open file $lefname for input"
+   return
+}
+
+if [catch {open $celfile r} fcel] {
+   puts stderr "Error: can't open file $celfile for input"
+   return
+}
+
+if [catch {open $annofile w} fanno] {
+   puts stderr "Error: can't open file $annofile for output"
+   return
+}
+
+#----------------------------------------------------------------
+# Read through a LEF file section that we don't care about.
+#----------------------------------------------------------------
+
+proc skip_section {leffile sectionname} {
+   while {[gets $leffile line] >= 0} {
+      if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+         if {"$sectiontest" != "$sectionname"} {
+            puts -nonewline stderr "Unexpected END statement $line "
+            puts stderr "while reading section $sectionname"
+         }
+         break
+      }
+   }
+}
+
+#----------------------------------------------------------------
+# Parse the macro contents of the LEF file and retain the information
+# about cell size and pin positions.
+#----------------------------------------------------------------
+
+proc parse_macro {leffile macroname} {
+   global $macroname units
+
+   while {[gets $leffile line] >= 0} {
+      if [regexp {[ \t]*SYMMETRY[ \t]+(.+)[ \t]*;} $line lmatch symmetry] {
+         set ${macroname}(symmetry) $symmetry
+      } elseif [regexp {[ \t]*ORIGIN[ \t]+(.+)[ \t]+(.+)[ \t]*;} $line lmatch x y] {
+         set x [expr {int($x * $units + 0.5)}]
+         set y [expr {int($y * $units + 0.5)}]
+         set ${macroname}(x) $x
+         set ${macroname}(y) $y
+      } elseif [regexp {[ \t]*SIZE[ \t]+(.+)[ \t]+BY[ \t]+(.+)[ \t]*;} \
+                        $line lmatch w h] {
+         set w [expr {int($w * $units + 0.5)}]
+         set h [expr {int($h * $units + 0.5)}]
+         set ${macroname}(w) $w
+         set ${macroname}(h) $h
+
+      } elseif [regexp {[ \t]*PIN[ \t]+(.+)[ \t]*$} $line lmatch pinname] {
+	 # The fill cell is not expected to have any usable pins
+	 skip_section $leffile $pinname
+      } elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch macrotest] {
+         if {"$macrotest" == "$macroname"} {
+            break
+         } else {
+            puts stderr "Unexpected END statement $line while reading macro $macroname"
+         }
+      }
+   }
+}
+
+#-----------------------------------------------------------------
+# Read the lef macro file and get the fill cells and their widths
+#-----------------------------------------------------------------
+
+puts stdout "Reading ${fillcell} macros from LEF file."
+flush stdout
+
+set fillcells {}
+
+while {[gets $flef line] >= 0} {
+   if [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
+      # Parse the "macro" statement
+      parse_macro $flef $macroname
+      if {[regexp "^$fillcell" $macroname] == 1} {
+	 # Remember this for later if it's a fill cell
+	 lappend fillcells $macroname
+      }
+   } elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
+      skip_section $flef $layername
+   } elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
+      skip_section $flef $vianame
+   } elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
+      skip_section $flef $viarulename
+   } elseif [regexp {[ \t]*SITE[ \t]+(.+)[ \t]*$} $line lmatch sitename] {
+      skip_section $flef $sitename
+   } elseif [regexp {[ \t]*UNITS[ \t]*$} $line lmatch] {
+      skip_section $flef UNITS
+   } elseif [regexp {[ \t]*SPACING[ \t]*$} $line lmatch] {
+      skip_section $flef SPACING
+   } elseif [regexp {[ \t]*END[ \t]+LIBRARY[ \t]*$} $line lmatch] {
+      break
+   } elseif [regexp {^[ \t]*#} $line lmatch] {
+      # Comment line, ignore.
+   } elseif ![regexp {^[ \t]*$} $line lmatch] {
+      # Other things we don't care about
+      set matches 0
+      if [regexp {[ \t]*NAMESCASESENSITIVE} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*VERSION} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*BUSBITCHARS} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*DIVIDERCHAR} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*USEMINSPACING} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*CLEARANCEMEASURE} $line lmatch] {
+         incr matches
+      } elseif [regexp {[ \t]*MANUFACTURINGGRID} $line lmatch] {
+         incr matches
+      } else {
+         puts stderr "Unexpected input in LEF file:  Only macro defs were expected!"
+         puts -nonewline stdout "Line is: $line"
+	 flush stdout
+      }
+   }
+}
+
+# If the macro file doesn't define any fill cells, there's not a
+# whole lot we can do. . .
+
+if {[llength $fillcells] == 0} {
+   puts stdout "No fill cells (${fillname}) found in macro file ${lefname}!"
+   exit 1
+}
+
+close $flef
+
+# Sort array of fill cells by width
+
+set fillwidths {}
+foreach macro $fillcells {
+   lappend fillwidths [list $macro [subst \$${macro}(w)]]
+}
+set fillwidths [lsort -decreasing -index 1 -real $fillwidths]
+set fillinfo [lindex $fillwidths 0]
+set fillmacro [lindex $fillinfo 0]
+set fillvalue [lindex $fillinfo 1]
+
+#------------------------------------------------------------------------
+# Determine what width of fill cell and how many are needed to
+# accomodate VDD and GND stripes.
+# Add these cells as "fixed" types on the right and left sides
+# (to-do:  add additional stripes at intervals depending on the
+# estimated layout size based on cell height, total cell width, and
+# aspect ratio or number of rows)
+#------------------------------------------------------------------------
+
+# NOTE:  "500" here is a temporary hack
+
+foreach fillinfo $fillwidths {
+   if {[lindex $fillinfo 1] < 500} {break}
+   set pwrbusmacro [lindex $fillinfo 0]
+   set pwrbuswidth [lindex $fillinfo 1]
+}
+
+# Get dimensions of the powerbus fill cell
+
+set right [/ [subst \$${pwrbusmacro}(w)] 2]
+set left [- $right [subst \$${pwrbusmacro}(w)]]
+set top [/ [subst \$${pwrbusmacro}(h)] 2]
+set bottom [- $top [subst \$${pwrbusmacro}(h)]]
+
+# Find the number of rows in the layout;  estimate if aspect ratio
+# given.
+# NOTE:  "10" here is a temporary hack
+
+set est_numrows 10
+
+#------------------------------------------------------------------------
+# Now read the contents of the cel file.  When a cell is found that is
+# in the "instlist" list of cells, annotate the next line to increase
+# the width by an amount equal to the width of a fill cell.
+#
+# To do:  Use different fill cell widths according to congestion amount;
+# or use multiple fill cells (if different widths are not available).
+#------------------------------------------------------------------------
+
+set done_pwrbus 0
+while {[gets $fcel line] >= 0} {
+   if [regexp {[ \t]*pad[\t]*[0-9]+} $line lmatch] {
+
+      if {$done_pwrbus == 0} {
+         puts $fanno ""
+
+         set j 1
+         for {set b 1} {$b <= $est_numrows} {incr b} {
+            puts $fcel ""
+            puts $fcel "cell $i PWRBUS_$j"
+            puts $fcel "initially fixed 0 from left of block $b
+            puts $fcel "left $left right $right bottom $bottom top $top"
+            puts $fcel ""
+            incr i
+            incr j
+         }
+
+         for {set b 1} {$b <= $est_numrows} {incr b} {
+            puts $fcel ""
+            puts $fcel "cell $i PWRBUS_$j"
+            puts $fcel "initially fixed 0 from right of block $b
+            puts $fcel "left $left right $right bottom $bottom top $top"
+            puts $fcel ""
+            incr i
+            incr j
+         }
+
+         puts $fanno ""
+	 set done_pwrbus 1
+      }
+      puts $fanno $line	  ;# append the pad line and continue
+
+   } else {
+      puts $fanno $line	  ;# append the line and continue
+   }
+}
+
+puts stdout "Done!"

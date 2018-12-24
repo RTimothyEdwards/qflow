@@ -1,0 +1,792 @@
+#!TCLSH_PATH
+#
+# Usage:
+#	blif2cel.tcl [options]
+#
+# [options] may be:
+#
+#	--cel <cel_filename>
+#		Specify the output file.  Optional.  If left not
+#		specified, then name will be the root name of the
+#		.blif file with the .cel extension.
+#	--blif <blif_filename>
+#		Specify the input BLIF file.  This option is mandatory.
+#	--hard-macro <path_to_hard_macro>
+#		Specify a LEF file for a hard macro.  This is separate
+#		from "--lef" because hard macros are treated differently
+#		in the .cel file.
+#	--lef <lef_filename>
+#		Specify the input LEF file.  If there are multiple
+#		LEF files, then use this option as many times as needed.
+#		If the technology LEF is a separate file, then it must
+#		be given as an option before all other LEF files.  At
+#		least one LEF file is mandatory.
+#	--units <value>
+#		Units are usually pulled from the technology LEF file
+#		MANUFACTURINGGRID.  This option can be used to override
+#		that value.  Optional.
+#
+#
+# Exit code:  0 on success, 1 on failure.
+#
+# NOTE:	Cells must be placed relative to the LEF bounding box during
+#	physical placement!
+#
+#------------------------------------------------------------
+#   Format translation between:
+#	1) LEF library file (input),
+#	2) .blif (mapped) netlist file (input), and
+#	3) .cel (output) file for GrayWolf placement
+#------------------------------------------------------------
+#
+# Written by Tim Edwards July 25, 2006  MultiGiG, Inc.
+# Modified October 8, 2013 to use blif netlists as input 
+# Modified December 6, 2016 with hard macro extensions
+# courtesy of David Lanzendorfer
+# Modified September 18, 2018 to parse database units from
+# technology LEF file.
+#------------------------------------------------------------
+# LEF dimensions are microns unless otherwise stated.
+
+set units 100		;# default database units are centimicrons
+set pitchx 0		;# value overridden from LEF file
+set pitchy 0		;# value overridden from LEF file
+set trackskip 0		;# reduce number of implicit feedthroughs
+			;# to avoid routing congestion
+
+set arglen [llength $argv]
+set index 0
+set args(hard_macros) {}
+set args(lefs) {}
+set units_override false	;# units set from command line if true
+set units_used false		;# units should not be changed after this is true
+
+while {$index < $arglen} {
+    set arg [lindex $argv $index]
+    switch -exact $arg {
+
+	--hard-macro {
+	    lappend args(hard_macros) [lindex $argv [incr index]]
+	}
+
+	--lef {
+	    lappend args(lefs) [lindex $argv [incr index]]
+	}
+
+	--blif {
+	    set args(blif) [lindex $argv [incr index]]
+	}
+
+	--cel {
+	    set args(cel) [lindex $argv [incr index]]
+	}
+
+	--units {
+	    set units [lindex $argv [incr index]]
+	    set units_override true
+	}
+
+	default  {
+	    puts stderr "All arguments must have option switches."
+	    exit 1
+	}
+    }
+    incr index
+}
+
+set hardmacros $args(hard_macros)
+
+if {[llength args(lefs)] > 0} {
+    set leffiles $args(lefs)
+} else {
+    puts stderr "No LEF files defined!"
+    exit 1
+}
+
+if {[info exists args(blif)]} {
+    set bliffile $args(blif)
+    set cellname [file rootname [file tail $bliffile]]
+} else {
+    puts stderr "No BLIF file defined"
+    exit 1
+}
+
+if {[info exists args(cel)]} {
+	set celfile $args(cel)
+} else {
+    puts stderr "No CEL file defined"
+    exit 1
+}
+
+
+#-------------------------------------------------------------
+# Recover full file name from each listed LEF file
+
+set fulllef {}
+foreach leffile $leffiles {
+    set lefname [file rootname $leffile]
+    if {"$lefname" == "$leffile"} {
+        lappend fulllef ${lefname}.lef
+    } else {
+        lappend fulllef ${leffile}
+    }
+}
+set leffiles $fulllef
+
+#-------------------------------------------------------------
+# Open files for read and write
+
+if [catch {open $bliffile r} fnet] {
+    puts stderr "Error: can't open file $bliffile for reading!"
+    exit 1
+} else {
+    puts "Opened BLIF file ($bliffile) for reading ..."
+}
+
+if [catch {open $celfile w} fcel] {
+    puts stderr "Error: can't open file $celfile for writing!"
+    exit 1
+} else {
+    puts "Opened CEL file ($celfile) for writing..."
+}
+
+set fhardmacros {}
+foreach hardmacro $hardmacros {
+    if [catch {open $hardmacro r} fhardmacro_tmp] {
+	puts stderr "Error: can't open file $hardmacro for reading!"
+	exit 1
+    } else {
+	puts "Loaded $hardmacro file for reading..."
+	lappend fhardmacros $fhardmacro_tmp
+    }
+}
+
+set flefs {}
+foreach leffile $leffiles {
+    if [catch {open $leffile r} flef_tmp] {
+	puts stderr "Error: can't open file $leffile for reading!"
+	exit 1
+    } else {
+	puts "Loaded $leffile file for reading..."
+	lappend flefs $flef_tmp
+    }
+}
+
+#----------------------------------------------------------------
+# First, parse the contents of the .blif file and get a list
+# of all macro names used.
+#----------------------------------------------------------------
+
+puts stdout "1st pass of blif file ${bliffile}. . ."
+flush stdout
+
+set macrolist {}
+while {[gets $fnet line] >= 0} {
+    if [regexp {^[ \t]*\.gate[ \t]+([^ \t]+)} $line lmatch macro] {
+	lappend macrolist $macro
+    }
+}
+set macrolist [lsort -unique $macrolist]
+close $fnet
+
+#----------------------------------------------------------------
+# Parse port information for a macro pin from the LEF MACRO block
+#
+# Note that all of the geometry of each port gets whittled down
+# to a single point.  Maybe GrayWolf can be made to work on
+# more complicated port geometry?
+#----------------------------------------------------------------
+
+proc parse_port {pinname macroname leffile ox oy} {
+    global $macroname units
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*LAYER[ \t]+(.+)[\t ]*;} $line lmatch layername] {
+	    if {![regexp {.*(\d).*} $layername lmatch layernum]} {set layernum 0}
+	    # graywolf only accepts layernum 0, 1, 2, and 3
+	    if {$layernum < 4} {
+		set ${macroname}(${pinname},layer) $layernum
+	    }
+	} elseif [regexp {[ \t]*RECT[ \t]+(.+)[ \t]+(.+)[ \t]+(.+)[ \t]+(.+)[ \t]*;} \
+			$line lmatch llx lly urx ury] {
+	    set llx [expr {int($llx * $units)}]
+	    set lly [expr {int($lly * $units)}]
+	    set urx [expr {int($urx * $units)}]
+	    set ury [expr {int($ury * $units)}]
+	    set xp [expr {(($llx + $urx) / 2) - $ox}]
+	    set yp [expr {(($lly + $ury) / 2) - $oy}]
+	    set ${macroname}(${pinname},xp) $xp
+	    set ${macroname}(${pinname},yp) $yp
+	} elseif [regexp {[ \t]*POLYGON[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+.*;} \
+			$line lmatch llx lly] {
+	    set llx [expr {int($llx * $units)}]
+	    set lly [expr {int($lly * $units)}]
+	    set xp [expr {$llx - $ox}]
+	    set yp [expr {$lly - $oy}]
+	    set ${macroname}(${pinname},xp) $xp
+	    set ${macroname}(${pinname},yp) $yp
+	} elseif [regexp {[ \t]*END[ \t]*$} $line lmatch] { break }
+    }
+    # puts -nonewline stdout "${pinname}"
+    # puts -nonewline stdout " [set ${macroname}(${pinname},xp)]"
+    # puts -nonewline stdout " [set ${macroname}(${pinname},yp)]"
+    # puts -nonewline stdout " [set ${macroname}(${pinname},layer)]"
+    # puts stdout ""
+}
+
+#----------------------------------------------------------------
+# Parse pin information from the LEF MACRO block
+#----------------------------------------------------------------
+
+proc parse_pin {pinname macroname leffile ox oy} {
+    global $macroname
+    # puts "parse_pin"
+    # puts "macroname: $macroname, pinname: $pinname"
+
+    set lefpinname $pinname
+
+    # Normalize LEF and blif to use the same array delimiters
+    regsub -all "<" $pinname "\[" pinname
+    regsub -all ">" $pinname "\]" pinname
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*PORT} $line lmatch] {
+	    parse_port $pinname $macroname $leffile $ox $oy
+	} elseif [regexp {[ \t]*DIRECTION[ \t]+([^ \t]+)[ \t]*;} $line lmatch porttype] {
+	    # puts "Port type: $porttype"
+	    set ${macroname}(${pinname},type) [string trim $porttype]
+	} elseif [regexp {[ \t]*DIRECTION[ \t]+([^:]+);} $line lmatch porttype] {
+	    # puts "Port type: $porttype"
+	    set ${macroname}(${pinname},type) [string trim $porttype]
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch pintest] {
+	    if {"$pintest" == "$lefpinname"} {
+		break
+	    } else {
+		puts stdout "Unexpected END statement $line while parsing pin $pinname"
+	    }
+	}
+    }
+}
+
+#----------------------------------------------------------------
+# Read through a section that we don't care about.
+#----------------------------------------------------------------
+
+proc skip_section {leffile sectionname} {
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+	    if {"$sectiontest" != "$sectionname"} {
+		puts -nonewline stderr "Unexpected END statement $line "
+		puts stderr "while reading section $sectionname"
+	    }
+	    break
+	}
+    }
+}
+
+#----------------------------------------------------------------
+# Parse a layer section for routing information
+#----------------------------------------------------------------
+
+proc parse_layer {leffile layername} {
+    global pitchx pitchy units
+
+    set haspitch1 false
+    set haspitch2 false
+    set direc NONE
+    set type NONE
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} else {
+	    regexp {[ \t]*TYPE[ \t]+([^ \t]+)[ \t]*;} $line lmatch type
+	    regexp {[ \t]*DIRECTION[ \t]+([^ \t]+)[ \t]*;} $line lmatch direc
+	    regexp {[ \t]*MAXWIDTH[ \t]+([^ \t]+)[ \t]*;} $line lmatch maxwidth
+	    regexp {[ \t]*WIDTH[ \t]+([^ \t]+)[ \t]*;} $line lmatch width
+	    regexp {[ \t]*SPACING[ \t]+([^ \t]+)[ \t]*;} $line lmatch space
+	    set p2 [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line \
+			lmatch xpitch ypitch]
+ 	    if {$p2 == 1} {set haspitch2 true}
+	    set p1 [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]*;} $line lmatch pitch]
+ 	    if {$p1 == 1} {set haspitch1 true}
+	    if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch layertest] {
+		if {"$layertest" != "$layername"} {
+		    puts -nonewline stderr "Unexpected END statement $line while "
+		    puts stderr "reading layer $layername"
+		}
+		break
+	    }
+	}
+    }
+
+    # What we want to do here is determine the horizontal and vertical
+    # route pitch for the first vertical and horizontal route layers.
+    # What is *is* doing is to pick up the pitches from the first layer
+    # or layers that define them.  Needs some development.
+
+    if {$type != "ROUTING"} {return} 
+    if {$pitchx != 0 && $pitchy != 0} {return}
+
+    if {$haspitch2 == true} {
+	set tpitch [expr int($units * $xpitch)]
+	set pitchx $tpitch
+	set tpitch [expr int($units * $ypitch)]
+	set pitchy $tpitch
+    } elseif {$haspitch1 == true} {
+	set tpitch [expr int($units * $pitch)]
+	if {$tpitch > 0} {
+            if {[string first "HORIZONTAL" $direc] == 0} {
+		if {$pitchy == 0} {
+		    puts stdout "LEF file specifies route layer Y pitch as $pitch"
+		    set pitchy $tpitch
+		} elseif {$tpitch < $pitchy} {
+		    set pitchy $tpitch
+		    puts stdout "LEF file specifies route layer Y pitch as $pitch"
+		}
+	    } else {
+		if {$pitchx == 0} {
+		    puts stdout "LEF file specifies route layer X pitch as $pitch"
+		    set pitchx $tpitch
+		} elseif {$tpitch < $pitchx} {
+		    puts stdout "LEF file specifies route layer X pitch as $pitch"
+		    set pitchx $tpitch
+		}
+	    }
+	}
+    } elseif {$type == "ROUTING"} {
+	puts stderr "LEF file route layer ${layername} has no pitch information"
+    }
+}
+
+#----------------------------------------------------------------
+# Parse the hard macro contents of the LEF file and retain the information
+# about cell size and pin positions.
+#----------------------------------------------------------------
+
+proc parse_hard_macro {leffile macroname} {
+    global $macroname units
+
+    # puts stdout "Parsing hard macro $macroname:  Ports are:"
+    puts stdout "Parsing hard macro $macroname"
+    set ${macroname}(hard) true
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*SYMMETRY[ \t]+(.+)[ \t]*;} $line lmatch symmetry] {
+	    set ${macroname}(symmetry) $symmetry
+	} elseif [regexp {[ \t]*ORIGIN[ \t]+(.+)[ \t]+(.+)[ \t]*;} $line lmatch x y] {
+	    set x [expr {round(-$x * $units)}]
+	    set y [expr {round(-$y * $units)}]
+	    set ${macroname}(x) $x
+	    set ${macroname}(y) $y
+	} elseif [regexp {[ \t]*SIZE[ \t]+(.+)[ \t]+BY[ \t]+(.+)[ \t]*;} \
+			$line lmatch w h] {
+	    set w [expr {round($w * $units)}]
+	    set h [expr {round($h * $units)}]
+	    set ${macroname}(w) $w
+	    set ${macroname}(h) $h
+
+	} elseif [regexp {[ \t]*PIN[ \t]+(.+)[ \t]*$} $line lmatch pinname] {
+	    # Ignore additional information from LEF version 5.6 syntax
+	    set pinname [lindex $pinname 0]
+	    parse_pin $pinname $macroname $leffile $x $y
+	} elseif [regexp {[ \t]*END[ \t]+(^:+)[ \t]*$} $line lmatch macrotest] {
+	    if {"$macrotest" == "$macroname"} {
+		break
+	    } else {
+		puts -nonewline stderr "Unexpected END statement $line while "
+		puts stderr "reading macro $macroname"
+	    }
+	}
+    }
+}
+
+
+#----------------------------------------------------------------
+# Parse the macro contents of the LEF file and retain the information
+# about cell size and pin positions.
+#----------------------------------------------------------------
+
+proc parse_macro {leffile macroname} {
+    global $macroname units units_used
+
+    # puts stdout "Parsing macro $macroname:  Ports are:"
+    puts stdout "Parsing macro $macroname"
+    while {[gets $leffile line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*SYMMETRY[ \t]+(.+)[ \t]*;} $line lmatch symmetry] {
+	    set ${macroname}(symmetry) $symmetry
+	} elseif [regexp {[ \t]*ORIGIN[ \t]+(.+)[ \t]+(.+)[ \t]*;} $line lmatch x y] {
+	    set x [expr {round($x * $units)}]
+	    set y [expr {round($y * $units)}]
+	    set ${macroname}(x) $x
+	    set ${macroname}(y) $y
+	} elseif [regexp {[ \t]*SIZE[ \t]+(.+)[ \t]+BY[ \t]+(.+)[ \t]*;} \
+			$line lmatch w h] {
+	    set w [expr {round($w * $units)}]
+	    set h [expr {round($h * $units)}]
+	    set ${macroname}(w) $w
+	    set ${macroname}(h) $h
+
+	    # Compute derived values
+	    # ox, oy are the LEF coordinates where GrayWolf expects the "origin"
+	    set ox [expr {$x + ($w / 2)}]
+	    set oy [expr {$y + ($h / 2)}]
+	    set left [expr {-($w / 2)}]
+	    set right [expr {$left + $w}]
+	    set bottom [expr {-($h / 2)}]
+	    set top [expr {$bottom + $h}]
+	    set ${macroname}(ox) $ox
+	    set ${macroname}(oy) $oy
+	    set ${macroname}(left) $left
+	    set ${macroname}(right) $right
+	    set ${macroname}(top) $top
+	    set ${macroname}(bottom) $bottom
+	} elseif [regexp {[ \t]*PIN[ \t]+(.+)[ \t]*$} $line lmatch pinname] {
+	    # Ignore additional information from LEF version 5.6 syntax
+	    set pinname [lindex $pinname 0]
+	    parse_pin $pinname $macroname $leffile $ox $oy
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch macrotest] {
+	    if {"$macrotest" == "$macroname"} {
+		break
+	    } else {
+		puts -nonewline stderr "Unexpected END statement $line while "
+		puts stderr "reading macro $macroname"
+	    }
+	}
+    }
+}
+
+foreach flef $flefs { 
+    puts stdout "Reading macros and/or technology data from LEF file. . ."
+    flush stdout
+
+    while {[gets $flef line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*LAYER[ \t]+(.+)[ \t]*$} $line lmatch layername] {
+	    parse_layer $flef $layername
+	} elseif [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
+	    if {[lsearch $macrolist $macroname] >= 0} {
+		# Parse the "macro" statement 
+		set units_used true
+		parse_macro $flef $macroname
+	    } else {
+		# This macro is not used. . . skip to end of macro
+		while {[gets $flef line] >= 0} {
+		    if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch macrotest] {
+			if {"$macroname" == "$macrotest"} {
+			    break
+			}
+		    }
+		}
+	    }
+	} elseif [regexp {[ \t]*MANUFACTURINGGRID[ \t]+([^ \t\n\r]+)} $line lmatch locunits] {
+	    # Set the default units to use from the manufacturing grid, unless it
+	    # is less than 100 (this arbitrary rule enforced in qrouter's .info
+	    # output).
+	    set mscale [expr int(0.5 + 1.0 / $locunits)]
+	    if {$mscale > $units} {
+		if {$units_used == true} {
+		   puts stdout "WARNING:  Scale units read from tech file after reading"
+		   puts stdout "macros.  Either reorder the input files or force the"
+		   puts stdout "scale factor from the command line."
+		} elseif {$units_override == false} {
+		   set units $mscale
+		} elseif {$mscale > $units} {
+		   puts stdout "WARNING:  Units forced to ${units} by command-line option,"
+		   puts stdout "but technology LEF wants to set units to ${mscale}."
+		   puts stdout "This may result in round-off errors in the layout."
+		}
+	    }
+	} elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
+	    skip_section $flef $vianame
+	} elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
+	    skip_section $flef $viarulename
+	} elseif [regexp {[ \t]*NONDEFAULTRULE[ \t]+([^ \t]+)} $line lmatch rulename] {
+	    skip_section $flef $rulename
+	} elseif [regexp {[ \t]*SITE[ \t]+(.+)[ \t]*$} $line lmatch sitename] {
+	    skip_section $flef $sitename
+	} elseif [regexp {[ \t]*UNITS[ \t]*$} $line lmatch] {
+	    skip_section $flef UNITS
+	} elseif [regexp {[ \t]*SPACING[ \t]*$} $line lmatch] {
+	    skip_section $flef SPACING
+	} elseif [regexp {[ \t]*PROPERTYDEFINITIONS[ \t]*$} $line lmatch] {
+	    skip_section $flef PROPERTYDEFINITIONS
+	} elseif [regexp {[ \t]*END[ \t]+LIBRARY[ \t]*$} $line lmatch] {
+	    break
+	} elseif ![regexp {^[ \t]*$} $line lmatch] {
+	    # Other things we don't care about
+	    set matches 0
+	    if [regexp {[ \t]*NAMESCASESENSITIVE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*NOWIREEXTENSIONATPIN} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*VERSION} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*BUSBITCHARS} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*DIVIDERCHAR} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*USEMINSPACING} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*CLEARANCEMEASURE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*MAXVIASTACK} $line lmatch] {
+		# We *should* care about this one;  need to pass it on to the router
+		incr matches
+	    } else {
+        	puts stderr "Unexpected input in LEF file:"
+		puts stdout "Line is: $line"
+	    }
+	}
+    }
+}
+ 
+foreach fhardmacro $fhardmacros { 
+    puts stdout "Reading macros from hard macro LEF file. . ."
+    flush stdout
+
+    while {[gets $fhardmacro line] >= 0} {
+	if [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif [regexp {[ \t]*LAYER[ \t]+(.+)[ \t]*$} $line lmatch layername] {
+	    parse_layer $fhardmacro $layername
+	} elseif [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
+	    if {[lsearch $macrolist $macroname] >= 0} {
+		# Parse the "macro" statement 
+		set units_used true
+		parse_hard_macro $fhardmacro $macroname
+	    } else {
+		# This macro is not used. . . skip to end of macro
+		while {[gets $fhardmacro line] >= 0} {
+		    if [regexp {[ \t]*END[ \t]+(^:+)[ \t]*$} $line lmatch macrotest] {
+			if {"$macroname" == "$macrotest"} {
+			    break
+			}
+		    }
+		}
+	    }
+	} elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
+	    skip_section $fhardmacro $vianame
+	} elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
+	    skip_section $fhardmacro $viarulename
+	} elseif [regexp {[ \t]*NONDEFAULTRULE[ \t]+([^ \t]+)} $line lmatch rulename] {
+	    skip_section $fhardmacro $rulename
+	} elseif [regexp {[ \t]*SITE[ \t]+(.+)[ \t]*$} $line lmatch sitename] {
+	    skip_section $fhardmacro $sitename
+	} elseif [regexp {[ \t]*UNITS[ \t]*$} $line lmatch] {
+	    skip_section $fhardmacro UNITS
+	} elseif [regexp {[ \t]*SPACING[ \t]*$} $line lmatch] {
+	    skip_section $fhardmacro SPACING
+	} elseif [regexp {[ \t]*PROPERTYDEFINITIONS[ \t]*$} $line lmatch] {
+	    skip_section $fhardmacro PROPERTYDEFINITIONS
+	} elseif [regexp {[ \t]*END[ \t]+LIBRARY[ \t]*$} $line lmatch] {
+	    break
+	} elseif ![regexp {^[ \t]*$} $line lmatch] {
+	    # Other things we don't care about
+	    set matches 0
+	    if [regexp {[ \t]*NAMESCASESENSITIVE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*VERSION} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*BUSBITCHARS} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*DIVIDERCHAR} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*USEMINSPACING} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*CLEARANCEMEASURE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*MANUFACTURINGGRID} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*MAXVIASTACK} $line lmatch] {
+	    # We *should* care about this one;  need to pass it on to the router
+		incr matches
+	    } else {
+		puts -nonewline stderr "Unexpected input in LEF file:  Only "
+	 	puts stderr "macro defs were expected!"
+		puts stdout "Line is: $line"
+	    }
+	}
+    }
+}
+
+# If leffile didn't set pitch, then use defaults
+if {$pitchx == 0} {
+    set pitchx 160
+}
+if {$pitchy == 0} {
+    set pitchy 200
+}
+
+#----------------------------------------------------------------
+# Parse the contents of the .blif file again and dump each cell
+# instance to the .cel file output.
+
+puts stdout "2nd pass of blif file. . ."
+flush stdout
+
+set fnet [open $bliffile r]
+set mode none
+set i 0
+while {[gets $fnet line] >= 0} {
+    if [regexp {^[ \t]*\.gate[ \t]+([^ \t]+)[ \t]+(.*)$} $line lmatch macroname rest] {
+	set mode $macroname
+	if {[catch {incr ${mode}(count)}]} {set ${mode}(count) 0}
+	set count [set ${mode}(count)]
+	if {[catch {set ${mode}(hard)}]} {set ${mode}(hard) false}
+	set hard [set ${mode}(hard)]
+
+	if ${hard} {
+	    set x [set ${mode}(x)]
+	    set y [set ${mode}(y)]
+	    set w [set ${mode}(w)]
+	    set h [set ${mode}(h)]
+	    set maxx [expr {$x + $w}]
+	    set maxy [expr {$y + $h}]
+
+	    puts $fcel "hardcell $i name ${mode}_${count}"
+	    puts $fcel "corners 4 0 0 0 $maxy $maxx $maxy $maxx 0"
+	    puts $fcel "class $i orientations 0 1 2 3"
+
+	    # Ignore implicit feedthroughs on hard macros (?)
+
+	} else {
+	    set left [set ${mode}(left)]
+	    set right [set ${mode}(right)]
+	    set top [set ${mode}(top)]
+	    set bottom [set ${mode}(bottom)]
+
+	    puts $fcel "cell $i ${mode}_${count}"
+	    puts $fcel "left $left right $right bottom $bottom top $top"
+
+	    # Follow this with implicit feedthroughs, as many as will fit
+	    # set feedx [expr {$left + ($pitchx / 2)}]
+	    set feedx [expr {$left + ($pitchx / 2) + ($trackskip * $pitchx)}]
+	    set k 1
+	    while {$feedx < $right} {
+	        puts $fcel "pin name twfeed${k} signal TW_PASS_THRU layer 1 $feedx $bottom"
+	        puts $fcel "   equiv name twfeed${k} layer 1 $feedx $top"
+	        set feedx [expr {$feedx + $pitchx}]
+	        incr k
+	    }
+	}
+	incr i
+
+	# In the middle of parsing an instance;  mode = instance name (in lowercase).
+	foreach pinsig $rest {
+	    if [regexp {([^ \t=]+)=([^ \t]+)} $pinsig lmatch pinname netname] {
+		regsub -all "<" $pinname "\[" pinname
+		regsub -all ">" $pinname "\]" pinname
+
+		# Check for bad pin names instead of failing
+
+		if [catch {set ${mode}(${pinname},xp)}] {
+		    puts stderr "ERROR:  pin name ${pinname} not found!"
+		} else {
+
+		    set pinx [set ${mode}(${pinname},xp)]
+		    set piny [set ${mode}(${pinname},yp)]
+		    set pinlayer [set ${mode}(${pinname},layer)]
+		    if [catch {set pintype [set ${mode}(${pinname},type)]}] {
+			set pintype SIGNAL
+		    }
+		    if {$hard} {
+			# This may be temporary---it appears that magic generates
+			# LEF output with pins outside the bounding box. . .
+			if {$pinx < 0} {set pinx 0}
+			if {$piny < 0} {set piny 0}
+			if {$pinx > $maxx} {set pinx $maxx}
+			if {$piny > $maxy} {set piny $maxy}
+		    }
+
+		    # Is signal a buffer tree?  If so, make it swappable, if it's an input
+		    if [regexp {(.*)_bF\$buf[0-9]+$} $netname lmatch sigpfix] {
+			if  {$pintype == "INPUT"} {
+			    puts $fcel "pin_group"
+			    puts -nonewline $fcel "pin name ${sigpfix}_bF\$pin/$pinname "
+			    puts $fcel "signal $netname layer $pinlayer $pinx $piny"
+			    puts $fcel "end_pin_group"
+			} else {
+			    puts -nonewline $fcel "pin name $pinname signal $netname "
+			    puts $fcel "layer $pinlayer $pinx $piny"
+			}
+		    } else {
+			puts -nonewline $fcel "pin name $pinname signal $netname layer "
+			puts $fcel "$pinlayer $pinx $piny"
+		    }
+		}
+	    }
+	    flush stdout
+	}
+    } elseif [regexp {^[ \t]*\.inputs} $line lmatch] {
+	set mode "pins"
+    } elseif [regexp {^[ \t]*\.outputs} $line lmatch] {
+	set mode "pins"
+    } elseif [regexp {^[ \t]*\.model[ \t]+([^ \t]+)} $line lmatch cellverify] {
+	if {"$cellname" != "$cellverify"} {
+	    puts -nonewline stderr "WARNING:  model name ${cellverify} does not"
+	    puts stderr " match filename ${cellname}!"
+	}
+    }
+}
+close $fnet
+
+#----------------------------------------------------------------
+# Parse the contents of the .blif file again and dump each input or output
+# to the .cel file as a "pad".
+
+puts stdout "3rd pass of blif file. . ."
+flush stdout
+
+set px [expr int($pitchx / 2)]
+set py [expr int($pitchy / 2)]
+
+set fnet [open $bliffile r]
+set mode none
+set padnum 1
+set pinList {}
+while {[gets $fnet line] >= 0} {
+    if [regexp {^[ \t]*\.inputs[ \t]+(.*)$} $line lmatch rest] {
+	set mode inputs
+	set line $rest
+    } elseif [regexp {^[ \t]*\.outputs[ \t]+(.*)$} $line lmatch rest] {
+	set mode outputs
+	set line $rest
+    } elseif [regexp {^[\ t]*\.gate} $line lmatch] {
+	break;
+    } elseif [regexp {^[\ t]*\.end} $line lmatch] {
+	break;
+    }
+
+    if [regexp {^(.*)[\\]+$} $line lmatch rest] {
+	set line $rest
+    }
+
+    if {$mode == "inputs" || $mode == "outputs"} {
+	foreach pinname $line {
+	    if {$pinname ni $pinList} {
+		lappend pinList $pinname
+		puts $fcel "pad $padnum name twpin_$pinname"
+		puts $fcel "corners 4 -$px -$py -$px $py $px $py $px -$py"
+		puts $fcel "pin name $pinname signal $pinname layer 1 0 0"
+		puts $fcel ""
+		incr padnum
+	    } else {
+		puts stdout "Found duplicate pin name $pinname while processing $mode"
+	    }
+	}
+    }
+}
+
+puts stdout "Done!"
+exit 0

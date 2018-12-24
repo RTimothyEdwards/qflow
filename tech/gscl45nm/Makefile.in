@@ -1,0 +1,44 @@
+#
+# qflow project included technology gscl45nm files
+#
+
+# Main compiler arguments
+CFLAGS = @CFLAGS@
+DEFS = @DEFS@
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
+INSTALL = @INSTALL@
+
+QFLOW_LIB_DIR = @QFLOW_LIB_DIR@
+
+TECH_FILES = gscl45nm.par gscl45nm.lef gscl45nm.sh
+TECH_FILES += gscl45nm.sp gscl45nm.magicrc gscl45nm.prm
+TECH_FILES += gscl45nm.tech gscl45nm.lib
+TECH_FILES += gscl45nm.v gscl45nm_setup.tcl
+
+TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+
+# Substitute the target qflow tech directory name in .magicrc so that magic
+# can find the gscl45nm techfile
+
+all: gscl45nm.magicrc.in
+	$(RM) -f gscl45nm.magicrc
+	cat gscl45nm.magicrc.in | sed -e \
+		'/QFLOW_LIB_DIR/s#QFLOW_LIB_DIR#$(QFLOW_LIB_DIR)#' \
+		> gscl45nm.magicrc
+
+install: ${TECH_FILES}
+	@echo "Installing gscl45nm tech files"
+	$(INSTALL) -d $(DESTDIR)$(TECHINSTALL)/gscl45nm
+	for target in $(TECH_FILES); do \
+	   $(INSTALL) $$target $(DESTDIR)$(TECHINSTALL)/gscl45nm ;\
+	done
+
+clean:
+	$(RM) -f gscl45nm.magicrc
+
+distclean:
+	$(RM) -f gscl45nm.magicrc
+
+uninstall:
+

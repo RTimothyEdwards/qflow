@@ -1,0 +1,9589 @@
+tech
+  format 29
+ scmos
+end
+
+version
+ version 2001a
+ description "SCMOS: Submit as technology.lambda: SCN6M_SUBM.10 [to process: TSMC18]"
+end
+
+planes
+  well,w
+  implant,i
+  select,s
+  active,a
+  metal1,m1
+  metal2,m2
+  metal3,m3
+  metal4,m4
+  metal5,m5
+  metal6,m6
+  metali,mi
+  oxide,ox
+  comment
+  xp
+  contact
+  via1,v1
+  via2,v2
+  via3,v3
+  via4,v4
+  via5,v5
+  viai,vi
+  fill
+end
+
+types
+  well nwell,nw
+  active nwr
+  well pwell,pw
+  implant n_field_implant,nfi
+  implant p_field_implant,pfi
+  select nselect,ns
+  select pselect,ps
+  active ntransistor,nfet
+  active ptransistor,pfet
+  active diffusion,diff
+  active transistor,fet
+  active ndiffusion,ndif,green
+  active pdiffusion,pdif,brown
+  active ndcontact,ndc
+  active pdcontact,pdc
+  active psubstratepdiff,pohmicdiff,pod,ppdiff,ppd,psd
+  active nsubstratendiff,nohmicdiff,nod,nndiff,nnd,nsd
+  active psubstratepcontact,pohmiccontact,poc,pwcontact,pwc,psc
+  active nsubstratencontact,nohmiccontact,noc,nwcontact,nwc,nsc
+  active nwsd
+  active nwsc
+  active polysilicon,red,poly,p
+  active polycontact,pcontact,polycut,pc
+  active polypplus,pp
+  active polynplus,pn
+  active polyppluscontact,ppcontact,ppc
+  active polynpluscontact,pncontact,pnc
+  contact genericcontact,gcontact,gc
+  metal1 metal1,m1,blue
+  metal1 pseudo_rmetal1,prm1
+  metal1 rmetal1,rm1
+  metal1 fillm1,fm1
+  metal1 m2contact,m2cut,m2c,via1,v1
+  metal2 metal2,m2,purple
+  metal2 pseudo_rmetal2,prm2
+  metal2 rmetal2,rm2
+  metal2 fillm2,fm2
+  via1 gv1
+  metal2 m3contact,m3cut,m3c,via2,v2
+  metal3 metal3,m3,cyan
+  metal3 pseudo_rmetal3,prm3
+  metal3 rmetal3,rm3
+  metal3 fillm3,fm3
+  via2 gv2
+  metal3 m4contact,m4cut,m4c,via3,v3
+  metal4 metal4,m4,yellow
+  metal4 pseudo_rmetal4,prm4
+  metal4 rmetal4,rm4
+  metal4 fillm4,fm4
+  via3 gv3
+  metal4 m5contact,m5cut,m5c,via4,v4
+  metal5 metal5,m5
+  metal5 pseudo_rmetal5,prm5
+  metal5 rmetal5,rm5
+  metal5 fillm5,fm5
+  via4 gv4
+  metal5 m6contact,m6cut,m6c,via5,v5
+  metal6 metal6,m6
+  metal6 pseudo_rmetal6,prm6
+  metal6 rmetal6,rm6
+  metal6 fillm6,fm6
+  via5 gv5
+  metal6 pad
+  metal6 micontact,micut,mic,viai,vi
+  metali metali,mim,mi
+  mi pseudo_rmetali,prmi
+  mi rmi
+  viai gvi
+  oxide glass
+  active silicide_block,sb
+  active poly_resist,pres
+  active pseudo_rpoly,prp
+  active rpoly,rp
+  active pseudo_rndiffusion,prnd
+  active rndiffusion,rndiff,rnd
+  active pseudo_rpdiffusion,prpd
+  active rpdiffusion,rpdiff,rpd
+  active pseudo_rnwell,prnwell,prnw
+  active rnwell,rnw
+  active pseudo_nwr,pnwr
+  implant filln,fn
+  fill filla,fa
+  fill fillb,fb
+  active fillp,fp
+  active fillapm,fapm
+  active activen_resist,anres
+  active activep_resist,apres
+  xp xp
+  xp m1p
+  xp m2p
+  xp m3p
+  xp m4p
+  xp m5p
+  xp m6p
+  comment comment
+  comment bb
+end
+
+contact
+  pc poly metal1
+  ppc pp metal1
+  pnc pn metal1
+  ndc ndiff metal1
+  pdc pdiff metal1
+  nsc nsd metal1
+  nwsc nwsd metal1
+  psc psd metal1
+  m2c metal1 metal2
+  m3c metal2 metal3
+  m4c metal3 metal4
+  m5c metal4 metal5
+  m6c metal5 metal6
+  mic metal6 metali
+  stackable pc m2c pm12contact,pm12c
+  stackable ppc m2c ppm12contact,ppm12c
+  stackable pnc m2c pnm12contact,pnm12c
+  stackable pdc m2c pdm12contact,pdm12c
+  stackable psc m2c psm12contact,psm12c,pom12c,pwm12c
+  stackable ndc m2c ndm12contact,ndm12c
+  stackable nsc m2c nsm12contact,nsm12c,nom12c,nwm12c
+  stackable nwsc m2c nwsm12contact,nwsm12c
+  stackable m2c m3c m123contact,m123c
+  stackable m3c m4c m234contact,m234c
+  stackable m4c m5c m345contact,m345c
+  stackable m5c m6c m456contact,m456c
+end
+
+styles
+ styletype  mos
+  nwr  54
+  pnwr  53
+  nwsd  3 54
+  nwsc  3 20 32 54
+  nwell  12
+  pwell  13
+  nfi  53
+  pfi  54
+  nselect  43
+  pselect  44
+  diff  25
+  tran  2 4
+  ndiff  2
+  pdiff  4
+  nsd  3
+  psd  5
+  nfet  6 7
+  pfet  8 9
+  ndc  2 20 32
+  pdc  4 20 32
+  nsc  3 20 32
+  psc  5 20 32
+  poly  1
+  pp  1 44
+  pn  1 43
+  pcontact  1 20 32
+  gc  32
+  metal1  20
+  rm1  20 48
+  prm1  48
+  m1p  20 34
+  fm1  20 34
+  fp  1 34
+  fa  32
+  fb  45 34
+  fn  45 34
+  fapm  1 20 21 34
+  gv1  55
+  m2contact  20 21 55
+  metal2  21
+  rm2  21 48
+  prm2  48
+  m2p  21 34
+  fm2  21 34
+  gv2  56
+  m3contact  21 22 56
+  metal3  22
+  rm3  22 48
+  prm3  48
+  m3p  22 34
+  fm3  22 34
+  gv3  57
+  m4contact  22 23 57
+  metal4  23
+  rm4  23 48
+  prm4  48
+  m4p  23 34
+  fm4  23 34
+  gv4  58
+  m5contact  23 24 58
+  metal5  24
+  rm5  24 48
+  m5p  24 34
+  fm5  24 34
+  prm5  48
+  gv5  60
+  m6contact  24 26 60
+  metal6  26
+  rm6  26 48
+  m6p  26 34
+  fm6  26 34
+  prm6  48
+  gvi  61
+  micontact  26 27 61
+  mi  27
+  rmi  27 48
+  prmi  48
+  pad  22 23 34 38
+  glass  34
+  xp  25 34
+  sb  10
+  pres  47 48
+  rp  47 48
+  prp  48
+  anres  2 48
+  rnd  2 48
+  prnd  48
+  apres  4 53
+  rpd  4 53
+  prpd  53
+  rnw  12 53
+  prnw  54
+  comment  45
+  bb  32
+  error_p  42
+  error_s  42
+  error_ps  42
+  magnet  54
+  rotate  57
+  fence  59
+end
+
+compose
+  compose  nfet  poly  ndiff
+  compose  pfet  poly  pdiff
+  compose  nfet  pn  ndiff
+  compose  pfet  pp  pdiff
+  paint  diff  nselect ndiff
+  paint  diff  pselect pdiff
+  compose  tran  poly  diff
+  paint  tran  nselect nfet
+  paint  tran  pselect pfet
+  paint  psd ns  ndiff
+  paint  nsd ps  pdiff
+  paint  ndiff ps  psd
+  paint  pdiff ns  nsd
+  paint  pad  m1  pad
+  paint  pad  m2  pad
+  paint  pad  m2c  pad
+  paint  pfi  nwell  nfi
+  paint  nfi  pwell  pfi
+  paint  anres  nwell  apres
+  paint  apres  pwell  anres
+  paint  ndc  nwell  pdc
+  paint  nfet  nwell  pfet
+  paint  ndiff  nwell  pdiff
+  paint  psd  nwell  nsd
+  paint  psc  nwell  nsc
+  paint  pdc  pwell  ndc
+  paint  pfet  pwell  nfet
+  paint  pdiff  pwell  ndiff
+  paint  nsd  pwell  psd
+  paint  nsc  pwell  psc
+  paint  pad  m3  pad
+  paint  pad  m4  pad
+  paint  pad  m5  pad
+  paint  pad  m6  pad
+  compose  pres  poly  sb
+  paint  sb  poly  pres
+  paint  poly  sb  pres
+  erase  pres  sb  poly
+  compose  anres  ndiff  sb
+  paint  sb  ndiff  anres
+  paint  ndiff  sb  anres
+  erase  anres  sb  ndiff
+  compose  apres  pdiff  sb
+  paint  sb  pdiff  apres
+  paint  pdiff  sb  apres
+  erase  apres  sb  pdiff
+#CRE/CRM
+  compose  rm1  prm1 m1
+  compose  rm2  prm2 m2
+  compose  rm3  prm3 m3
+  compose  rm4  prm4 m4
+  compose  rm5  prm5 m5
+  compose  rm6  prm6 m6
+  compose  rmi  prmi mi
+  compose  rp  prp poly
+  compose  rnd  prnd ndiff
+  compose  rpd  prpd pdiff
+  paint  nwell  rnw space
+  paint  nwell  nwr space
+  paint  nwell  prnw space
+  paint poly fp fp
+  paint m1 fm1 fm1
+  paint m2 fm2 fm2
+  paint m3 fm3 fm3
+  paint m4 fm4 fm4
+  paint m5 fm5 fm5
+  paint m6 fm6 fm6
+end
+
+connect
+  nwell,nsc/a,nwsc/a,nsd,nwsd  nwell,nsc/a,nwsc/a,nsd,nwsd
+  pwell,psc/a,psd  pwell,psc/a,psd
+  m1,fm1,fapm,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1  m1,fm1,fapm,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+  m2,fm2,fapm,m2c/m2,m3c/m2,m3c/m2  m2,fm2,fapm,m2c/m2,m3c/m2,m3c/m2
+  m3,fm3,fapm,m3c/m3,m4c/m3,m4c/m3  m3,fm3,fapm,m3c/m3,m4c/m3,m4c/m3
+  m4,fm4,fapm,m4c/m4,m5c/m4,m5c/m4  m4,fm4,fapm,m4c/m4,m5c/m4,m5c/m4
+  m5,fm5,fapm,m5c/m5,m6c/m5,m6c/m5  m5,fm5,fapm,m5c/m5,m6c/m5,m6c/m5
+  m6,fm6,fapm,m6c/m6,mic/m6  m6,fm6,fapm,m6c/m6,mic/m6
+  mi,mic/mi  mi,mic/mi
+  ndiff,nsd,nwsd,ndc/a,nsc/a,nwsc/a,pdiff,psd,pdc/a,psc/a  ndiff,nsd,nwsd,ndc/a,nsc/a,nwsc/a,pdiff,psd,pdc/a,psc/a
+  poly,fp,pp,pn,nfet,pfet,fet,fapm,pc/a,ppc/a,pnc/a  poly,fp,pp,pn,nfet,pfet,fet,fapm,pc/a,ppc/a,pnc/a
+  gc  poly,fp,pp,pn,ndiff,pdiff,nsd,nwsd,psd,m1,fm1,fapm,m2c/m1
+  gv1  m1,fm1,fapm,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2,fm2,fapm,m3c/m2
+  gv2  m2,fm2,fapm,m2c/m2,m3c/m2,m3,fm3,fapm,m4c/m3
+  gv3  m3,fm3,fapm,m3c/m3,m4c/m3,m4,fm4,fapm,m5c/m4
+  gv4  m4,fm4,fapm,m4c/m4,m5c/m4,m5,fm5,fapm,m6c/m5
+  gv5  m5,fm5,fapm,m5c/m5,m6c/m5,m6,fm6,fapm
+  gvi  m6,fm6,fapm,m6c/m6,mic/m6,mi
+  pad  m1,fm1,m2,fm2,m3,fm3,m4,fm4,m5,fm5,m6,fm6
+  rm1  prm1
+  rm2  prm2
+  rm3  prm3
+  rm4  prm4
+  rm5  prm5
+  rm6  prm6
+  rmi  prmi
+  rnw  prnw
+  nwr  pnwr
+  rp  prp
+  rnd  prnd
+  rpd  prpd
+  pres  sb
+  anres  sb
+  apres  sb
+end
+
+cifoutput
+
+style  lambda=0.10(p)
+ scalefactor  10 5
+ options calma-permissive-labels
+
+ layer CWN nwell,rnw,nwr,nwsd,nwsc
+ bloat-or pdiff,apres,rpd,pdc/a,pfet * 60
+ bloat-or nsd,nsc/a * 30
+ bloat-or nfi * 40
+ grow 30
+ shrink 30
+ labels nwell,rnw,nwr,nwsd,nwsc
+ calma 42 0
+
+ layer CWNR nwsd,nwsc,nwr
+ grow 140
+ calma 91 0
+
+ layer CWND nwr
+ labels nwr
+ calma 92 0
+
+ layer CAA nwsd,nwsc,nwr
+ grow 110
+ labels nwsd,nwsc
+ calma 43 0
+
+ layer CSN
+ bloat-or nwsd,nwsc * 80 nwr 0
+ calma 43 0
+
+ templayer TNWR
+ bloat-or nwr * 110 nwsd,nwsc 50
+
+ templayer TCSB nwsd,nwsc
+ grow 30
+ and-not TNWR
+ 
+ layer CSB nwsd,nwsc,nwr
+ grow 140
+ and-not TCSB
+ calma 29 0
+
+ layer CRNW pnwr
+ labels pnwr
+ calma 93 0
+
+ layer CWP pwell
+ bloat-or ndiff,anres,rnd,ndc/a,nfet * 60
+ bloat-or psd,psc/a * 30
+ bloat-or pfi * 40
+ grow 30
+ shrink 30
+ and-not CWN
+ labels pwell
+ calma 41 0
+
+ templayer TNS ns
+
+ templayer TPS ps
+
+#we give priority to selects autogenerated around diffusions (vrs. ohmics)
+#XDP = (pdiff*20) Or ps
+#XDN = (ndiff*20) Or ns
+#FSP = ((pdiff*20,psc*20) Or XDP And-Not XDN Or ps shrink-grow
+#FSN = ((ndiff*20,nsc*20) Or XDN And-Not FDP Or ns shrink-grow
+#CSN = FSN
+#CSP = FSP
+
+#diffusion auto-nselect (will have priority)
+ templayer XDN
+ bloat-or ndiff,anres,rnd,ndc/a * 20 psd,psc/a 0
+ bloat-or pn * 10 pp 0
+ or TNS
+
+#diffusion auto-pselect (will have priority)
+ templayer XDP
+ bloat-or pdiff,apres,rpd,pdc/a * 20 nsd,nsc/a 0
+ bloat-or pp * 10 pn 0
+ or TPS
+
+#final pselect 
+ templayer FSP
+ bloat-or pdiff,apres,rpd,pfet,psd,pdc/a,psc/a,pfet * 20 ndiff,anres,rnd,ndc/a,nsd,nsc/a,nfet 0
+ or XDP
+#give diff nselect priority
+ and-not XDN
+ or TPS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+#final nselect
+ templayer FSN
+ bloat-or ndiff,anres,rnd,nfet,nsd,nwsd,ndc/a,nsc/a,nwsc/a,nfet * 20 pdiff,apres,rpd,pdc/a,psd,psc/a,pfet 0
+ and-not nwr
+ or XDN
+#never conflict with final pselect
+ and-not FSP
+#drawn select always goes
+ or TNS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+ layer CSN FSN
+ calma 45 0
+
+ layer CSP FSP
+ calma 44 0
+
+ layer CAA diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ labels diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ calma 43 0
+
+ layer CCA nwsc/m1
+ squares 20 20 30
+ calma 48 0
+
+ layer CCA ndc/m1,nsc/m1
+ squares 10 20 30
+ calma 48 0
+
+ layer CCA pdc/m1,psc/m1
+ squares 10 20 30
+ calma 48 0
+
+ layer CPG poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ labels poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ calma 46 0
+
+ layer CCP pc/m1,ppc/m1,pnc/m1
+ squares 10 20 30
+ calma 47 0
+
+ layer CCC gc
+ squares 0 20 30
+ calma 25 0
+
+ layer CV1 m2c/m1
+ squares 10 20 30
+ calma 50 0
+
+ layer CV1 gv1
+ squares 0 20 30
+ calma 50 0
+
+ layer CV2 m3c/m2
+ squares 10 20 30
+ calma 61 0
+
+ layer CV2 gv2
+ squares 0 20 30
+ calma 61 0
+
+ layer CV3 m4c/m3
+ squares 10 20 30
+ calma 30 0
+
+ layer CV3 gv3
+ squares 0 20 30
+ calma 30 0
+
+ layer CV4 m5c/m4
+ squares 10 20 30
+ calma 32 0
+
+ layer CV4 gv4
+ squares 0 20 30
+ calma 32 0
+
+ layer CV5 m6c/m5
+ squares 10 30 40
+ calma 36 0
+
+ layer CV5 gv5
+ squares 0 30 40
+ calma 36 0
+
+ layer CV5 mic/mi
+ squares 30 30 200
+ calma 36 0
+
+ layer CV5 gvi
+ squares 0 30 200
+ calma 36 0
+
+
+ templayer XPAD1 pad
+ shrink 60
+
+ templayer XPAD2 XPAD1
+ shrink 60
+
+ layer CM6 pad
+ labels pad
+ calma 37 0
+
+ layer CV5 XPAD2
+ squares 10 30 90
+ calma 36 0
+
+ layer CM5 pad
+ labels pad
+ calma 33 0
+
+ layer CV4 XPAD2
+ squares 80 20 100
+ calma 32 0
+
+ layer CM4 pad
+ labels pad
+ calma 31 0
+
+ layer CV3 XPAD2
+ squares 20 20 100
+ calma 30 0
+
+ layer CM3 pad
+ labels pad
+ calma 62 0
+
+ layer CV2 XPAD2
+ squares 80 20 100
+ calma 61 0
+
+ layer CM2 pad
+ labels pad
+ calma 51 0
+
+ layer CV1 XPAD2
+ squares 20 20 100
+ calma 50 0
+
+ layer CM1 pad
+ calma 49 0
+
+ layer CM1 m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ labels m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ calma 49 0
+
+ layer CM2 m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ labels m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ calma 51 0
+
+ layer CMFP m1p
+ labels m1p
+ calma 81 0
+
+ layer CMSP m2p
+ labels m2p
+ calma 82 0
+
+ layer 100 fp
+ labels fp
+ calma 100 0
+
+ layer 101 fm1
+ labels fm1
+ calma 101 0
+
+ layer 102 fm2
+ labels fm2
+ calma 102 0
+
+ layer 103 fm3
+ labels fm3
+ calma 103 0
+
+ layer 104 fm4
+ labels fm4
+ calma 104 0
+
+ layer 105 fm5
+ labels fm5
+ calma 105 0
+
+ layer 106 fm6
+ labels fm6
+ calma 106 0
+
+ layer 109 fa
+ or fb
+ squares 0 200 40
+ labels fa
+ calma 109 0
+
+ layer 119 fn
+ calma 119 0
+
+ layer 110 fapm
+ labels fapm
+ calma 110 0
+
+# layer CPG fp
+ layer CPG fp,fapm
+ squares 0 200 40
+ labels fp
+ calma 46 0
+
+# layer CM1 fm1
+ layer CM1 fm1,fapm
+ squares 0 200 40
+ labels fm1
+ calma 49 0
+
+# layer CM2 fm2
+ layer CM2 fm2,fapm
+
+ squares 0 200 40
+ labels fm2
+ calma 51 0
+
+# layer CM3 fm3
+ layer CM3 fm3,fapm
+
+ squares 0 200 40
+ labels fm3
+ calma 62 0
+
+ layer CM3 m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ labels m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ calma 62 0
+
+ layer CMTP m3p
+ labels m3p
+ calma 83 0
+
+ layer CM4 m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ labels m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ calma 31 0
+
+ layer CMQP m4p
+ labels m4p
+ calma 84 0
+
+# layer CM4 fm4
+ layer CM4 fm4,fapm
+
+ squares 0 200 40
+ labels fm4
+ calma 31 0
+
+ layer CM5 m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ labels m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ calma 33 0
+
+ layer CMPP m5p
+ labels m5p
+ calma 85 0
+
+# layer CM5 fm5
+ layer CM5 fm5,fapm
+
+ squares 0 200 40
+ labels fm5
+ calma 33 0
+
+ layer CM6 m6,rm6,m6c/m6,mic/m6
+ labels m6,rm6,m6c/m6,mic/m6
+ calma 37 0
+
+ layer CM6P m6p
+ labels m6p
+ calma 85 0
+
+# layer CM6 fm6
+ layer CM6 fm6,fapm
+
+ squares 0 200 40
+ labels fm6
+ calma 37 0
+
+ layer CTM mi,mic/mi
+ labels mi,mic/mi
+ calma 35 0
+
+ layer COG pad
+ shrink 500
+ labels pad
+ calma 52 0
+
+ layer COG glass
+ labels glass
+ calma 52 0
+
+ layer CFI nfi,pfi
+ labels nfi,pfi
+ calma 27 0
+
+ layer CSB sb,pres,anres,apres
+ labels sb,pres,anres,apres
+ calma 29 0
+
+#CRE/CRM
+ layer CRW rnw,prnw
+ labels rnw,prnw
+ calma 65 0
+ layer CRG rp,prp,pres
+ labels rp,prp,pres
+ calma 67 0
+ layer CRD rnd,rpd,prnd,prpd,anres,apres
+ labels rnd,rpd,prnd,prpd,anres,apres
+ calma 66 0
+ layer CRE rnw,rp,rnd,rpd,pres,anres,apres
+ labels rnw,rp,rnd,rpd,pres,anres,apres
+ calma 64 0
+ layer CRF rm1,prm1
+ labels rm1,prm1
+ calma 71 0
+ layer CRS rm2,prm2
+ labels rm2,prm2
+ calma 72 0
+ layer CRT rm3,prm3
+ labels rm3,prm3
+ calma 73 0
+ layer CRQ rm4,prm4
+ labels rm4,prm4
+ calma 74 0
+ layer CRP rm5,prm5
+ labels rm5,prm5
+ calma 75 0
+ layer CR6 rm6,prm6
+ labels rm6,prm6
+ calma 76 0
+ layer CRI rmi,prmi
+ labels rmi,prmi
+ calma 79 0
+#CRE/CRM layer CRM rm1,prm1,rm2,prm2,rm3,prm3,rm4,prm4,rm5,prm5,rm6,prm6,rmi,prmi
+#CRE/CRM calma 70 0
+
+ layer CX comment
+ labels comment
+ calma 63 0
+
+ layer XP pad,xp
+ labels pad,xp
+ calma 26 0
+
+style  fill-only
+ scalefactor  10 5
+
+ layer 100 fp
+ calma 100 0
+
+ layer 101 fm1
+ calma 101 0
+
+ layer 102 fm2
+ calma 102 0
+
+ layer 103 fm3
+ calma 103 0
+
+ layer 104 fm4
+ calma 104 0
+
+ layer 105 fm5
+ calma 105 0
+
+ layer 106 fm6
+ calma 106 0
+
+ layer 109 fa
+ or fb
+ calma 109 0
+
+ layer 119 fn
+ calma 119 0
+
+style fapm-boxes
+
+# this output style creates fill boxes automatically (to meet minimum
+# density requirements for poly and metal layers) 5 microns outside of
+# drawn layout IF: 1. you have a flattened version of your chip
+# 2. over which you paint the special fill layer 'fa', preferably with
+# a size that is a multiple of 20 + n * (20 + 4), 3. set 'cif
+# ostype fapm-boxes' and cif out to a file (this actually creates the
+# fill boxes on cif/strm layer '110' using the magic 'squares'
+# command), 4. cif in the resulting file (which creates boxes on magic
+# layer 'fapm') and place this cell onto your chip (and verify absence
+# of drc errors or shorts), then 5. cif out under your regular cif out
+# style, where the 'fapm' layer creates fill boxes on poly and all
+# metal layers.
+
+ scalefactor  10 5
+
+ templayer CRIT fapm,fn,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet,poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ or fm1,m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ or fm2,m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ or fm3,m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ or fm4,m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ or fm5,m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ or fm6,m6,rm6,m6c/m6,mic/m6
+ or glass,pad
+ grow 500
+ and fa
+
+ layer 110 fa
+ squares 0 200 40
+ and-not CRIT
+ shrink 95
+ grow 95
+ or fapm
+ labels fapm
+ calma 110 0
+
+style fapm-stripes
+ scalefactor  10 5
+
+# this output style creates the above layer 110 as stripes for reduced size
+# HOWEVER it requires each 'fa' box to first be an exact multiple as above
+# and then *replacing* the left side (1-lambda wide) stripe of each 'fa' box
+# to be a 1-lambda wide layer 'fb' box -- else you won't get strips!
+
+ templayer CRIT fapm,fn,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet,poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ or fm1,m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ or fm2,m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ or fm3,m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ or fm4,m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ or fm5,m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ or fm6,m6,rm6,m6c/m6,mic/m6
+ or glass,pad
+ grow 500
+ and fa
+
+ templayer FB fa
+ or fb
+ squares 0 200 40
+ and-not CRIT
+
+ layer 110 fa
+ squares 0 200 40
+ and-not CRIT
+ or FB
+ shrink 95
+ grow 95
+ or fapm
+ labels fapm
+ calma 110 0
+
+
+style  lambda=0.10(cp)
+ scalefactor  10 5
+
+ layer CWN nwell,rnw,nwr,nwsd,nwsc
+ bloat-or pdiff,apres,rpd,pdc/a,pfet * 60
+ bloat-or nsd,nsc/a * 30
+ bloat-or nfi * 40
+ grow 30
+ shrink 30
+ labels nwell,rnw,nwr,nwsd,nwsc
+ calma 42 0
+
+ layer CWNR nwsd,nwsc,nwr
+ grow 140
+ calma 91 0
+
+ layer CWND nwr
+ labels nwr
+ calma 92 0
+
+ layer CAA nwsd,nwsc,nwr
+ grow 110
+ labels nwsd,nwsc
+ calma 43 0
+
+ layer CSN
+ bloat-or nwsd,nwsc * 80 nwr 0
+ calma 43 0
+
+ templayer TNWR
+ bloat-or nwr * 110 nwsd,nwsc 50
+
+ templayer TCSB nwsd,nwsc
+ grow 30
+ and-not TNWR
+ 
+ layer CSB nwsd,nwsc,nwr
+ grow 140
+ and-not TCSB
+ calma 29 0
+
+ layer CRNW pnwr
+ labels pnwr
+ calma 93 0
+
+ layer CWP pwell
+ bloat-or ndiff,anres,rnd,ndc/a,nfet * 60
+ bloat-or psd,psc/a * 30
+ bloat-or pfi * 40
+ grow 30
+ shrink 30
+ and-not CWN
+ labels pwell
+ calma 41 0
+
+ templayer TNS ns
+
+ templayer TPS ps
+
+#we give priority to selects autogenerated around diffusions (vrs. ohmics)
+#XDP = (pdiff*20) Or ps
+#XDN = (ndiff*20) Or ns
+#FSP = ((pdiff*20,psc*20) Or XDP And-Not XDN Or ps shrink-grow
+#FSN = ((ndiff*20,nsc*20) Or XDN And-Not FDP Or ns shrink-grow
+#CSN = FSN
+#CSP = FSP
+
+#diffusion auto-nselect (will have priority)
+ templayer XDN
+ bloat-or ndiff,anres,rnd,ndc/a * 20 psd,psc/a 0
+ bloat-or pn * 10 pp 0
+ or TNS
+
+#diffusion auto-pselect (will have priority)
+ templayer XDP
+ bloat-or pdiff,apres,rpd,pdc/a * 20 nsd,nsc/a 0
+ bloat-or pp * 10 pn 0
+ or TPS
+
+#final pselect 
+ templayer FSP
+ bloat-or pdiff,apres,rpd,pfet,psd,pdc/a,psc/a,pfet * 20 ndiff,anres,rnd,ndc/a,nsd,nsc/a,nfet 0
+ or XDP
+#give diff nselect priority
+ and-not XDN
+ or TPS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+#final nselect
+ templayer FSN
+ bloat-or ndiff,anres,rnd,nfet,nsd,nwsd,ndc/a,nsc/a,nwsc/a,nfet * 20 pdiff,apres,rpd,pdc/a,psd,psc/a,pfet 0
+ and-not nwr
+ or XDN
+#never conflict with final pselect
+ and-not FSP
+#drawn select always goes
+ or TNS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+ layer CSN FSN
+ calma 45 0
+
+ layer CSP FSP
+ calma 44 0
+
+ layer CAA diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ labels diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ calma 43 0
+
+ layer CCC nwsc/m1
+ squares 20 20 30
+ calma 25 0
+
+ layer CCC ndc/m1,nsc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CCC pdc/m1,psc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CPG poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ labels poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ calma 46 0
+
+ layer CCC pc/m1,ppc/m1,pnc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CCC gc
+ squares 0 20 30
+ calma 25 0
+
+ layer CV1 m2c/m1
+ squares 10 20 30
+ calma 50 0
+
+ layer CV1 gv1
+ squares 0 20 30
+ calma 50 0
+
+ layer CV2 m3c/m2
+ squares 10 20 30
+ calma 61 0
+
+ layer CV2 gv2
+ squares 0 20 30
+ calma 61 0
+
+ layer CV3 m4c/m3
+ squares 10 20 30
+ calma 30 0
+
+ layer CV3 gv3
+ squares 0 20 30
+ calma 30 0
+
+ layer CV4 m5c/m4
+ squares 10 20 30
+ calma 32 0
+
+ layer CV4 gv4
+ squares 0 20 30
+ calma 32 0
+
+ layer CV5 m6c/m5
+ squares 10 30 40
+ calma 36 0
+
+ layer CV5 gv5
+ squares 0 30 40
+ calma 36 0
+
+ layer CV5 mic/mi
+ squares 30 30 200
+ calma 36 0
+
+ layer CV5 gvi
+ squares 0 30 200
+ calma 36 0
+
+
+ templayer XPAD1 pad
+ shrink 60
+
+ templayer XPAD2 XPAD1
+ shrink 60
+
+ layer CM6 pad
+ labels pad
+ calma 37 0
+
+ layer CV5 XPAD2
+ squares 10 30 90
+ calma 36 0
+
+ layer CM5 pad
+ labels pad
+ calma 33 0
+
+ layer CV4 XPAD2
+ squares 80 20 100
+ calma 32 0
+
+ layer CM4 pad
+ labels pad
+ calma 31 0
+
+ layer CV3 XPAD2
+ squares 20 20 100
+ calma 30 0
+
+ layer CM3 pad
+ labels pad
+ calma 62 0
+
+ layer CV2 XPAD2
+ squares 80 20 100
+ calma 61 0
+
+ layer CM2 pad
+ labels pad
+ calma 51 0
+
+ layer CV1 XPAD2
+ squares 20 20 100
+ calma 50 0
+
+ layer CM1 pad
+ calma 49 0
+
+ layer CM1 m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ labels m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ calma 49 0
+
+ layer CM2 m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ labels m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ calma 51 0
+
+ layer CMFP m1p
+ labels m1p
+ calma 81 0
+
+ layer CMSP m2p
+ labels m2p
+ calma 82 0
+
+ layer 100 fp
+ labels fp
+ calma 100 0
+
+ layer 101 fm1
+ labels fm1
+ calma 101 0
+
+ layer 102 fm2
+ labels fm2
+ calma 102 0
+
+ layer 103 fm3
+ labels fm3
+ calma 103 0
+
+ layer 104 fm4
+ labels fm4
+ calma 104 0
+
+ layer 105 fm5
+ labels fm5
+ calma 105 0
+
+ layer 106 fm6
+ labels fm6
+ calma 106 0
+
+ layer 109 fa
+ or fb
+ squares 0 200 40
+ labels fa
+ calma 109 0
+
+ layer 119 fn
+ calma 119 0
+
+ layer 110 fapm
+ labels fapm
+ calma 110 0
+
+# layer CPG fp
+ layer CPG fp,fapm
+ squares 0 200 40
+ labels fp
+ calma 46 0
+
+# layer CM1 fm1
+ layer CM1 fm1,fapm
+ squares 0 200 40
+ labels fm1
+ calma 49 0
+
+# layer CM2 fm2
+ layer CM2 fm2,fapm
+
+ squares 0 200 40
+ labels fm2
+ calma 51 0
+
+# layer CM3 fm3
+ layer CM3 fm3,fapm
+
+ squares 0 200 40
+ labels fm3
+ calma 62 0
+
+ layer CM3 m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ labels m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ calma 62 0
+
+ layer CMTP m3p
+ labels m3p
+ calma 83 0
+
+ layer CM4 m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ labels m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ calma 31 0
+
+ layer CMQP m4p
+ labels m4p
+ calma 84 0
+
+# layer CM4 fm4
+ layer CM4 fm4,fapm
+
+ squares 0 200 40
+ labels fm4
+ calma 31 0
+
+ layer CM5 m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ labels m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ calma 33 0
+
+ layer CMPP m5p
+ labels m5p
+ calma 85 0
+
+# layer CM5 fm5
+ layer CM5 fm5,fapm
+
+ squares 0 200 40
+ labels fm5
+ calma 33 0
+
+ layer CM6 m6,rm6,m6c/m6,mic/m6
+ labels m6,rm6,m6c/m6,mic/m6
+ calma 37 0
+
+ layer CM6P m6p
+ labels m6p
+ calma 85 0
+
+# layer CM6 fm6
+ layer CM6 fm6,fapm
+
+ squares 0 200 40
+ labels fm6
+ calma 37 0
+
+ layer CTM mi,mic/mi
+ labels mi,mic/mi
+ calma 35 0
+
+ layer COG pad
+ shrink 500
+ labels pad
+ calma 52 0
+
+ layer COG glass
+ labels glass
+ calma 52 0
+
+ layer CFI nfi,pfi
+ labels nfi,pfi
+ calma 27 0
+
+ layer CSB sb,pres,anres,apres
+ labels sb,pres,anres,apres
+ calma 29 0
+
+#CRE/CRM
+ layer CRW rnw,prnw
+ labels rnw,prnw
+ calma 65 0
+ layer CRG rp,prp,pres
+ labels rp,prp,pres
+ calma 67 0
+ layer CRD rnd,rpd,prnd,prpd,anres,apres
+ labels rnd,rpd,prnd,prpd,anres,apres
+ calma 66 0
+ layer CRE rnw,rp,rnd,rpd,pres,anres,apres
+ labels rnw,rp,rnd,rpd,pres,anres,apres
+ calma 64 0
+ layer CRF rm1,prm1
+ labels rm1,prm1
+ calma 71 0
+ layer CRS rm2,prm2
+ labels rm2,prm2
+ calma 72 0
+ layer CRT rm3,prm3
+ labels rm3,prm3
+ calma 73 0
+ layer CRQ rm4,prm4
+ labels rm4,prm4
+ calma 74 0
+ layer CRP rm5,prm5
+ labels rm5,prm5
+ calma 75 0
+ layer CR6 rm6,prm6
+ labels rm6,prm6
+ calma 76 0
+ layer CRI rmi,prmi
+ labels rmi,prmi
+ calma 79 0
+#CRE/CRM layer CRM rm1,prm1,rm2,prm2,rm3,prm3,rm4,prm4,rm5,prm5,rm6,prm6,rmi,prmi
+#CRE/CRM calma 70 0
+
+ layer CX comment
+ labels comment
+ calma 63 0
+
+ layer XP pad,xp
+ labels pad,xp
+ calma 26 0
+
+
+style  lambda=0.10(c)
+ scalefactor  10 5
+
+ layer CWN nwell,rnw,nwr,nwsd,nwsc
+ bloat-or pdiff,apres,rpd,pdc/a,pfet * 60
+ bloat-or nsd,nsc/a * 30
+ bloat-or nfi * 40
+ grow 30
+ shrink 30
+ labels nwell,rnw,nwr,nwsd,nwsc
+ calma 42 0
+
+ layer CWNR nwsd,nwsc,nwr
+ grow 140
+ calma 91 0
+
+ layer CWND nwr
+ labels nwr
+ calma 92 0
+
+ layer CAA nwsd,nwsc,nwr
+ grow 110
+ labels nwsd,nwsc
+ calma 43 0
+
+ layer CSN
+ bloat-or nwsd,nwsc * 80 nwr 0
+ calma 43 0
+
+ templayer TNWR
+ bloat-or nwr * 110 nwsd,nwsc 50
+
+ templayer TCSB nwsd,nwsc
+ grow 30
+ and-not TNWR
+ 
+ layer CSB nwsd,nwsc,nwr
+ grow 140
+ and-not TCSB
+ calma 29 0
+
+ layer CRNW pnwr
+ labels pnwr
+ calma 93 0
+
+ templayer TNS ns
+
+ templayer TPS ps
+
+#we give priority to selects autogenerated around diffusions (vrs. ohmics)
+#XDP = (pdiff*20) Or ps
+#XDN = (ndiff*20) Or ns
+#FSP = ((pdiff*20,psc*20) Or XDP And-Not XDN Or ps shrink-grow
+#FSN = ((ndiff*20,nsc*20) Or XDN And-Not FDP Or ns shrink-grow
+#CSN = FSN
+#CSP = FSP
+
+#diffusion auto-nselect (will have priority)
+ templayer XDN
+ bloat-or ndiff,anres,rnd,ndc/a * 20 psd,psc/a 0
+ bloat-or pn * 10 pp 0
+ or TNS
+
+#diffusion auto-pselect (will have priority)
+ templayer XDP
+ bloat-or pdiff,apres,rpd,pdc/a * 20 nsd,nsc/a 0
+ bloat-or pp * 10 pn 0
+ or TPS
+
+#final pselect 
+ templayer FSP
+ bloat-or pdiff,apres,rpd,pfet,psd,pdc/a,psc/a,pfet * 20 ndiff,anres,rnd,ndc/a,nsd,nsc/a,nfet 0
+ or XDP
+#give diff nselect priority
+ and-not XDN
+ or TPS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+#final nselect
+ templayer FSN
+ bloat-or ndiff,anres,rnd,nfet,nsd,nwsd,ndc/a,nsc/a,nwsc/a,nfet * 20 pdiff,apres,rpd,pdc/a,psd,psc/a,pfet 0
+ and-not nwr
+ or XDN
+#never conflict with final pselect
+ and-not FSP
+#drawn select always goes
+ or TNS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+ layer CSN FSN
+ calma 45 0
+
+ layer CSP FSP
+ calma 44 0
+
+ layer CAA diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ labels diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ calma 43 0
+
+ layer CCC nwsc/m1
+ squares 20 20 30
+ calma 25 0
+
+ layer CCC ndc/m1,nsc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CCC pdc/m1,psc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CPG poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ labels poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ calma 46 0
+
+ layer CCC pc/m1,ppc/m1,pnc/m1
+ squares 10 20 30
+ calma 25 0
+
+ layer CCC gc
+ squares 0 20 30
+ calma 25 0
+
+ layer CV1 m2c/m1
+ squares 10 20 30
+ calma 50 0
+
+ layer CV1 gv1
+ squares 0 20 30
+ calma 50 0
+
+ layer CV2 m3c/m2
+ squares 10 20 30
+ calma 61 0
+
+ layer CV2 gv2
+ squares 0 20 30
+ calma 61 0
+
+ layer CV3 m4c/m3
+ squares 10 20 30
+ calma 30 0
+
+ layer CV3 gv3
+ squares 0 20 30
+ calma 30 0
+
+ layer CV4 m5c/m4
+ squares 10 20 30
+ calma 32 0
+
+ layer CV4 gv4
+ squares 0 20 30
+ calma 32 0
+
+ layer CV5 m6c/m5
+ squares 10 30 40
+ calma 36 0
+
+ layer CV5 gv5
+ squares 0 30 40
+ calma 36 0
+
+ layer CV5 mic/mi
+ squares 30 30 200
+ calma 36 0
+
+ layer CV5 gvi
+ squares 0 30 200
+ calma 36 0
+
+
+ templayer XPAD1 pad
+ shrink 60
+
+ templayer XPAD2 XPAD1
+ shrink 60
+
+ layer CM6 pad
+ labels pad
+ calma 37 0
+
+ layer CV5 XPAD2
+ squares 10 30 90
+ calma 36 0
+
+ layer CM5 pad
+ labels pad
+ calma 33 0
+
+ layer CV4 XPAD2
+ squares 80 20 100
+ calma 32 0
+
+ layer CM4 pad
+ labels pad
+ calma 31 0
+
+ layer CV3 XPAD2
+ squares 20 20 100
+ calma 30 0
+
+ layer CM3 pad
+ labels pad
+ calma 62 0
+
+ layer CV2 XPAD2
+ squares 80 20 100
+ calma 61 0
+
+ layer CM2 pad
+ labels pad
+ calma 51 0
+
+ layer CV1 XPAD2
+ squares 20 20 100
+ calma 50 0
+
+ layer CM1 pad
+ calma 49 0
+
+ layer CM1 m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ labels m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ calma 49 0
+
+ layer CM2 m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ labels m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ calma 51 0
+
+ layer CMFP m1p
+ labels m1p
+ calma 81 0
+
+ layer CMSP m2p
+ labels m2p
+ calma 82 0
+
+ layer 100 fp
+ labels fp
+ calma 100 0
+
+ layer 101 fm1
+ labels fm1
+ calma 101 0
+
+ layer 102 fm2
+ labels fm2
+ calma 102 0
+
+ layer 103 fm3
+ labels fm3
+ calma 103 0
+
+ layer 104 fm4
+ labels fm4
+ calma 104 0
+
+ layer 105 fm5
+ labels fm5
+ calma 105 0
+
+ layer 106 fm6
+ labels fm6
+ calma 106 0
+
+ layer 109 fa
+ or fb
+ squares 0 200 40
+ labels fa
+ calma 109 0
+
+ layer 119 fn
+ calma 119 0
+
+ layer 110 fapm
+ labels fapm
+ calma 110 0
+
+# layer CPG fp
+ layer CPG fp,fapm
+ squares 0 200 40
+ labels fp
+ calma 46 0
+
+# layer CM1 fm1
+ layer CM1 fm1,fapm
+ squares 0 200 40
+ labels fm1
+ calma 49 0
+
+# layer CM2 fm2
+ layer CM2 fm2,fapm
+
+ squares 0 200 40
+ labels fm2
+ calma 51 0
+
+# layer CM3 fm3
+ layer CM3 fm3,fapm
+
+ squares 0 200 40
+ labels fm3
+ calma 62 0
+
+ layer CM3 m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ labels m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ calma 62 0
+
+ layer CMTP m3p
+ labels m3p
+ calma 83 0
+
+ layer CM4 m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ labels m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ calma 31 0
+
+ layer CMQP m4p
+ labels m4p
+ calma 84 0
+
+# layer CM4 fm4
+ layer CM4 fm4,fapm
+
+ squares 0 200 40
+ labels fm4
+ calma 31 0
+
+ layer CM5 m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ labels m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ calma 33 0
+
+ layer CMPP m5p
+ labels m5p
+ calma 85 0
+
+# layer CM5 fm5
+ layer CM5 fm5,fapm
+
+ squares 0 200 40
+ labels fm5
+ calma 33 0
+
+ layer CM6 m6,rm6,m6c/m6,mic/m6
+ labels m6,rm6,m6c/m6,mic/m6
+ calma 37 0
+
+ layer CM6P m6p
+ labels m6p
+ calma 85 0
+
+# layer CM6 fm6
+ layer CM6 fm6,fapm
+
+ squares 0 200 40
+ labels fm6
+ calma 37 0
+
+ layer CTM mi,mic/mi
+ labels mi,mic/mi
+ calma 35 0
+
+ layer COG pad
+ shrink 500
+ labels pad
+ calma 52 0
+
+ layer COG glass
+ labels glass
+ calma 52 0
+
+ layer CFI nfi,pfi
+ labels nfi,pfi
+ calma 27 0
+
+ layer CSB sb,pres,anres,apres
+ labels sb,pres,anres,apres
+ calma 29 0
+
+#CRE/CRM
+ layer CRW rnw,prnw
+ labels rnw,prnw
+ calma 65 0
+ layer CRG rp,prp,pres
+ labels rp,prp,pres
+ calma 67 0
+ layer CRD rnd,rpd,prnd,prpd,anres,apres
+ labels rnd,rpd,prnd,prpd,anres,apres
+ calma 66 0
+ layer CRE rnw,rp,rnd,rpd,pres,anres,apres
+ labels rnw,rp,rnd,rpd,pres,anres,apres
+ calma 64 0
+ layer CRF rm1,prm1
+ labels rm1,prm1
+ calma 71 0
+ layer CRS rm2,prm2
+ labels rm2,prm2
+ calma 72 0
+ layer CRT rm3,prm3
+ labels rm3,prm3
+ calma 73 0
+ layer CRQ rm4,prm4
+ labels rm4,prm4
+ calma 74 0
+ layer CRP rm5,prm5
+ labels rm5,prm5
+ calma 75 0
+ layer CR6 rm6,prm6
+ labels rm6,prm6
+ calma 76 0
+ layer CRI rmi,prmi
+ labels rmi,prmi
+ calma 79 0
+#CRE/CRM layer CRM rm1,prm1,rm2,prm2,rm3,prm3,rm4,prm4,rm5,prm5,rm6,prm6,rmi,prmi
+#CRE/CRM calma 70 0
+
+ layer CX comment
+ labels comment
+ calma 63 0
+
+ layer XP pad,xp
+ labels pad,xp
+ calma 26 0
+
+
+style  lambda=0.10()
+ scalefactor  10 5
+
+ layer CWN nwell,rnw,nwr,nwsd,nwsc
+ bloat-or pdiff,apres,rpd,pdc/a,pfet * 60
+ bloat-or nsd,nsc/a * 30
+ bloat-or nfi * 40
+ grow 30
+ shrink 30
+ labels nwell,rnw,nwr,nwsd,nwsc
+ calma 42 0
+
+ layer CWNR nwsd,nwsc,nwr
+ grow 140
+ calma 91 0
+
+ layer CWND nwr
+ labels nwr
+ calma 92 0
+
+ layer CAA nwsd,nwsc,nwr
+ grow 110
+ labels nwsd,nwsc
+ calma 43 0
+
+ layer CSN
+ bloat-or nwsd,nwsc * 80 nwr 0
+ calma 43 0
+
+ templayer TNWR
+ bloat-or nwr * 110 nwsd,nwsc 50
+
+ templayer TCSB nwsd,nwsc
+ grow 30
+ and-not TNWR
+ 
+ layer CSB nwsd,nwsc,nwr
+ grow 140
+ and-not TCSB
+ calma 29 0
+
+ layer CRNW pnwr
+ labels pnwr
+ calma 93 0
+
+ templayer TNS ns
+
+ templayer TPS ps
+
+#we give priority to selects autogenerated around diffusions (vrs. ohmics)
+#XDP = (pdiff*20) Or ps
+#XDN = (ndiff*20) Or ns
+#FSP = ((pdiff*20,psc*20) Or XDP And-Not XDN Or ps shrink-grow
+#FSN = ((ndiff*20,nsc*20) Or XDN And-Not FDP Or ns shrink-grow
+#CSN = FSN
+#CSP = FSP
+
+#diffusion auto-nselect (will have priority)
+ templayer XDN
+ bloat-or ndiff,anres,rnd,ndc/a * 20 psd,psc/a 0
+ bloat-or pn * 10 pp 0
+ or TNS
+
+#diffusion auto-pselect (will have priority)
+ templayer XDP
+ bloat-or pdiff,apres,rpd,pdc/a * 20 nsd,nsc/a 0
+ bloat-or pp * 10 pn 0
+ or TPS
+
+#final pselect 
+ templayer FSP
+ bloat-or pdiff,apres,rpd,pfet,psd,pdc/a,psc/a,pfet * 20 ndiff,anres,rnd,ndc/a,nsd,nsc/a,nfet 0
+ or XDP
+#give diff nselect priority
+ and-not XDN
+ or TPS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+#final nselect
+ templayer FSN
+ bloat-or ndiff,anres,rnd,nfet,nsd,nwsd,ndc/a,nsc/a,nwsc/a,nfet * 20 pdiff,apres,rpd,pdc/a,psd,psc/a,pfet 0
+ and-not nwr
+ or XDN
+#never conflict with final pselect
+ and-not FSP
+#drawn select always goes
+ or TNS
+ shrink 10
+ grow 10
+ grow 10
+ shrink 10
+
+ layer CSN FSN
+ calma 45 0
+
+ layer CSP FSP
+ calma 44 0
+
+ layer CAA diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ labels diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,pfet,pfet,fet
+ calma 43 0
+
+ layer CCA nwsc/m1
+ squares 20 20 30
+ calma 48 0
+
+ layer CCA ndc/m1,nsc/m1
+ squares 10 20 30
+ calma 48 0
+
+ layer CCA pdc/m1,psc/m1
+ squares 10 20 30
+ calma 48 0
+
+ layer CPG poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ labels poly,pp,pn,pres,rp,nfet,pfet,fet,pc/a,ppc/a,pnc/a
+ calma 46 0
+
+ layer CCP pc/m1,ppc/m1,pnc/m1
+ squares 10 20 30
+ calma 47 0
+
+ layer CCC gc
+ squares 0 20 30
+ calma 25 0
+
+ layer CV1 m2c/m1
+ squares 10 20 30
+ calma 50 0
+
+ layer CV1 gv1
+ squares 0 20 30
+ calma 50 0
+
+ layer CV2 m3c/m2
+ squares 10 20 30
+ calma 61 0
+
+ layer CV2 gv2
+ squares 0 20 30
+ calma 61 0
+
+ layer CV3 m4c/m3
+ squares 10 20 30
+ calma 30 0
+
+ layer CV3 gv3
+ squares 0 20 30
+ calma 30 0
+
+ layer CV4 m5c/m4
+ squares 10 20 30
+ calma 32 0
+
+ layer CV4 gv4
+ squares 0 20 30
+ calma 32 0
+
+ layer CV5 m6c/m5
+ squares 10 30 40
+ calma 36 0
+
+ layer CV5 gv5
+ squares 0 30 40
+ calma 36 0
+
+ layer CV5 mic/mi
+ squares 30 30 200
+ calma 36 0
+
+ layer CV5 gvi
+ squares 0 30 200
+ calma 36 0
+
+
+ templayer XPAD1 pad
+ shrink 60
+
+ templayer XPAD2 XPAD1
+ shrink 60
+
+ layer CM6 pad
+ labels pad
+ calma 37 0
+
+ layer CV5 XPAD2
+ squares 10 30 90
+ calma 36 0
+
+ layer CM5 pad
+ labels pad
+ calma 33 0
+
+ layer CV4 XPAD2
+ squares 80 20 100
+ calma 32 0
+
+ layer CM4 pad
+ labels pad
+ calma 31 0
+
+ layer CV3 XPAD2
+ squares 20 20 100
+ calma 30 0
+
+ layer CM3 pad
+ labels pad
+ calma 62 0
+
+ layer CV2 XPAD2
+ squares 80 20 100
+ calma 61 0
+
+ layer CM2 pad
+ labels pad
+ calma 51 0
+
+ layer CV1 XPAD2
+ squares 20 20 100
+ calma 50 0
+
+ layer CM1 pad
+ calma 49 0
+
+ layer CM1 m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ labels m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1
+ calma 49 0
+
+ layer CM2 m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ labels m2,rm2,m2c/m2,m3c/m2,m3c/m2
+ calma 51 0
+
+ layer CMFP m1p
+ labels m1p
+ calma 81 0
+
+ layer CMSP m2p
+ labels m2p
+ calma 82 0
+
+ layer 100 fp
+ labels fp
+ calma 100 0
+
+ layer 101 fm1
+ labels fm1
+ calma 101 0
+
+ layer 102 fm2
+ labels fm2
+ calma 102 0
+
+ layer 103 fm3
+ labels fm3
+ calma 103 0
+
+ layer 104 fm4
+ labels fm4
+ calma 104 0
+
+ layer 105 fm5
+ labels fm5
+ calma 105 0
+
+ layer 106 fm6
+ labels fm6
+ calma 106 0
+
+ layer 109 fa
+ or fb
+ squares 0 200 40
+ labels fa
+ calma 109 0
+
+ layer 119 fn
+ calma 119 0
+
+ layer 110 fapm
+ labels fapm
+ calma 110 0
+
+# layer CPG fp
+ layer CPG fp,fapm
+ squares 0 200 40
+ labels fp
+ calma 46 0
+
+# layer CM1 fm1
+ layer CM1 fm1,fapm
+ squares 0 200 40
+ labels fm1
+ calma 49 0
+
+# layer CM2 fm2
+ layer CM2 fm2,fapm
+
+ squares 0 200 40
+ labels fm2
+ calma 51 0
+
+# layer CM3 fm3
+ layer CM3 fm3,fapm
+
+ squares 0 200 40
+ labels fm3
+ calma 62 0
+
+ layer CM3 m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ labels m3,rm3,m3c/m3,m4c/m3,m4c/m3
+ calma 62 0
+
+ layer CMTP m3p
+ labels m3p
+ calma 83 0
+
+ layer CM4 m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ labels m4,rm4,m4c/m4,m5c/m4,m5c/m4
+ calma 31 0
+
+ layer CMQP m4p
+ labels m4p
+ calma 84 0
+
+# layer CM4 fm4
+ layer CM4 fm4,fapm
+
+ squares 0 200 40
+ labels fm4
+ calma 31 0
+
+ layer CM5 m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ labels m5,rm5,m5c/m5,m6c/m5,m6c/m5
+ calma 33 0
+
+ layer CMPP m5p
+ labels m5p
+ calma 85 0
+
+# layer CM5 fm5
+ layer CM5 fm5,fapm
+
+ squares 0 200 40
+ labels fm5
+ calma 33 0
+
+ layer CM6 m6,rm6,m6c/m6,mic/m6
+ labels m6,rm6,m6c/m6,mic/m6
+ calma 37 0
+
+ layer CM6P m6p
+ labels m6p
+ calma 85 0
+
+# layer CM6 fm6
+ layer CM6 fm6,fapm
+
+ squares 0 200 40
+ labels fm6
+ calma 37 0
+
+ layer CTM mi,mic/mi
+ labels mi,mic/mi
+ calma 35 0
+
+ layer COG pad
+ shrink 500
+ labels pad
+ calma 52 0
+
+ layer COG glass
+ labels glass
+ calma 52 0
+
+ layer CFI nfi,pfi
+ labels nfi,pfi
+ calma 27 0
+
+ layer CSB sb,pres,anres,apres
+ labels sb,pres,anres,apres
+ calma 29 0
+
+#CRE/CRM
+ layer CRW rnw,prnw
+ labels rnw,prnw
+ calma 65 0
+ layer CRG rp,prp,pres
+ labels rp,prp,pres
+ calma 67 0
+ layer CRD rnd,rpd,prnd,prpd,anres,apres
+ labels rnd,rpd,prnd,prpd,anres,apres
+ calma 66 0
+ layer CRE rnw,rp,rnd,rpd,pres,anres,apres
+ labels rnw,rp,rnd,rpd,pres,anres,apres
+ calma 64 0
+ layer CRF rm1,prm1
+ labels rm1,prm1
+ calma 71 0
+ layer CRS rm2,prm2
+ labels rm2,prm2
+ calma 72 0
+ layer CRT rm3,prm3
+ labels rm3,prm3
+ calma 73 0
+ layer CRQ rm4,prm4
+ labels rm4,prm4
+ calma 74 0
+ layer CRP rm5,prm5
+ labels rm5,prm5
+ calma 75 0
+ layer CR6 rm6,prm6
+ labels rm6,prm6
+ calma 76 0
+ layer CRI rmi,prmi
+ labels rmi,prmi
+ calma 79 0
+#CRE/CRM layer CRM rm1,prm1,rm2,prm2,rm3,prm3,rm4,prm4,rm5,prm5,rm6,prm6,rmi,prmi
+#CRE/CRM calma 70 0
+
+ layer CX comment
+ labels comment
+ calma 63 0
+
+ layer XP pad,xp
+ labels pad,xp
+ calma 26 0
+
+end
+
+cifinput
+
+style  lambda=0.10(p)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+ layer pwell CWP
+ and-not CTA
+ labels CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ calma CSN 45 *
+
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer ndc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer ndc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nsc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nsc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CCA
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 105
+ and-not CTA
+ and CCC
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer pdc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer pdc CAA
+ and CSP
+ and CCC
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer psc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer psc CAA
+ and CSP
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer ndc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer pc CCP
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCP 47 *
+
+ layer pc CCC
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer gc CCP
+ and-not CPG
+ and-not CPC
+ calma CCP 47 *
+
+ layer gc CCP
+ and-not CM1
+ calma CCP 47 *
+
+ layer gc CCA
+ and-not COP
+ and-not CAA
+ and-not CBA
+ calma CCA 48 *
+
+ layer gc CCA
+ and-not COP
+ and-not CM1
+ calma CCA 48 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ and-not CBA
+ calma CCC 25 *
+
+ layer gc CCC
+ and-not COP
+ and-not CM1
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCE
+ and-not CM1
+ calma CCE 55 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM1
+ calma CV1 50 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM2
+ calma CV1 50 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM2
+ calma CV2 61 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM3
+ calma CV2 61 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM3
+ calma CV3 30 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM4
+ calma CV3 30 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM4
+ calma CV4 32 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV4 32 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV5 36 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer gvi CV5
+ and CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer m2c CV1
+ and-not XP
+ grow 10
+ and CM2
+ and CM1
+ grow 5
+ shrink 5
+ calma CV1 50 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ and-not XP
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ and-not XP
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer m3c CV2
+ and-not XP
+ grow 10
+ and CM3
+ and CM2
+ grow 5
+ shrink 5
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ and-not XP
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ and-not XP
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer m4c CV3
+ and-not XP
+ grow 10
+ and CM4
+ and CM3
+ grow 10
+ shrink 10
+ calma CV3 30 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ and-not XP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer m5c CV4
+ and-not XP
+ grow 10
+ and CM5
+ and CM4
+ grow 10
+ shrink 10
+ calma CV4 32 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ and-not XP
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer m6c CV5
+ grow 5
+ and-not CTM
+ and-not XP
+ grow 10
+ and CM6
+ and CM5
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ and-not XP
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer mic CV5
+ and CTM
+ and-not XP
+ grow 10
+ and CTM
+ and CM6
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer pad XP
+ labels pad
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ and-not XP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(s)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+
+ ignore CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer nselect CSN
+ calma CSN 45 *
+
+ layer pselect CSP
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer ndc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer ndc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nsc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nsc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CCA
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 105
+ and-not CTA
+ and CCC
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer pdc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer pdc CAA
+ and CSP
+ and CCC
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer psc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer psc CAA
+ and CSP
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer pc CCP
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCP 47 *
+
+ layer pc CCC
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer gc CCP
+ and-not CPG
+ and-not CPC
+ calma CCP 47 *
+
+ layer gc CCP
+ and-not CM1
+ calma CCP 47 *
+
+ layer gc CCA
+ and-not COP
+ and-not CAA
+ and-not CBA
+ calma CCA 48 *
+
+ layer gc CCA
+ and-not COP
+ and-not CM1
+ calma CCA 48 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ and-not CBA
+ calma CCC 25 *
+
+ layer gc CCC
+ and-not COP
+ and-not CM1
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCE
+ and-not CM1
+ calma CCE 55 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM1
+ calma CV1 50 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM2
+ calma CV1 50 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM2
+ calma CV2 61 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM3
+ calma CV2 61 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM3
+ calma CV3 30 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM4
+ calma CV3 30 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM4
+ calma CV4 32 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV4 32 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV5 36 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer gvi CV5
+ and CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer m2c CV1
+ and-not CCC
+ and-not CCP
+ and-not CCA
+ and-not XP
+ grow 10
+ and CM2
+ and CM1
+ grow 5
+ shrink 5
+ calma CV1 50 *
+
+
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ and-not XP
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ and-not XP
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer m3c CV2
+ and-not XP
+ grow 10
+ and CM3
+ and CM2
+ grow 5
+ shrink 5
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ and-not XP
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ and-not XP
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer m4c CV3
+ and-not XP
+ grow 10
+ and CM4
+ and CM3
+ grow 10
+ shrink 10
+ calma CV3 30 *
+
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ and-not XP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer m5c CV4
+ and-not XP
+ grow 10
+ and CM5
+ and CM4
+ grow 10
+ shrink 10
+ calma CV4 32 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ and-not XP
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer m6c CV5
+ grow 5
+ and-not CTM
+ and-not XP
+ grow 10
+ and CM6
+ and CM5
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ and-not XP
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer mic CV5
+ and CTM
+ and-not XP
+ grow 10
+ and CTM
+ and CM6
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer pad XP
+ labels pad
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ and-not XP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(ps)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+ layer pwell CWP
+ and-not CTA
+ labels CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer nselect CSN
+ calma CSN 45 *
+
+ layer pselect CSP
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer ndc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer ndc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nsc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nsc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CCA
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 105
+ and-not CTA
+ and CCC
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer pdc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer pdc CAA
+ and CSP
+ and CCC
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer psc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer psc CAA
+ and CSP
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer pc CCP
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCP 47 *
+
+ layer pc CCC
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer gc CCP
+ and-not CPG
+ and-not CPC
+ calma CCP 47 *
+
+ layer gc CCP
+ and-not CM1
+ calma CCP 47 *
+
+ layer gc CCA
+ and-not COP
+ and-not CAA
+ and-not CBA
+ calma CCA 48 *
+
+ layer gc CCA
+ and-not COP
+ and-not CM1
+ calma CCA 48 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ and-not CBA
+ calma CCC 25 *
+
+ layer gc CCC
+ and-not COP
+ and-not CM1
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCE
+ and-not CM1
+ calma CCE 55 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM1
+ calma CV1 50 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM2
+ calma CV1 50 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM2
+ calma CV2 61 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM3
+ calma CV2 61 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM3
+ calma CV3 30 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM4
+ calma CV3 30 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM4
+ calma CV4 32 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV4 32 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV5 36 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer gvi CV5
+ and CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer m2c CV1
+ and-not XP
+ grow 10
+ and CM2
+ and CM1
+ grow 5
+ shrink 5
+ calma CV1 50 *
+
+
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ and-not XP
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ and-not XP
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer m3c CV2
+ and-not XP
+ grow 10
+ and CM3
+ and CM2
+ grow 5
+ shrink 5
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ and-not XP
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ and-not XP
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer m4c CV3
+ and-not XP
+ grow 10
+ and CM4
+ and CM3
+ grow 10
+ shrink 10
+ calma CV3 30 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ and-not XP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer m5c CV4
+ and-not XP
+ grow 10
+ and CM5
+ and CM4
+ grow 10
+ shrink 10
+ calma CV4 32 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ and-not XP
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer m6c CV5
+ grow 5
+ and-not CTM
+ and-not XP
+ grow 10
+ and CM6
+ and CM5
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ and-not XP
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer mic CV5
+ and CTM
+ and-not XP
+ grow 10
+ and CTM
+ and CM6
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer pad XP
+ labels pad
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ and-not XP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10()
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+
+ ignore CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ calma CSN 45 *
+
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer ndc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer ndc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nsc CAA
+ and CSN
+ and CCA
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nsc CAA
+ and CSN
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CCA
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer nwsc CAA
+ and CSN
+ and CWNR
+ shrink 105
+ and-not CTA
+ and CCC
+
+ and CWN
+ and CM1
+ grow 20
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer pdc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer pdc CAA
+ and CSP
+ and CCC
+ and-not CTA
+
+ and-not CPS
+ and CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer psc CAA
+ and CSP
+ and CCA
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCA 48 *
+
+ layer psc CAA
+ and CSP
+ and CCC
+ and-not CWNR
+ and-not CTA
+
+ and-not CPS
+ and-not CWN
+ and CM1
+ grow 10
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer pc CCP
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCP 47 *
+
+ layer pc CCC
+ and CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ grow 10
+ and CM1
+ grow 5
+ shrink 5
+ calma CCC 25 *
+
+ layer gc CCP
+ and-not CPG
+ and-not CPC
+ calma CCP 47 *
+
+ layer gc CCP
+ and-not CM1
+ calma CCP 47 *
+
+ layer gc CCA
+ and-not COP
+ and-not CAA
+ and-not CBA
+ calma CCA 48 *
+
+ layer gc CCA
+ and-not COP
+ and-not CM1
+ calma CCA 48 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPG
+ and-not CPC
+ and-not CEL
+ and-not CAA
+ and-not CBA
+ calma CCC 25 *
+
+ layer gc CCC
+ and-not COP
+ and-not CM1
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCE
+ and-not CM1
+ calma CCE 55 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM1
+ calma CV1 50 *
+
+ layer gv1 CV1
+ and-not COP
+ and-not CM2
+ calma CV1 50 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM2
+ calma CV2 61 *
+
+ layer gv2 CV2
+ and-not COP
+ and-not CM3
+ calma CV2 61 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM3
+ calma CV3 30 *
+
+ layer gv3 CV3
+ and-not COP
+ and-not CM4
+ calma CV3 30 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM4
+ calma CV4 32 *
+
+ layer gv4 CV4
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV4 32 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM5
+ calma CV5 36 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer gvi CV5
+ and CTM
+ and-not COP
+ and-not CM6
+ calma CV5 36 *
+
+ layer m2c CV1
+ and-not XP
+ grow 10
+ and CM2
+ and CM1
+ grow 5
+ shrink 5
+ calma CV1 50 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ and-not XP
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ and-not XP
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer m3c CV2
+ and-not XP
+ grow 10
+ and CM3
+ and CM2
+ grow 5
+ shrink 5
+ calma CV2 61 *
+
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ and-not XP
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ and-not XP
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer m4c CV3
+ and-not XP
+ grow 10
+ and CM4
+ and CM3
+ grow 10
+ shrink 10
+ calma CV3 30 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ and-not XP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer m5c CV4
+ and-not XP
+ grow 10
+ and CM5
+ and CM4
+ grow 10
+ shrink 10
+ calma CV4 32 *
+
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ and-not XP
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer m6c CV5
+ grow 5
+ and-not CTM
+ and-not XP
+ grow 10
+ and CM6
+ and CM5
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ and-not XP
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer mic CV5
+ and CTM
+ and-not XP
+ grow 10
+ and CTM
+ and CM6
+ grow 10
+ shrink 10
+ calma CV5 36 *
+
+ layer pad XP
+ labels pad
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ and-not XP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(c)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+
+ ignore CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ calma CSN 45 *
+
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer gc CCA
+ and CPG
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and CPG
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and CPG
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and CPG
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCA
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer gv1 CV1
+ calma CV1 50 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer gv2 CV2
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+ layer gv3 CV3
+ calma CV3 30 *
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer gv4 CV4
+
+ calma CV4 32 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ calma CV5 36 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer gvi CV5
+ and CTM
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer xp XP
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(cs)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+
+ ignore CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer nselect CSN
+ calma CSN 45 *
+
+ layer pselect CSP
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer gc CCA
+ and CPG
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and CPG
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and CPG
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and CPG
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCA
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer gv1 CV1
+ calma CV1 50 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer gv2 CV2
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+ layer gv3 CV3
+ calma CV3 30 *
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer gv4 CV4
+
+ calma CV4 32 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ calma CV5 36 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer gvi CV5
+ and CTM
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer xp XP
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(cps)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+ layer pwell CWP
+ and-not CTA
+ labels CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer nselect CSN
+ calma CSN 45 *
+
+ layer pselect CSP
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer gc CCA
+ and CPG
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and CPG
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and CPG
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and CPG
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCA
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer gv1 CV1
+ calma CV1 50 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer gv2 CV2
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+ layer gv3 CV3
+ calma CV3 30 *
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer gv4 CV4
+
+ calma CV4 32 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ calma CV5 36 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer gvi CV5
+ and CTM
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer xp XP
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+
+style  lambda=0.10(cp)
+ scalefactor  10
+
+ layer nwell CWN
+ and-not CWNR
+ and-not CTA
+ labels CWN
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer rnw CWN
+ and-not CWNR
+ and CRW
+ and-not CRD
+ and-not CAA
+ and-not CPG
+ calma CWN 42 *
+
+ layer pseudo_rnwell CRW
+ and-not CRE
+ calma CRW 65 *
+
+ calma CWNR 91 *
+
+ layer nwr CWND
+ calma CWND 92 *
+
+ layer pseudo_nwr CRNW
+ calma CRNW 93 *
+
+ layer pwell CWP
+ and-not CTA
+ labels CWP
+ calma CWP 41 *
+
+ layer diff CAA
+ and-not CTA
+ and-not CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ layer tran CAA
+ and-not CTA
+ and CPG
+ and-not CWNR
+ and-not COP
+ and-not CSN
+ and-not CSP
+ labels CAA
+ calma CAA 43 *
+
+ calma CSN 45 *
+
+ calma CSP 44 *
+
+ layer ndiff CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rnd CAA
+ and CSN
+ and-not CWNR
+ and CRD
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rndiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and CSN
+ and-not CBA
+ calma CRD 66 *
+
+ layer pdiff CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRE
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer rpd CAA
+ and CSP
+ and-not CWNR
+ and CRD
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer pseudo_rpdiff CRD
+ and-not CRE
+ and-not CAA
+ and-not CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ calma CRD 66 *
+
+ layer nfet CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer pfet CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CPG
+ and-not CEL
+ and CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nsd CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer psd CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and-not CWN
+ and-not CSN
+ and-not CPS
+ and CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer nwsd CAA
+ and CSN
+ and CWNR
+ shrink 110
+ and-not CTA
+ and CWN
+ and-not CSP
+ and-not CBA
+ labels CAA
+ calma CAA 43 *
+
+ layer gc CCA
+ and CPG
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and CPG
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and CPG
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and CPG
+ and-not CEL
+ calma CCE 55 *
+
+ layer gc CCA
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCA 48 *
+
+ layer gc CCP
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCP 47 *
+
+ layer gc CCC
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCC 25 *
+
+ layer gc CCE
+ and-not COP
+ and-not CPC
+ and-not CEL
+ calma CCE 55 *
+
+ layer poly CPG
+ and-not CRE
+ labels CPG
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRE
+ and-not CSB
+ calma CPG 46 *
+
+ layer rp CPG
+ and CRG
+ calma CPG 46 *
+
+ layer pseudo_rpoly CRG
+ and-not CRE
+ calma CRG 67 *
+
+ layer m1 CM1
+ and-not CRM
+ and-not CRF
+ labels CM1
+ calma CM1 49 *
+
+ layer rm1 CRM
+ and CM1
+ calma CRM 70 *
+
+ layer rm1 CRF
+ and CM1
+ calma CRF 71 *
+
+ layer pseudo_rmetal1 CRF
+ and-not rm1
+ calma CRF 71 *
+
+ layer m1p CMFP
+ labels CMFP
+ calma CMFP 81 *
+
+ layer gv1 CV1
+ calma CV1 50 *
+
+ layer m2 CM2
+ and-not CRM
+ and-not CRS
+ labels CM2
+ calma CM2 51 *
+
+ layer rm2 CRM
+ and CM2
+ calma CRM 70 *
+
+ layer rm2 CRS
+ and CM2
+ calma CRS 72 *
+
+ layer pseudo_rmetal2 CRS
+ and-not rm2
+ calma CRS 72 *
+
+ layer m2p CMSP
+ labels CMSP
+ calma CMSP 82 *
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+ layer gv2 CV2
+ calma CV2 61 *
+
+ layer m3 CM3
+ and-not CRM
+ and-not CRT
+ labels CM3
+ calma CM3 62 *
+
+ layer rm3 CRM
+ and CM3
+ calma CRM 70 *
+
+ layer rm3 CRT
+ and CM3
+ calma CRT 73 *
+
+ layer pseudo_rmetal3 CRT
+ and-not rm3
+ calma CRT 73 *
+
+ layer m3p CMTP
+ labels CMTP
+ calma CMTP 83 *
+
+ layer gv3 CV3
+ calma CV3 30 *
+
+ layer m4 CM4
+ and-not CRM
+ and-not CRQ
+ labels CM4
+ calma CM4 31 *
+
+ layer rm4 CRM
+ and CM4
+ calma CRM 70 *
+
+ layer rm4 CRQ
+ and CM4
+ calma CRQ 74 *
+
+ layer pseudo_rmetal4 CRQ
+ and-not rm4
+ calma CRQ 74 *
+
+ layer m4p CMQP
+ labels CMQP
+ calma CMQP 84 *
+
+ layer gv4 CV4
+
+ calma CV4 32 *
+
+ layer m5 CM5
+ and-not CRM
+ and-not CRP
+ labels CM5
+ calma CM5 33 *
+
+ layer rm5 CRM
+ and CM5
+ calma CRM 70 *
+
+ layer rm5 CRP
+ and CM5
+ calma CRP 75 *
+
+ layer pseudo_rmetal5 CRP
+ and-not rm5
+ calma CRP 75 *
+
+ layer m5p CMPP
+ labels CMPP
+ calma CMPP 85 *
+
+ layer gv5 CV5
+ grow 5
+ and-not CTM
+ calma CV5 36 *
+
+ layer m6 CM6
+ and-not CRM
+ and-not CR6
+ labels CM6
+ calma CM6 37 *
+
+ layer rm6 CRM
+ and CM6
+ calma CRM 70 *
+
+ layer rm6 CR6
+ and CM6
+ calma CR6 76 *
+
+ layer pseudo_rmetal6 CR6
+ and-not rm6
+ calma CR6 76 *
+
+ layer m6p CM6P
+ labels CM6P
+ calma CM6P 85 *
+
+ layer gvi CV5
+ and CTM
+ calma CV5 36 *
+
+ layer mi CTM
+ and-not CRM
+ and-not CRI
+ labels CTM
+ calma CTM 35 *
+
+ layer rmi CRM
+ and CTM
+ calma CRM 70 *
+
+ layer rmi CRI
+ and CTM
+ calma CRI 79 *
+
+ layer pseudo_rmetali CRI
+ and-not rmi
+ calma CRI 79 *
+
+ layer xp XP
+ calma XP 26 *
+
+ layer glass COG
+ and-not COP
+ labels COG
+ calma COG 52 *
+
+ layer nfi CFI
+ and CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer pfi CFI
+ and-not CWN
+ labels CFI
+ calma CFI 27 *
+
+ layer sb CSB
+ and-not CWNR
+ labels CSB
+ calma CSB 29 *
+
+ layer pres CPG
+ and CSB
+ calma CPG 46 *
+
+ layer anres CAA
+ and CSN
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and-not CWN
+ and-not CSP
+ and-not CBA
+ calma CAA 43 *
+
+ layer apres CAA
+ and CSP
+ and-not CWNR
+ and-not CTA
+ and CSB
+ and-not CPG
+ and CWN
+ and-not CSN
+ and-not CPS
+ and-not CBA
+ calma CAA 43 *
+
+ layer comment CX
+ labels CX
+ calma CX 63 *
+
+ calma CTA 60 *
+
+ calma CRW 65 *
+ calma CRG 67 *
+ calma CRD 66 *
+ calma CRE 64 *
+ calma CRF 71 *
+ calma CRS 72 *
+ calma CRT 73 *
+ calma CRQ 74 *
+ calma CRP 75 *
+ calma CR6 76 *
+ calma CRI 79 *
+ calma CRM 70 *
+
+style  fill-only
+ scalefactor  10
+# scalefactor  100
+
+ layer fp 100
+ calma 100 100 *
+
+ layer fm1 101
+ calma 101 101 *
+
+ layer fm2 102
+ calma 102 102 *
+
+ layer fm3 103
+ calma 103 103 *
+
+ layer fm4 104
+ calma 104 104 *
+
+ layer fm5 105
+ calma 105 105 *
+
+ layer fm6 106
+ calma 106 106 *
+
+ layer fa 109
+ or fb
+ calma 109 109 *
+
+ layer fn 119
+ calma 119 119 *
+
+ layer fapm 110
+ calma 110 110 *
+
+end
+
+mzrouter
+ style irouter
+#		layer	hCost	vCost	jogCost	hintCost 
+ layer		metal6	2	1	2	1
+ layer		metal5	1	2	2	1
+ layer		metal4	2	1	2	1
+ layer		metal3	1	2	2	1
+ layer		metal2	2	1	2	1
+ layer		metal1	2	3	2	1
+ layer		poly	10	10	11	1
+ contact	m6contact	metal6	metal5	2
+ contact	m5contact	metal5	metal4	3
+ contact	m4contact	metal4	metal3	4
+ contact	m3contact	metal3	metal2	5
+ contact	m2contact	metal2	metal1	6
+ contact	pcontact	metal1	poly	7
+ notactive	poly	pcontact
+
+style	garouter
+ layer	m2	32	64	256	1
+ layer	m1	64	32	256	1
+ contact	m2contact	metal1	metal2	1024
+
+end
+
+drc
+ width nwell 12 \
+ "N-well width < 12 (Mosis #1.1)"
+
+ width rnw 12 \
+ "rnwell (for resistor L/W extraction) width < 12 (Mosis #1.1)"
+
+ width nwr 12 \
+ "nwr (for Fig1b resistor L/W extraction) width < 12 (Mosis #Fig1bX)"
+
+ width pwell 12 \
+ "P-well width < 12 (Mosis #1.1)"
+
+ width diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 3 \
+ "Diffusion width < 3 (Mosis #2.1)"
+
+ edge4way nsd,nwsd,nsc/a,nwsc/a pdiff,apres,rpd,pdc/a 3 ~(nsd,nwsd,nsc/a,nwsc/a)/active pdiff,apres,rpd,pdc/a 3 \
+ "P-Diffusion width in N-Ohmic < 3 (Mosis #2.1)" active
+
+ edge4way psd,psc/a ndiff,anres,rnd,ndc/a 3 ~(psd,psc/a)/active ndiff,anres,rnd,ndc/a 3 \
+ "N-Diffusion width in P-Ohmic < 3 (Mosis #2.1)" active
+
+ edge4way pdiff,apres,rpd,pdc/a nsd,nwsd,nsc/a,nwsc/a 3 ~(pdiff,apres,rpd,pdc/a)/active nsd,nwsd,nsc/a,nwsc/a 3 \
+ "N-Ohmic width in P-Diffusion < 3 (Mosis #2.1)" active
+
+ edge4way ndiff,anres,rnd,ndc/a psd,psc/a 3 ~(ndiff,anres,rnd,ndc/a)/active psd,psc/a 3 \
+ "P-Ohmic width in N-Diffusion < 3 (Mosis #2.1)" active
+
+ width poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet,fet 2 \
+ "Poly width < 2 (Mosis #3.1)"
+
+ width nselect 3 \
+ "N-Select width < 3 (Mosis #4.4)"
+
+ width pselect 3 \
+ "P-Select width < 3 (Mosis #4.4)"
+
+ width ndiff,anres,rnd,ndc/a,nsd,nsc/a 3 \
+ "N-Diffusion,N-Ohmic width < 3 (Mosis #4.4)"
+
+ width pdiff,apres,rpd,pdc/a,psd,psc/a 3 \
+ "P-Diffusion,P-Ohmic width < 3 (Mosis #4.4)"
+
+ width pc/m1 4 \
+ "Poly contact width < 4 (Mosis #5.1)"
+
+ width ppc/m1 4 \
+ "Poly contact width < 4 (Mosis #5.1)"
+
+ width pnc/m1 4 \
+ "Poly contact width < 4 (Mosis #5.1)"
+
+
+
+
+ width gc 2 \
+ "GC contact width < 2 (Mosis #6.1)"
+
+ width ndc/m1 4 \
+ "Diffusion contact width < 4 (Mosis #6.1)"
+
+
+ width nsc/m1 4 \
+ "Diffusion contact width < 4 (Mosis #6.1)"
+
+ width nwsc/m1 4 \
+ "Diffusion contact width < 4 (Mosis #6.1)"
+
+
+
+ width nwsc 6 \
+ "nwr (for Fig1b resistor) active Contact width < 6 (Mosis #Fig1b)"
+
+ width pdc/m1 4 \
+ "Diffusion contact width < 4 (Mosis #6.1)"
+
+
+ width psc/m1 4 \
+ "Diffusion contact width < 4 (Mosis #6.1)"
+
+
+ width m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 3 \
+ "Metal1 width < 3 (Mosis #7.1)"
+
+  area m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 20 3 \
+ "Metal1 area < 20 (Mosis #+++)"
+
+ width gv1 2 \
+ "GV1 via width < 2 (Mosis #8.1)"
+
+ width m2c/m1 4 \
+ "Metal2 contact width < 4 (Mosis #8.1)"
+
+
+
+
+
+
+
+
+ width m2,fm2,rm2,m2c/m2,m3c/m2 3 \
+ "Metal2 width < 3 (Mosis #9.1)"
+
+  area m2,fm2,rm2,m2c/m2,m3c/m2 20 3 \
+ "Metal2 area < 20 (Mosis #+++)"
+
+ width gv2 2 \
+ "GV2 via width < 2 (Mosis #14.1)"
+
+ width m3c/m2 4 \
+ "Metal3 contact width < 4 (Mosis #14.1)"
+
+
+
+ width m3,fm3,rm3,m3c/m3,m4c/m3 3 \
+ "Metal3 width < 3 (Mosis #15.1)"
+
+  area m3,fm3,rm3,m3c/m3,m4c/m3 20 3 \
+ "Metal3 area < 20 (Mosis #+++)"
+
+ width sb,pres,anres,apres 4 \
+ "Silicide-Block width < 4 (Mosis #20.1)"
+
+ width pres 5 \
+ "Silicide-Block polyR width < 5 (Mosis #20.6)"
+
+ width anres,apres 6 \
+ "Silicide-Block activeR width < 6 (Mosis #20.16)"
+
+ width gv3 2 \
+ "GV3 via width < 2 (Mosis #21.3)"
+
+ width m4c/m3 4 \
+ "Metal4 contact width < 4 (Mosis #21.3)"
+
+
+
+ width m4,fm4,rm4,m4c/m4,m5c/m4 3 \
+ "Metal4 width < 3 (Mosis #22.1)"
+
+  area m4,fm4,rm4,m4c/m4,m5c/m4 20 3 \
+ "Metal4 area < 20 (Mosis #+++)"
+
+ width nfi,pfi 4 \
+ "N/P_field-implant width < 4 (Mosis #29.1)"
+
+ width gv4 2 \
+ "GV4 via width < 2 (Mosis #25.4)"
+
+ width m5c/m4 4 \
+ "Metal5 contact width < 4 (Mosis #25.4)"
+
+
+
+ width m5,fm5,rm5,m5c/m5,m6c/m5 3 \
+ "Metal5 width < 3 (Mosis #26.2)"
+
+  area m5,fm5,rm5,m5c/m5,m6c/m5 20 3 \
+ "Metal5 area < 20 (Mosis #+++)"
+
+ width gv5 4 \
+ "GV5 via width < 4 (Mosis #29.4)"
+
+ width m6c/m5 5 \
+ "Metal6 contact width < 5 (Mosis #29.4)"
+
+
+ width m6,fm6,rm6,m6c/m6,mic/m6,pad 5 \
+ "Metal6 width < 5 (Mosis #30.2)"
+
+  area m6,fm6,rm6,m6c/m6,mic/m6,pad 56 5 \
+ "Metal6 area < 56 (Mosis #+++)"
+
+ width gvi 4 \
+ "MIM via width < 4 (Mosis #28.4)"
+
+ width mic/mi 10 \
+ "MIM contact width < 10 (Mosis #28.4)"
+
+ width mi,mic/mi 40 \
+ "MIM width < 40 (Mosis #28.1)"
+
+ spacing nwell nwell 6 touching_ok \
+ "N-well(at-same-potential) spacing < 6 (Mosis #1.3)"
+
+ spacing pwell pwell 6 touching_ok \
+ "P-well(at-same-potential) spacing < 6 (Mosis #1.3)"
+
+ spacing rnw nwell 18 touching_illegal \
+ "rnw (for resistor L/W extraction) spacing to N-well < 18 (Mosis #2.3)"
+
+ spacing nwr nwell 18 touching_illegal \
+ "nwr (for Fig1b resistor L/W extraction) spacing to N-well < 18 (Mosis #2.3)"
+
+ edge4way ~(pwell)/well pwell 1 ~(rnw)/active 0 0 \
+ "P-well cannot touch rnw (for resistor L/W extraction) (Mosis #1.4)" active
+
+ edge4way ~(pwell)/well pwell 1 ~(nwr)/active 0 0 \
+ "P-well cannot touch nwr (for Fig1b resistor L/W extraction) (Mosis #1.4)" active
+
+ spacing diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 3 touching_ok \
+ "Diffusion spacing < 3 (Mosis #2.2)"
+
+ spacing nwell ndiff,anres,rnd,nfet,ndc/a 6 touching_illegal \
+ "N-well spacing to N-Diffusion < 6 (Mosis #2.3)"
+
+ spacing pwell pdiff,apres,rpd,pfet,pdc/a 6 touching_illegal \
+ "P-well spacing to P-Diffusion < 6 (Mosis #2.3)"
+
+ spacing ndiff,anres,rnd,nfet,ndc/a pdiff,apres,rpd,pfet,pdc/a 12 touching_illegal \
+ "N-Diffusion spacing to P-Diffusion < 12 (Mosis #2.3+2.3)"
+
+ edge4way ~(nwell)/well nwell 6 ~(pdiff,apres,rpd,pfet,pdc/a)/active nwell 6 \
+ "N-well overlap of P-Diffusion < 6 (Mosis #2.4)" active
+
+ edge4way ~(pwell)/well pwell 6 ~(ndiff,anres,rnd,nfet,ndc/a)/active pwell 6 \
+ "P-well overlap of N-Diffusion < 6 (Mosis #2.4)" active
+
+ edge4way ~(nwell)/well nwell 3 ~(nsd,nwsd,nsc/a,nwsc/a)/active nwell 3 \
+ "N-well overlap of N-Ohmic < 3 (Mosis #2.4)" active
+
+ edge4way ~(pwell)/well pwell 3 ~(psd,psc/a)/active pwell 3 \
+ "P-well overlap of P-Ohmic < 3 (Mosis #2.4)" active
+
+ spacing ndiff,anres,rnd,ndc/a nsd,nwsd,nsc/a,nwsc/a 9 touching_illegal \
+ "N-Diffusion spacing to N-Ohmic < 9 (Mosis #2.3+2.4)"
+
+ spacing pdiff,apres,rpd,pdc/a psd,psc/a 9 touching_illegal \
+ "P-Diffusion spacing to P-Ohmic < 9 (Mosis #2.3+2.4)"
+
+ spacing nwell psd,psc/a 3 touching_illegal \
+ "N-well spacing to P-Ohmic < 3 (Mosis #2.4)"
+
+ spacing pwell nsd,nwsd,nsc/a,nwsc/a 3 touching_illegal \
+ "P-well spacing to N-Ohmic < 3 (Mosis #2.4)"
+
+ spacing psd,psc/a rnw,prnw 3 touching_illegal \
+ "P-Ohmic spacing to rnw,prnw < 3 (Mosis #2.4)"
+
+ spacing psd,psc/a nwr,pnwr 3 touching_illegal \
+ "P-Ohmic spacing to nwr,pnwr (for Fig1b Resistor) < 3 (Mosis #2.4)"
+
+ spacing nsd,nwsd,nsc/a,nwsc/a psd,psc/a 6 touching_illegal \
+ "N-Ohmic spacing to P-Ohmic < 6 (Mosis #2.4+2.4)"
+
+ spacing ndiff,anres,rnd,nfet,ndc/a,nfet psd,psc/a 4 touching_ok \
+ "N-Diffusion spacing to P-Ohmic < 4 (Mosis #2.5)"
+
+ spacing pdiff,apres,rpd,pfet,pdc/a,pfet nsd,nwsd,nsc/a,nwsc/a 4 touching_ok \
+ "P-Diffusion spacing to N-Ohmic < 4 (Mosis #2.5)"
+
+ spacing poly,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet,fet poly,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet,fet 3 touching_ok \
+ "Poly spacing < 3 (Mosis #3.2)"
+
+ spacing poly,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet,fet fp,fapm 3 touching_illegal \
+ "Poly spacing to fill layer (fp) < 3 (Mosis #3.2)"
+
+ spacing fp fp 4 touching_ok \
+ "Poly fill layer (fp) spacing < 4 (Mosis #0)"
+
+ edge4way nfet,pfet,fet space/active,poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a 2 poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a 0 0 \
+ "Poly overhang of Transistor < 2 (Mosis #3.3)" active
+
+ edge4way nfet,pfet,fet space/active,ndiff,anres,rnd,ndc/a,pdiff,apres,rpd,pdc/a 3 ndiff,anres,rnd,ndc/a,pdiff,apres,rpd,pdc/a,nfet,pfet,fet 0 0 \
+ "N-Diffusion,P-Diffusion overhang of Transistor < 3 (Mosis #3.4)" active
+
+ edge4way poly,fp,pp,pn,rp,pc/a,ppc/a,pnc/a ~(poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet,fet,prp)/active 1 space/a space/a 1 \
+ "Poly spacing to Diffusion < 1 (Mosis #3.5)"
+
+ edge4way nfet ~(nfet)/active 2 ~(pselect)/select ~(nfet)/active 2 \
+ "N-Transistor space to P-Select < 2 (Mosis #4.1)" select
+
+ edge4way pfet ~(pfet)/active 2 ~(nselect)/select ~(pfet)/active 2 \
+ "P-Transistor space to N-Select < 2 (Mosis #4.1)" select
+
+ edge4way nfet ~(nfet)/active 3 ~(psd,psc/a)/active ~(nfet)/active 2 \
+ "N-Transistor space to P-Ohmic < 3 (Mosis #4.1)" active
+
+ edge4way pfet ~(pfet)/active 3 ~(nsd,nwsd,nsc/a,nwsc/a)/active ~(pfet)/active 2 \
+ "P-Transistor space to N-Ohmic < 3 (Mosis #4.1)" active
+
+#PEZ edge4way psd,psc/a space  ~(nfet)/active space  \
+#PEZ "P-Ohmic space to N-Transistor <  (Mosis #4.1)" active
+
+#PEZ edge4way nsd,nwsd,nsc/a,nwsc/a space  ~(pfet)/active space  \
+#PEZ "N-Ohmic space to P-Transistor <  (Mosis #4.1)" active
+
+ edge4way ~(nselect,pselect)/select nselect,pselect 2 ~(diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a)/active nselect,pselect 2 \
+ "N-Select,P-Select overlap of Diffusion < 2 (Mosis #4.2_)" active
+
+ edge4way ~(nselect,pselect)/select nselect,pselect 1 ~(pp,pn)/active nselect,pselect 1 \
+ "N-Select,P-Select overlap of poly biased with Nselect or Pselect < 1 (Mosis #4.2_)" active
+
+#SOC edge4way ~(nselect)/select nselect 1 ~(gc)/contact nselect 1 \
+#SOC "N-Select overlap of Generic contact < 1 (Mosis #?.?__)" contact
+
+#SOC edge4way ~(pselect)/select pselect 1 ~(gc)/contact pselect 1 \
+#SOC "P-Select overlap of Generic contact < 1 (Mosis #?.?__)" contact
+
+ edge4way space nselect,pselect 2 ~(ndiff,anres,rnd,nfet,ndc/a)/active nselect 2 \
+ "N-Select space to N-Diffusion < 2 (Mosis #4.2a)" active
+
+ edge4way nselect,pselect space 2 ~(ndiff,anres,rnd,nfet,ndc/a)/active nselect 2 \
+ "N-Select space to N-Diffusion < 2 (Mosis #4.2b)" active
+
+ edge4way nselect,pselect space 2 ~(ndiff,anres,rnd,nfet,ndc/a)/active space,nselect,pselect 2 \
+ "N-Select space to N-Diffusion < 2 (Mosis #4.2c)" active
+
+ edge4way space nselect,pselect 2 ~(pdiff,apres,rpd,pfet,pdc/a)/active pselect 2 \
+ "P-Select space to P-Diffusion < 2 (Mosis #4.2aa)" active
+
+ edge4way nselect,pselect space 2 ~(pdiff,apres,rpd,pfet,pdc/a)/active pselect 2 \
+ "P-Select space to P-Diffusion < 2 (Mosis #4.2bb)" active
+
+ edge4way nselect,pselect space 2 ~(pdiff,apres,rpd,pfet,pdc/a)/active space,nselect,pselect 2 \
+ "P-Select space to P-Diffusion < 2 (Mosis #4.2cc)" active
+
+#SOC edge4way ~(nselect)/select nselect 0 ~(ndc/a,pdc/a,psc/a,nsc/a,nwsc/a)/active nselect 0 \
+#SOC "N-Select overlap of Diffusion contact < 0 (Mosis #?.?__)" active
+
+#SOC edge4way ~(pselect,dps)/select pselect,dps 0 ~(ndc/a,pdc/a,psc/a,nsc/a,nwsc/a)/active pselect,dps 0 \
+#SOC "P-Select overlap of Diffusion contact < 0 (Mosis #?.?__)" active
+
+ edge4way space nselect 1 ~(pn)/active nselect 1 \
+ "N-Select space to Poly < 1 (Mosis #4.2d)" active
+
+ edge4way space pselect 1 ~(pp)/active pselect 1 \
+ "P-Select space to Poly < 1 (Mosis #4.2d)" active
+
+ edge4way nselect space 1 ~(pn)/active nselect 1 \
+ "N-Select space to Poly < 1 (Mosis #4.2ep)" active
+
+ edge4way pselect space 1 ~(pp)/active pselect 1 \
+ "P-Select space to Poly < 1 (Mosis #4.2ep)" active
+
+ edge4way nselect space 1 ~(pn)/active space,nselect 1 \
+ "N-Select space to Poly < 1 (Mosis #4.2f)" active
+
+ edge4way pselect space 1 ~(pp)/active space,pselect 1 \
+ "P-Select space to Poly < 1 (Mosis #4.2f)" active
+
+  area nsd,nwsd,psd,nsc/a,nwsc/a,psc/a 16 3 \
+ "Ohmic-Diffusion area < 16 (Mosis #+++)"
+
+ edge4way pn space 1 ~(pselect)/select space 1 \
+ "poly with Nselect spacing to P-Select < 1 (Mosis #4.2y)" select
+
+ edge4way pp space 1 ~(nselect)/select space 1 \
+ "poly with Pselect spacing to N-Select < 1 (Mosis #4.2y)" select
+
+ edge4way diff space 2 nselect space 2 \
+ "N-Select must overlap Diffusion by 2 (Mosis #4.2)" select
+
+ edge4way diff space 2 pselect space 2 \
+ "P-Select must overlap Diffusion by 2 (Mosis #4.2)" select
+
+ edge4way ndiff,anres,rnd,nfet,ndc/a space 2 ~(pselect)/select space 2 \
+ "P-Select space to N-Diffusion < 2 (Mosis #4.2e)" select
+
+ edge4way pdiff,apres,rpd,pfet,pdc/a space 2 ~(nselect)/select space 2 \
+ "N-Select space to P-Diffusion < 2 (Mosis #4.2e)" select
+
+ edge4way ~(pdiff,apres,rpd,pfet,pdc/a,psd,psc/a)/active pdiff,apres,rpd,pfet,pdc/a,psd,psc/a 1 ~(nselect)/select 0 0 \
+ "N-Select cannot touch P-Diffusion,P-Ohmic (Mosis #4.2f)" select
+
+ edge4way ~(ndiff,anres,rnd,nfet,ndc/a,nsd,nwsd,nsc/a,nwsc/a)/active ndiff,anres,rnd,nfet,ndc/a,nsd,nwsd,nsc/a,nwsc/a 1 ~(pselect)/select 0 0 \
+ "P-Select cannot touch N-Diffusion,N-Ohmic (Mosis #4.2f)" select
+
+ spacing nselect nselect 3 touching_ok \
+ "N-Select spacing < 3 (Mosis #4.4)"
+
+ spacing pselect pselect 3 touching_ok \
+ "P-Select spacing < 3 (Mosis #4.4)"
+
+  edge4way ndiff,anres,rnd,ndc/a psd,psc/a 2 ~(ndiff,anres,rnd,ndc/a)/active 0 0 \
+ "P-Ohmic(that touches N-Diffusion) width < 2 (Mosis #4.4)"
+
+  edge4way pdiff,apres,rpd,pdc/a nsd,nwsd,nsc/a,nwsc/a 2 ~(pdiff,apres,rpd,pdc/a)/active 0 0 \
+ "N-Ohmic(that touches P-Diffusion) width < 2 (Mosis #4.4)"
+
+ edge4way gc ~(gc)/contact 1 poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a ~(gc)/contact 1 \
+ "Poly,Diffusion overlap of GC contact < 1 (Mosis #5.2)" active
+
+ edge4way ~(nwsd)/active nwsd 2 ~(gc)/contact nwsd 2 \
+ "nwr (for Fig1b resistor) active overlap of GC contact < 2 (Mosis #Fig1b)" contact
+
+ spacing nwr gc 5 touching_illegal \
+ "nwr (for Fig1b resistor) spacing to GC contact < 5 (Mosis #Fig1b)"
+
+ spacing nwr ndc/a,nsc/a,nwsc/a 3 touching_illegal \
+ "nwr (for Fig1b resistor) spacing to Diffusion contact < 3 (Mosis #Fig1b)"
+
+ edge4way gc space 1 poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a space 1 \
+ "one of: Poly,Diffusion must overlap GC contact by 1 (Mosis #5.2a,6.2a)" active
+
+ edge4way ~(poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a)/active poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 1 ~(gc)/contact 0 0 \
+ "Edge to one of: Poly,Diffusion cannot touch GC contact (Mosis #5.2a,6.2a)" contact
+
+ spacing gc gc 3 touching_ok \
+ "Generic contact spacing < 3 (Mosis #5.3)"
+
+ edge4way ~(gc)/contact gc 1 ~(ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1)/metal1 0 0 \
+ "GC contact cannot touch Metal1 contacts (Mosis #0)" metal1
+
+ spacing gv1 m2c/m2 2 touching_illegal \
+ "GV1 via spacing to Metal2 contacts < 2 (Mosis #14.2)"
+
+#PSC spacing poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a pc/a,ppc/a,pnc/a 4 touching_ok \
+#PSC "Poly spacing to Poly contact < 4 (Mosis #5.5.b)"
+
+ edge4way gc ~(gc)/contact 1 diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a ~(gc)/contact 1 \
+ "Diffusion,Poly overlap of GC contact < 1 (Mosis #6.2)" active
+
+ spacing gc pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a 2 touching_illegal \
+ "Generic contact spacing to Poly contact,Diffusion contact < 2 (Mosis #5.3)"
+
+ spacing nsc/m1,nwsc/m1 pdc/m1 1 touching_illegal \
+ "nsc spacing to pdc < 1 (Mosis #6.3)"
+
+ spacing psc/m1 ndc/m1 1 touching_illegal \
+ "psc spacing to ndc < 1 (Mosis #6.3)"
+
+
+
+
+
+
+
+
+
+
+ spacing nfet,pfet ndc/a,pdc/a,psc/a,nsc/a,nwsc/a 1 touching_illegal \
+ "N-Transistor,P-Transistor spacing to Diffusion contact < 1 (Mosis #6.4)"
+
+ spacing nfet,pfet gc 2 touching_illegal \
+ "N-Transistor,P-Transistor spacing to Generic contact < 2 (Mosis #6.4)"
+
+ spacing diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a pc/a,ppc/a,pnc/a 1 touching_illegal \
+ "Diffusion spacing to Poly contact < 1 (Mosis #6.5.b)"
+
+ spacing diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a,nfet,pfet ndc/a,pdc/a,psc/a,nsc/a,nwsc/a 4 touching_ok \
+ "Diffusion spacing to Diffusion contact < 4 (Mosis #6.5.b)"
+
+ spacing pc/a,ppc/a,pnc/a ndc/a,pdc/a,psc/a,nsc/a,nwsc/a 2 touching_illegal \
+ "pc/a,ppc/a,pnc/a,pm12c/a,ppm12c/a,pnm12c/a spacing to ndc/a,pdc/a,psc/a,nsc/a,nwsc/a < 2 (Mosis #6.7)"
+
+ spacing m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 3 touching_ok \
+ "Metal1 spacing < 3 (Mosis #7.2)"
+
+ spacing m1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 fm1,fapm 3 touching_illegal \
+ "Metal1 spacing to fill layer (fm1) < 3 (Mosis #7.2)"
+
+ spacing fm1 fm1 4 touching_ok \
+ "Metal1 fill layer (fm1) spacing < 4 (Mosis #0)"
+
+ edge4way gc space 1 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 space 1 \
+ "Metal1 must overlap GC contact by 1 (Mosis #7.3,7.4)" metal1
+
+ edge4way ~(m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1)/metal1 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 1 ~(gc)/contact 0 0 \
+ "Metal1(edge) cannot touch GC contact (Mosis #7.3+7.4)" contact
+
+ spacing gv1 gv1 3 touching_ok \
+ "GV1 via spacing < 3 (Mosis #8.2)"
+
+ edge4way gv1 ~(gv1)/via1 1 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 ~(gv1)/via1 1 \
+ "Metal1 overlap of GV1 via < 1 (Mosis #8.3)" metal1
+
+ edge4way gv1 space 1 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 space 1 \
+ "Metal1 must overlap GV1 via by 1 (Mosis #8.3)" metal1
+
+ edge4way ~(m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1)/metal1 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 1 ~(gv1)/via1 0 0 \
+ "Metal1(edge) cannot touch GV1 via (Mosis #8.3)" via1
+
+ spacing m2,rm2,m2c/m2,m3c/m2 m2,rm2,m2c/m2,m3c/m2 3 touching_ok \
+ "Metal2 spacing < 3 (Mosis #9.2)"
+
+ spacing m2,rm2,m2c/m2,m3c/m2 fm2,fapm 3 touching_illegal \
+ "Metal2 spacing to fill layer (fm2) < 3 (Mosis #9.2)"
+
+ spacing fm2 fm2 4 touching_ok \
+ "Metal2 fill layer (fm2) spacing < 4 (Mosis #0)"
+
+ edge4way gv1 space 1 m2,fm2,rm2,m2c/m2,m3c/m2 space 1 \
+ "Metal2 must overlap GV1 via by 1 (Mosis #9.3)" metal2
+
+ edge4way ~(m2,fm2,rm2,m2c/m2,m3c/m2)/metal2 m2,fm2,rm2,m2c/m2,m3c/m2 1 ~(gv1)/via1 0 0 \
+ "Metal2(edge) cannot touch GV1 via (Mosis #9.3)" via1
+
+ width glass 10 \
+ "COG width < 10 (Mosis #10.2)"
+
+ edge4way ~(pad)/metal6 pad 60 ~(glass)/oxide pad 60 \
+ "pad overlap of COG < 60 (Mosis #10.3)" oxide
+
+ spacing gv2 gv2 3 touching_ok \
+ "GV2 via spacing < 3 (Mosis #14.2)"
+
+ spacing gv2 m3c/m2 2 touching_illegal \
+ "GV2 via spacing to Metal3 contact < 2 (Mosis #14.2)"
+
+ edge4way gv2 space 1 m2,fm2,rm2,m2c/m2,m3c/m2 space 1 \
+ "Metal2 must overlap GV2 via by 1 (Mosis #14.3)" metal2
+
+ edge4way ~(m2,fm2,rm2,m2c/m2,m3c/m2)/metal2 m2,fm2,rm2,m2c/m2,m3c/m2 1 ~(gv2)/via2 0 0 \
+ "Metal2(edge) cannot touch GV2 via (Mosis #14.3)" via2
+
+ spacing m3,rm3,m3c/m3,m4c/m3 m3,rm3,m3c/m3,m4c/m3 3 touching_ok \
+ "Metal3 spacing < 3 (Mosis #15.2)"
+
+ spacing m3,rm3,m3c/m3,m4c/m3 fm3,fapm 3 touching_illegal \
+ "Metal3 spacing to fill layer (fm3) < 3 (Mosis #15.2)"
+
+ spacing fm3 fm3 4 touching_ok \
+ "Metal3 fill layer (fm3) spacing < 4 (Mosis #0)"
+
+ edge4way gv2 space 1 m3,fm3,rm3,m3c/m3,m4c/m3 space 1 \
+ "Metal3 must overlap GV2 via by 1 (Mosis #15.3)" metal3
+
+ edge4way ~(m3,fm3,rm3,m3c/m3,m4c/m3)/metal3 m3,fm3,rm3,m3c/m3,m4c/m3 1 ~(gv2)/via2 0 0 \
+ "Metal3(edge) cannot touch GV2 via (Mosis #15.3)" via2
+
+ spacing sb,pres,anres,apres sb,pres,anres,apres 4 touching_ok \
+ "Silicide-Block spacing < 4 (Mosis #20.2)"
+
+ spacing sb,pres,anres,apres,pres,anres,apres pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a 1 touching_illegal \
+ "Silicide-Block spacing to Diffusion contact,Poly contact < 1 (Mosis #20.3)"
+
+ spacing sb,pres,anres,apres,pres,anres,apres gc 2 touching_illegal \
+ "Silicide-Block spacing to GC contact < 2 (Mosis #20.3)"
+
+ edge4way sb,pres,anres,apres space 2 ~(diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a)/active 0 2 \
+ "Silicide-Block space to Diffusion < 2 (Mosis #20.4)" active
+
+ spacing sb,pres,anres,apres,pres poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a 2 touching_ok \
+ "Silicide-Block spacing to other Poly < 2 (Mosis #20.5)"
+
+ edge4way sb,pres,anres,apres space 2 ~(poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a)/contact sb,pres,anres,apres 2 \
+ "Silicide-Block space to Poly < 2 (Mosis #20.5x)" contact
+
+ spacing sb,pres,anres,apres,pres nfet,pfet,fet 2 touching_ok \
+ "Silicide-Block spacing to other Transistor < 2 (Mosis #20.5)"
+
+ edge4way sb,pres,anres,apres space 2 ~(nfet,pfet,fet)/contact sb,pres,anres,apres 2 \
+ "Silicide-Block space to Transistor < 2 (Mosis #20.5x)" contact
+
+ spacing pres pres 7 touching_ok \
+ "Silicide-Block polyR spacing < 7 (Mosis #20.13)"
+
+ edge4way pres,anres,apres space/active,sb 2 sb sb 2 \
+ "Silicide-Block overlap of Silicide-Block polyR/activeR < 2 (Mosis #20.15)"
+
+ edge4way sb,pres,anres,apres diff,ndiff,rnd,nfet,nsd,nwsd,pdiff,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 3 diff,ndiff,rnd,nfet,nsd,nwsd,pdiff,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 0 0 \
+ "Diffusion overhang of Silicide-Block < 3 (Mosis #20.17) 
+
+ spacing gv3 gv3 3 touching_ok \
+ "GV3 via spacing < 3 (Mosis #21.2)"
+
+ spacing gv3 m4c/m3 2 touching_illegal \
+ "GV3 via spacing to Metal4 contact < 2 (Mosis #21.2)"
+
+ edge4way gv3 space 1 m3,fm3,rm3,m3c/m3,m4c/m3 space 1 \
+ "Metal3 must overlap GV3 via by 1 (Mosis #21.3)" metal3
+
+ edge4way ~(m3,fm3,rm3,m3c/m3,m4c/m3)/metal3 m3,fm3,rm3,m3c/m3,m4c/m3 1 ~(gv3)/via3 0 0 \
+ "Metal3(edge) cannot touch GV3 via (Mosis #21.3)" via3
+
+ spacing m4,rm4,m4c/m4,m5c/m4 m4,rm4,m4c/m4,m5c/m4 3 touching_ok \
+ "Metal4 spacing < 3 (Mosis #22.2)"
+
+ spacing m4,rm4,m4c/m4,m5c/m4 fm4,fapm 3 touching_illegal \
+ "Metal4 spacing to fill layer (fm4) < 3 (Mosis #22.2)"
+
+ spacing fm4 fm4 4 touching_ok \
+ "Metal4 fill layer (fm4) spacing < 4 (Mosis #0)"
+
+ edge4way gv3 space 1 m4,fm4,rm4,m4c/m4,m5c/m4 space 1 \
+ "Metal4 must overlap GV3 via by 1 (Mosis #22.3)" metal4
+
+ edge4way ~(m4,fm4,rm4,m4c/m4,m5c/m4)/metal4 m4,fm4,rm4,m4c/m4,m5c/m4 1 ~(gv3)/via3 0 0 \
+ "Metal4(edge) cannot touch GV3 via (Mosis #22.3)" via3
+
+ spacing gv4 gv4 3 touching_ok \
+ "GV4 via spacing < 3 (Mosis #25.3)"
+
+ edge4way ~(gv4)/via4 gv4 1 ~(m5c/m5)/metal5 0 0 \
+ "GV4 via cannot touch Metal5 contacts (Mosis #0)" metal5
+
+ edge4way gv4 space 1 m4,fm4,rm4,m4c/m4,m5c/m4 space 1 \
+ "Metal4 must overlap GV4 via by 1 (Mosis #25.4)" metal4
+
+ edge4way ~(m4,fm4,rm4,m4c/m4,m5c/m4)/metal4 m4,fm4,rm4,m4c/m4,m5c/m4 1 ~(gv4)/via4 0 0 \
+ "Metal4(edge) cannot touch GV4 via (Mosis #25.4)" via4
+
+ spacing m5,rm5,m5c/m5,m6c/m5 m5,rm5,m5c/m5,m6c/m5 3 touching_ok \
+ "Metal5 spacing < 3 (Mosis #26.3)"
+
+ spacing m5,rm5,m5c/m5,m6c/m5 fm5,fapm 3 touching_illegal \
+ "Metal5 spacing to fill layer (fm5) < 3 (Mosis #26.3)"
+
+ spacing fm5 fm5 4 touching_ok \
+ "Metal5 fill layer (fm5) spacing < 4 (Mosis #0)"
+
+ edge4way space gv4 1 m5,fm5,rm5,m5c/m5,m6c/m5 0 0 \
+ "Metal5 must overlap GV4 via (Mosis #26.1)" metal5
+
+ edge4way gv4 space 1 m5,fm5,rm5,m5c/m5,m6c/m5 space 1 \
+ "Metal5 must overlap GV4 via by 1 (Mosis #26.1)" metal5
+
+ edge4way ~(m5,fm5,rm5,m5c/m5,m6c/m5)/metal5 m5,fm5,rm5,m5c/m5,m6c/m5 1 ~(gv4)/via4 0 0 \
+ "Metal5(edge) cannot touch GV4 via (Mosis #26.1)" via4
+
+ spacing gv5 gv5 4 touching_ok \
+ "GV5 via spacing < 4 (Mosis #29.3)"
+
+ spacing gv5 m6c/m5 3 touching_illegal \
+ "GV5 via spacing to Metal6 contact < 3 (Mosis #29.2)"
+
+ spacing m6c/m5 m6c/m5 2 touching_ok \
+ "Metal6 contact spacing < 2 (Mosis #29.3b)"
+
+ edge4way gv5 space 1 m5,fm5,rm5,m5c/m5,m6c/m5 space 1 \
+ "Metal5 must overlap GV5 via by 1 (Mosis #29.5)" metal5
+
+ edge4way ~(m5,fm5,rm5,m5c/m5,m6c/m5)/metal5 m5,fm5,rm5,m5c/m5,m6c/m5 1 ~(gv5)/via5 0 0 \
+ "Metal5(edge) cannot touch GV5 via (Mosis #29.5)" via5
+
+ spacing m6,rm6,m6c/m6,mic/m6,pad m6,rm6,m6c/m6,mic/m6,pad 5 touching_ok \
+ "Metal6 spacing < 5 (Mosis #30.3)"
+
+ spacing m6,rm6,m6c/m6,mic/m6,pad fm6,fapm 5 touching_illegal \
+ "Metal6 spacing to fill layer (fm6) < 5 (Mosis #30.3)"
+
+ spacing fm6 fm6 4 touching_ok \
+ "Metal6 fill layer (fm6) spacing < 4 (Mosis #0)"
+
+ edge4way space gv5 1 m6,fm6,rm6,m6c/m6,mic/m6,pad 0 0 \
+ "Metal6 must overlap GV5 via (Mosis #30.1)" metal6
+
+ edge4way gv5 space 1 m6,fm6,rm6,m6c/m6,mic/m6,pad space 1 \
+ "Metal6 must overlap GV5 via by 1 (Mosis #30.1)" metal6
+
+ edge4way ~(m6,fm6,rm6,m6c/m6,mic/m6,pad)/metal6 m6,fm6,rm6,m6c/m6,mic/m6,pad 1 ~(gv5)/via5 0 0 \
+ "Metal6(edge) cannot touch GV5 via (Mosis #30.1)" via5
+
+ spacing mi,mic/mi mi,mic/mi 12 touching_ok \
+ "MIM spacing < 12 (Mosis #28.2)"
+
+ spacing gvi mic/mi 17 touching_illegal \
+ "MIM via spacing to MIM contact < 17 (Mosis #28.2)"
+
+ spacing mic/mi mic/mi 14 touching_ok \
+ "MIM contact spacing < 14 (Mosis #28.2)"
+
+ edge4way mi,mic/mi ~(mi,mic/mi)/metali 4 m5,fm5,rm5,m5c/m5,m6c/m5 ~(mi,mic/mi)/metali 4 \
+ "Metal5 overlap of MIM < 4 (Mosis #28.3)" metal5
+
+ edge4way gvi ~(gvi)/viai 1 m6,fm6,rm6,m6c/m6,mic/m6,pad ~(gvi)/viai 1 \
+ "Metal6 overlap of MIM via < 1 (Mosis #28.4)" metal6
+
+ spacing gvi gvi 20 touching_ok \
+ "MIM via spacing < 20 (Mosis #28.4)"
+
+ edge4way space gvi 1 mi,mic/mi 0 0 \
+ "MIM must overlap MIM via (Mosis #28.4)" metali
+
+ edge4way ~(mi,mic/mi)/metali mi,mic/mi 1 ~(gvi)/viai 0 0 \
+ "MIM(edge) cannot touch MIM via (Mosis #28.4)" viai
+
+ spacing mi,mic/mi m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 30 touching_illegal \
+ "MIM spacing to Metal1 < 30 (Mosis #28.7)"
+
+ spacing mi,mic/mi m2,fm2,rm2,m2c/m2,m3c/m2 30 touching_illegal \
+ "MIM spacing to Metal2 < 30 (Mosis #28.7)"
+
+ spacing mi,mic/mi m3,fm3,rm3,m3c/m3,m4c/m3 30 touching_illegal \
+ "MIM spacing to Metal3 < 30 (Mosis #28.7)"
+
+ spacing mi,mic/mi poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a 30 touching_illegal \
+ "MIM spacing to Poly < 30 (Mosis #28.7)"
+
+ spacing mi,mic/mi diff,ndiff,anres,rnd,nfet,nsd,nwsd,pdiff,apres,rpd,pfet,psd,ndc/a,nsc/a,nwsc/a,pdc/a,psc/a 30 touching_illegal \
+ "MIM spacing to Diffusion < 30 (Mosis #28.7)"
+
+ spacing mi,mic/mi gv4 4 touching_illegal \
+ "MIM spacing to GV4 via < 4 (Mosis #28.5)"
+
+ spacing mi,mic/mi m5c/m4 3 touching_illegal \
+ "MIM spacing to Metal5 contact < 3 (Mosis #28.5)"
+
+ spacing mi,mic/mi gv5 4 touching_illegal \
+ "MIM spacing to GV5 via < 4 (Mosis #28.5)"
+
+ spacing mi,mic/mi m6c/m5 3 touching_illegal \
+ "MIM spacing to Metal6 contact < 3 (Mosis #28.5)"
+
+ edge4way gvi space 3 mi,mic/mi space 3 \
+ "MIM must overlap MIM via by 3 (Mosis #28.5)" metali
+
+ edge4way ~(mi,mic/mi)/metali mi,mic/mi 1 ~(gvi)/viai 0 0 \
+ "MIM(edge) cannot touch MIM via (Mosis #28.5)" viai
+
+ spacing nfi nfi 4 touching_ok \
+ "N_field-implant spacing < 4 (Mosis #35.2)"
+
+ spacing pfi pfi 4 touching_ok \
+ "P_field-implant spacing < 4 (Mosis #35.2)"
+
+ spacing nfi pfi 4 touching_illegal \
+ "N_field-implant spacing to P_field-implant < 4 (Mosis #35.2)"
+
+ spacing nwell,pdiff,apres,rpd,pfet,pdc/a pfi 4 touching_illegal \
+ "N-well,P-Diffusion spacing to P_field-implant < 4 (Mosis #2.1)"
+
+ spacing pwell,ndiff,anres,rnd,nfet,ndc/a nfi 4 touching_illegal \
+ "P-well,N-Diffusion spacing to N_field-implant < 4 (Mosis #2.1)"
+
+ edge4way ~(nwell)/well nwell 4 ~(nfi)/implant nwell 4 \
+ "N-well overlap of N_field-implant < 4 (Mosis #21.2)" implant
+
+ edge4way ~(pwell)/well pwell 4 ~(pfi)/implant pwell 4 \
+ "P-well overlap of P_field-implant < 4 (Mosis #21.2)" implant
+
+ spacing fa fapm 4 touching_illegal \
+ "fill layer fa spacing to fill layer fapm < 4 (Mosis #0)"
+
+ width fa 20 \
+ "filla width < 20 (Mosis #0)"
+
+ width fapm 20 \
+ "fillapm width < 20 (Mosis #0)"
+
+ width fp 20 \
+ "fillp width < 20 (Mosis #0)"
+
+ width fm1 20 \
+ "fillm1 width < 20 (Mosis #0)"
+
+ width fm2 20 \
+ "fillm2 width < 20 (Mosis #0)"
+
+ width fm3 20 \
+ "fillm3 width < 20 (Mosis #0)"
+
+ width fm4 20 \
+ "fillm4 width < 20 (Mosis #0)"
+
+ width fm5 20 \
+ "fillm5 width < 20 (Mosis #0)"
+
+ width fm6 20 \
+ "fillm6 width < 20 (Mosis #0)"
+
+ edge4way fa ~(fa)/fill 1 ~(fa)/fill (~(fa),fa)/fill 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fb ~(fb)/fill 1 ~(fb)/fill (~(fb),fb)/fill 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fapm ~(fapm)/active 1 ~(fapm)/active (~(fapm),fapm)/active 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fp ~(fp)/active 1 ~(fp)/active (~(fp),fp)/active 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm1 ~(fm1)/metal1 1 ~(fm1)/metal1 (~(fm1),fm1)/metal1 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm2 ~(fm2)/metal2 1 ~(fm2)/metal2 (~(fm2),fm2)/metal2 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm3 ~(fm3)/metal3 1 ~(fm3)/metal3 (~(fm3),fm3)/metal3 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm4 ~(fm4)/metal4 1 ~(fm4)/metal4 (~(fm4),fm4)/metal4 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm5 ~(fm5)/metal5 1 ~(fm5)/metal5 (~(fm5),fm5)/metal5 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way fm6 ~(fm6)/metal6 1 ~(fm6)/metal6 (~(fm6),fm6)/metal6 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way rp space/active 1 prp 0 0 \
+ "prp overhang of rpoly (for resistor L/W extraction) < 1 (Mosis #0)" active
+
+ edge4way rnw space/active 1 prnw 0 0 \
+ "prnw overhang of rnwell (for resistor L/W extraction) < 1 (Mosis #0)" active
+
+ edge4way nwr space/active 1 pnwr 0 0 \
+ "pnwr overhang of nwr (for Fig1b resistor L/W extraction) < 1 (Mosis #0)" active
+
+ edge4way rpd space/active 1 prpd 0 0 \
+ "prpd overhang of rpdiff (for resistor L/W extraction) < 1 (Mosis #0)" active
+
+ edge4way rnd space/active 1 prnd 0 0 \
+ "prnd overhang of rndiff (for resistor L/W extraction) < 1 (Mosis #0)" active
+
+ edge4way rm1 space/metal1 1 prm1 0 0 \
+ "prm1 overhang of rmetal1 (for resistor L/W extraction) < 1 (Mosis #0)" metal1
+
+ edge4way rm2 space/metal2 1 prm2 0 0 \
+ "prm2 overhang of rmetal2 (for resistor L/W extraction) < 1 (Mosis #0)" metal2
+
+ edge4way rm3 space/metal3 1 prm3 0 0 \
+ "prm3 overhang of rmetal3 (for resistor L/W extraction) < 1 (Mosis #0)" metal3
+
+ edge4way rm4 space/metal4 1 prm4 0 0 \
+ "prm4 overhang of rmetal4 (for resistor L/W extraction) < 1 (Mosis #0)" metal4
+
+ edge4way rm5 space/metal5 1 prm5 0 0 \
+ "prm5 overhang of rmetal5 (for resistor L/W extraction) < 1 (Mosis #0)" metal5
+
+ edge4way rm6 space/metal6 1 prm6 0 0 \
+ "prm6 overhang of rmetal6 (for resistor L/W extraction) < 1 (Mosis #0)" metal6
+
+ edge4way rmi space/metali 1 prmi 0 0 \
+ "prmi overhang of rmetali (for resistor L/W extraction) < 1 (Mosis #0)" metali
+
+ edge4way ndc/a,nsc/a,nwsc/a ~(ndc/a,nsc/a,nwsc/a)/active 1 ~(ndc/a,nsc/a,nwsc/a)/active (~(ndc/a,nsc/a,nwsc/a),ndc/a,nsc/a,nwsc/a)/active 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way pdc/a,psc/a ~(pdc/a,psc/a)/active 1 ~(pdc/a,psc/a)/active (~(pdc/a,psc/a),pdc/a,psc/a)/active 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way pc/a,ppc/a,pnc/a ~(pc/a,ppc/a,pnc/a)/active 1 ~(pc/a,ppc/a,pnc/a)/active (~(pc/a,ppc/a,pnc/a),pc/a,ppc/a,pnc/a)/active 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gc ~(gc)/contact 1 ~(gc)/contact (~(gc),gc)/contact 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gv1 ~(gv1)/via1 1 ~(gv1)/via1 (~(gv1),gv1)/via1 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way m2c/m1 ~(m2c/m1)/metal1 1 ~(m2c/m1)/metal1 (~(m2c/m1),m2c/m1)/metal1 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gv2 ~(gv2)/via2 1 ~(gv2)/via2 (~(gv2),gv2)/via2 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way m3c/m2 ~(m3c/m2)/metal2 1 ~(m3c/m2)/metal2 (~(m3c/m2),m3c/m2)/metal2 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gv3 ~(gv3)/via3 1 ~(gv3)/via3 (~(gv3),gv3)/via3 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way m4c/m3 ~(m4c/m3)/metal3 1 ~(m4c/m3)/metal3 (~(m4c/m3),m4c/m3)/metal3 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gv4 ~(gv4)/via4 1 ~(gv4)/via4 (~(gv4),gv4)/via4 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way m5c/m4 ~(m5c/m4)/metal4 1 ~(m5c/m4)/metal4 (~(m5c/m4),m5c/m4)/metal4 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gv5 ~(gv5)/via5 1 ~(gv5)/via5 (~(gv5),gv5)/via5 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way m6c/m5 ~(m6c/m5)/metal5 1 ~(m6c/m5)/metal5 (~(m6c/m5),m6c/m5)/metal5 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way gvi ~(gvi)/viai 1 ~(gvi)/viai (~(gvi),gvi)/viai 1 \
+ "Contact not rectangular (Magic rule)"
+
+ edge4way mic/mi ~(mic/mi)/metali 1 ~(mic/mi)/metali (~(mic/mi),mic/mi)/metali 1 \
+ "Contact not rectangular (Magic rule)"
+
+ exact_overlap gc,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a,gc,pc/a,ppc/a,pnc/a,gc
+
+ edge4way pad ~(pad)/m6 1 ~(pad)/m6 (~(pad),pad)/m6 1 \
+ "Contact not rectangular (Magic rule)"
+
+ exact_overlap ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1
+
+ exact_overlap m2c/m2
+
+ exact_overlap m3c/m3
+
+ exact_overlap m4c/m4
+
+ exact_overlap m5c/m5
+
+ exact_overlap m6c/m6
+
+ exact_overlap mic/mi
+
+ exact_overlap gv1
+
+ exact_overlap gv2
+
+ exact_overlap gv3
+
+ exact_overlap gv4
+
+ exact_overlap gv5
+
+ exact_overlap gvi
+
+ edge4way nfet,pfet,fet ~(nfet,pfet,fet)/active 1 ~(nfet,pfet,fet)/active nfet,pfet,fet 1 \
+ "Transistor cannot bend in this process (Mosis #?.?)"
+
+ width m1p 4 \
+ "Metal1 PIN width < 4 (do_pins)"
+
+ spacing m1p m1p 4 touching_ok \
+ "Metal1 PIN spacing < 4 (do_pins)"
+
+ width m2p 4 \
+ "Metal2 PIN width < 4 (do_pins)"
+
+ spacing m2p m2p 4 touching_ok \
+ "Metal2 PIN spacing < 4 (do_pins)"
+
+ width m3p 4 \
+ "Metal3 PIN width < 4 (do_pins)"
+
+ spacing m3p m3p 4 touching_ok \
+ "Metal3 PIN spacing < 4 (do_pins)"
+
+ width m4p 4 \
+ "Metal4 PIN width < 4 (do_pins)"
+
+ spacing m4p m4p 4 touching_ok \
+ "Metal4 PIN spacing < 4 (do_pins)"
+
+ width m5p 4 \
+ "Metal5 PIN width < 4 (do_pins)"
+
+ spacing m5p m5p 4 touching_ok \
+ "Metal5 PIN spacing < 4 (do_pins)"
+
+ width m6p 6 \
+ "Metal6 PIN width < 6 (do_pins)"
+
+ spacing m6p m6p 6 touching_ok \
+ "Metal6 PIN spacing < 6 (do_pins)"
+
+#CC cifstyle  lambda=0.10(p) 
+#CC cifwidth CWN 120 \
+#CC "generated CIF layer CWN width will be < 12 (';cif see CWN')"
+#CC cifspacing CWN CWN 60 touching_ok \
+#CC "generated CIF layer CWN spacing will be < 6 (';cif see CWN')"
+#CC cifwidth CWP 120 \
+#CC "generated CIF layer CWP width will be < 12 (';cif see CWP')"
+#CC cifspacing CWP CWP 60 touching_ok \
+#CC "generated CIF layer CWP spacing will be < 6 (';cif see CWP')"
+#CC cifwidth CSN 30 \
+#CC "generated CIF layer CSN width will be < 3 (';cif see CSN')"
+#CC cifspacing CSN CSN 30 touching_ok \
+#CC "generated CIF layer CSN spacing will be < 3 (';cif see CSN')"
+#CC cifwidth CSP 30 \
+#CC "generated CIF layer CSP width will be < 3 (';cif see CSP')"
+#CC cifspacing CSP CSP 30 touching_ok \
+#CC "generated CIF layer CSP spacing will be < 3 (';cif see CSP')"
+
+ stepsize 400
+
+end
+
+#-----------------------------------------------------------
+# LEF format definitions
+#-----------------------------------------------------------
+
+lef
+
+  ignore PC
+  ignore CA
+
+  routing m1    metal1 M1 m1 met1
+  routing m2    metal2 M2 m2 met2
+  routing m3    metal3 M3 m3 met3
+  routing m4    metal4 M4 m4 met4
+  routing m5    metal5 M5 m5 met5
+  routing m6    metal6 M6 m6 met6
+
+  contact m2c via1 via V1 v1
+  contact m3c via2 V2 v2
+  contact m4c via3 V3 v3
+  contact m5c via4 V4 v4
+  contact m6c via5 V5 v5
+
+end
+
+extract
+ style TSMC0.18um(tsmc18)from:t11b
+ cscale 1
+ lambda 10
+ step   100
+ sidehalo 8
+ planeorder well 0
+ planeorder implant 1
+ planeorder select 2
+ planeorder active 3
+ planeorder metal1 4
+ planeorder metal2 5
+ planeorder metal3 6
+ planeorder metal4 7
+ planeorder metal5 8
+ planeorder metal6 9
+ planeorder metali 10
+ planeorder oxide 11
+ planeorder xp 12
+ planeorder comment 13
+ planeorder contact 14
+ planeorder via1 15
+ planeorder via2 16
+ planeorder via3 17
+ planeorder via4 18
+ planeorder via5 19
+ planeorder viai 20
+ planeorder fill 21
+
+ substrate *psd,space/w,pwell well
+
+ resist (ndiff,anres,rnd,ndc,nsd,nwsd,nsc,nwsc)/active 6700
+ resist (pdiff,apres,rpd,pdc,psd,psc)/active 7500
+ resist (nwell)/well 929000
+ resist (rnw,nwr)/active 929000 0.5
+ resist (pwell)/well 1
+ resist (poly,fp,pp,pn,rp,pc,ppc,pnc,pc,ppc,pnc,nfet,pfet,fet)/active 7700
+ resist (pres)/active 7700 0.5
+ resist (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c,m2c)/metal1  80
+ resist (m2,fm2,rm2,m2c,m3c,m3c)/metal2  80
+ resist (m3,fm3,rm3,m3c,m4c,m4c)/metal3  80
+ resist (m4,fm4,rm4,m4c,m5c,m5c)/metal4  70
+ resist (m5,fm5,rm5,m5c,m6c,m6c)/metal5  70
+ resist (m6,fm6,rm6,m6c,mic,pad)/metal6  40
+
+ contact ndc 4 12000
+ contact pdc 4 12500
+ contact pc 4 10800
+ contact m2c 4 5680
+ contact m3c 4 10690
+ contact m4c 4 15580
+
+
+#nwell,cwell,pwell
+ areacap (nwell)/well   0.760
+
+#rnw
+ areacap (rnw,nwr)/active   0.760
+
+#ndiff
+# MODEL HANDLES THIS: areacap (ndiff,ndc)/active   9.980
+# MODEL HANDLES THIS: overlap (ndiff,ndc)/active ~space/w   9.980
+# MODEL HANDLES THIS: perimc (ndiff,ndc)/active ~(ndiff,ndc,nfet,pfet,fet)/active  26
+# MODEL HANDLES THIS: sideoverlap (ndiff,ndc)/active ~(ndiff,ndc,nfet,pfet,fet)/active ~space/w  26
+
+ areacap (rnd,anres)/active   9.980
+ overlap (rnd,anres)/active ~space/w   9.980
+ perimc (rnd,anres)/active ~(rnd,anres)/active  26
+ sideoverlap (rnd,anres)/active ~(rnd,anres)/active ~space/w  26
+
+#pdiff
+# MODEL HANDLES THIS: areacap (pdiff,pdc)/active  11.920
+# MODEL HANDLES THIS: overlap (pdiff,pdc)/active ~space/w  11.920
+# MODEL HANDLES THIS: perimc (pdiff,pdc)/active ~(pdiff,pdc,nfet,pfet,fet)/active  23.600
+# MODEL HANDLES THIS: sideoverlap (pdiff,pdc)/active ~(pdiff,pdc,nfet,pfet,fet)/active ~space/w  23.600
+
+ areacap (rpd,apres)/active  11.920
+ overlap (rpd,apres)/active ~space/w  11.920
+ perimc (rpd,apres)/active ~(rpd,apres)/active  23.600
+ sideoverlap (rpd,apres)/active ~(rpd,apres)/active ~space/w  23.600
+
+#rnw
+
+#poly
+# MODEL HANDLES THIS: overlap (nfet)/active (ndiff,anres,rnd,ndc)/active  83.270
+# MODEL HANDLES THIS: sideoverlap (nfet)/active ~(nfet)/active (ndiff,anres,rnd,ndc)/active  72.900
+# MODEL HANDLES THIS: overlap (pfet)/active (pdiff,apres,rpd,pdc)/active  81.070
+# MODEL HANDLES THIS: sideoverlap (pfet)/active ~(pfet)/active (pdiff,apres,rpd,pdc)/active  70
+
+ sidewall (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active  11.331
+ areacap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active   1.018
+ overlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~space/w   1.018
+ perimc (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active   2.311
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc)/active ~space/w   2.311
+
+#poly2
+
+#rnw
+
+#metal1
+ sidewall (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1  20.619
+ areacap (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1   0.417
+
+#metal1-sub blocked by ~space/a
+ overlap (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~space/w   0.417 ~space/a
+ perimc (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1   1.113
+ sideoverlap (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~space/w   1.113 ~space/a
+
+#rnw
+ overlap (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 rnw,nwr/active   0.417 
+ sideoverlap (m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,pdc,pc,ppc,pnc,m2c)/metal1 rnw,nwr/active   1.113 
+
+#metal1-diff blocked by 
+ overlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (ndiff,anres,rnd,ndc)/active   0.490 
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (ndiff,anres,rnd,ndc)/active   1.113 
+ overlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (pdiff,apres,rpd,pdc)/active   0.490 
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (pdiff,apres,rpd,pdc)/active   1.113 
+
+#metal1-poly blocked by 
+ overlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.422 
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   1.125 
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   1.125 
+
+#metal2
+ sidewall (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m2,fm2,rm2,m2c,m3c)/metal2  23.532
+ areacap (m2,fm2,rm2,m3c)/metal2   0.145
+
+#metal2-sub blocked by 
+ overlap (m2,fm2,rm2,m3c)/metal2 ~space/w   0.145 ~space/a,~space/m1
+ perimc (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2   0.418
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 ~space/w   0.418 ~space/a,~space/m1
+ overlap (m2,fm2,rm2,m3c)/metal2 rnw,nwr/active   0.145 ~space/m1
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 rnw,nwr/active   0.418 ~space/m1
+
+#metal2-*diff blocked by ~space/m1
+ overlap (m2,fm2,rm2,m3c)/metal2 (ndiff,anres,rnd,ndc)/active   0.190 ~space/m1
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (ndiff,anres,rnd,ndc)/active   0.418 ~space/m1
+ overlap (m2,fm2,rm2,m2c,m3c)/metal2 (pdiff,apres,rpd,pdc)/active   0.190 ~space/m1
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (pdiff,apres,rpd,pdc)/active   0.418 ~space/m1
+
+#metal2-poly blocked by ~space/m1
+ overlap (m2,fm2,rm2,m3c)/metal2 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.146 ~space/m1
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.420 ~space/m1
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m2,fm2,rm2,m2c,m3c)/metal2   0.420 ~space/m1
+
+#M2->M1
+ overlap (m2,fm2,rm2,m3c)/metal2 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.461
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   1.216
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (m2,fm2,rm2,m2c,m3c)/metal2   1.216
+
+#metal3
+ sidewall (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m3,fm3,rm3,m3c,m4c)/metal3  24.216
+ areacap (m3,fm3,rm3,m4c)/metal3   0.088
+
+#metal3-sub blocked by ~space/a,~space/m1,~space/m2
+ overlap (m3,fm3,rm3,m4c)/metal3 ~space/w   0.088 ~space/a,~space/m1,~space/m2
+ perimc (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3   0.257
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 ~space/w   0.257 ~space/a,~space/m1,~space/m2
+
+#rnw
+ overlap (m3,fm3,rm3,m4c)/metal3 rnw,nwr/active   0.088 ~space/m1,~space/m2
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 rnw,nwr/active   0.257 ~space/m1,~space/m2
+
+#metal3-*diff blocked by ~space/m1,~space/m2
+ overlap (m3,fm3,rm3,m4c)/metal3 (ndiff,anres,rnd,ndc)/active   0.130 ~space/m1,~space/m2
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (ndiff,anres,rnd,ndc)/active   0.257 ~space/m1,~space/m2
+ overlap (m3,fm3,rm3,m4c)/metal3 (pdiff,apres,rpd,pdc)/active   0.130 ~space/m1,~space/m2
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (pdiff,apres,rpd,pdc)/active   0.257 ~space/m1,~space/m2
+
+#metal3-poly blocked by ~space/m1,~space/m2
+ overlap (m3,fm3,rm3,m4c)/metal3 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.088 ~space/m1,~space/m2
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.258 ~space/m1,~space/m2
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m3,fm3,rm3,m3c,m4c)/metal3   0.258 ~space/m1,~space/m2
+
+#M3->M1
+
+#metal3-metal1 blocked by ~space/m2
+ overlap (m3,fm3,rm3,m4c)/metal3 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.150 ~space/m2
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.432 ~space/m2
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (m3,fm3,rm3,m3c,m4c)/metal3   0.432 ~space/m2
+
+#M3->M2
+ overlap (m3,fm3,rm3,m4c)/metal3 (m2,fm2,rm2,m2c,m3c)/metal2   0.461
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m2,fm2,rm2,m2c,m3c)/metal2   1.215
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m3,fm3,rm3,m3c,m4c)/metal3   1.215
+
+#metal4
+ sidewall (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m4,fm4,rm4,m4c,m5c)/metal4  64.860
+ areacap (m4,fm4,rm4)/metal4   0.059
+
+#metal4-sub blocked by ~space/a,~space/m1,~space/m2,~space/m3
+ overlap (m4,fm4,rm4)/metal4 ~space/w   0.059 ~space/a,~space/m1,~space/m2,~space/m3
+ perimc (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4   0.401
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 ~space/w   0.401 ~space/a,~space/m1,~space/m2,~space/m3
+
+#rnw
+ overlap (m4,fm4,rm4)/metal4 rnw,nwr/active   0.059 ~space/m1,~space/m2,~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 rnw,nwr/active   0.401 ~space/m1,~space/m2,~space/m3
+
+#metal4-*diff blocked by ~space/m1,~space/m2,~space/m3
+ overlap (m4,fm4,rm4)/metal4 (ndiff,anres,rnd,ndc)/active   0.110 ~space/m1,~space/m2,~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (ndiff,anres,rnd,ndc)/active   0.401 ~space/m1,~space/m2,~space/m3
+ overlap (m4,fm4,rm4)/metal4 (pdiff,apres,rpd,pdc)/active   0.110 ~space/m1,~space/m2,~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (pdiff,apres,rpd,pdc)/active   0.401 ~space/m1,~space/m2,~space/m3
+
+#metal4-poly blocked by ~space/m1,~space/m2,~space/m3
+ overlap (m4,fm4,rm4)/metal4 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.068 ~space/m1,~space/m2,~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.333 ~space/m1,~space/m2,~space/m3
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m4,fm4,rm4,m4c,m5c)/metal4   0.333 ~space/m1,~space/m2,~space/m3
+
+#M4->M1
+
+#metal4-metal1 blocked by ~space/m2,~space/m3
+ overlap (m4,fm4,rm4)/metal4 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.090 ~space/m2,~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.519 ~space/m2,~space/m3
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (m4,fm4,rm4,m4c,m5c)/metal4   0.519 ~space/m2,~space/m3
+
+#M4->M2
+
+#metal4-metal2 blocked by ~space/m3
+ overlap (m4,fm4,rm4)/metal4 (m2,fm2,rm2,m2c,m3c)/metal2   0.150 ~space/m3
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m2,fm2,rm2,m2c,m3c)/metal2   0.849 ~space/m3
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m4,fm4,rm4,m4c,m5c)/metal4   0.849 ~space/m3
+
+#M4->M3
+ overlap (m4,fm4,rm4)/metal4 (m3,fm3,rm3,m3c,m4c)/metal3   0.461
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m3,fm3,rm3,m3c,m4c)/metal3   2.302
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m4,fm4,rm4,m4c,m5c)/metal4   2.302
+
+#metal5
+ sidewall (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m5,fm5,rm5,m5c,m6c)/metal5  13.090
+ areacap (m5,fm5,rm5)/metal5   0.080
+
+#metal5-sub blocked by ~space/a,~space/m1,~space/m2,~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 ~space/w   0.080 ~space/a,~space/m1,~space/m2,~space/m3,~space/m4
+ perimc (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5   2.300
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 ~space/w   2.300 ~space/a,~space/m1,~space/m2,~space/m3,~space/m4
+
+#rnw
+ overlap (m5,fm5,rm5)/metal5 rnw,nwr/active   0.080 ~space/m1,~space/m2,~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 rnw,nwr/active   2.300 ~space/m1,~space/m2,~space/m3,~space/m4
+
+#metal5-*diff blocked by ~space/m1,~space/m2,~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 (ndiff,anres,rnd,ndc)/active   0.090 ~space/m1,~space/m2,~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (ndiff,anres,rnd,ndc)/active   2.300 ~space/m1,~space/m2,~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 (pdiff,apres,rpd,pdc)/active   0.090 ~space/m1,~space/m2,~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (pdiff,apres,rpd,pdc)/active   2.300 ~space/m1,~space/m2,~space/m3,~space/m4
+
+#metal5-poly blocked by ~space/m1,~space/m2,~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.050 ~space/m1,~space/m2,~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   2 ~space/m1,~space/m2,~space/m3,~space/m4
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m5,fm5,rm5,m5c,m6c)/metal5   2 ~space/m1,~space/m2,~space/m3,~space/m4
+
+#M5->M1
+
+#metal5-metal1 blocked by ~space/m2,~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.090 ~space/m2,~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   2.200 ~space/m2,~space/m3,~space/m4
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (m5,fm5,rm5,m5c,m6c)/metal5   2.200 ~space/m2,~space/m3,~space/m4
+
+#M5->M2
+
+#metal5-metal2 blocked by ~space/m3,~space/m4
+ overlap (m5,fm5,rm5)/metal5 (m2,fm2,rm2,m2c,m3c)/metal2   0.090 ~space/m3,~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m2,fm2,rm2,m2c,m3c)/metal2   2.700 ~space/m3,~space/m4
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m5,fm5,rm5,m5c,m6c)/metal5   2.700 ~space/m3,~space/m4
+
+#M5->M3
+
+#metal5-metal3 blocked by ~space/m4
+ overlap (m5,fm5,rm5)/metal5 (m3,fm3,rm3,m3c,m4c)/metal3   0.150 ~space/m4
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m3,fm3,rm3,m3c,m4c)/metal3   3.500 ~space/m4
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m5,fm5,rm5,m5c,m6c)/metal5   3.500 ~space/m4
+
+#M5->M4
+ overlap (m5,fm5,rm5)/metal5 (m4,fm4,rm4,m4c,m5c)/metal4   0.400 
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m4,fm4,rm4,m4c,m5c)/metal4   5.600 
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m5,fm5,rm5,m5c,m6c)/metal5   5.600 
+
+#metal6
+ sidewall (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m6,fm6,rm6,m6c,mic,pad)/metal6  27.675
+ areacap (m6,fm6,rm6,pad)/metal6   0.030
+
+#metal6-sub blocked by ~space/a,~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 ~space/w   0.030 ~space/a,~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ perimc (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6   4.200
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 ~space/w   4.200 ~space/a,~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+
+#rnw
+ overlap (m6,fm6,rm6,pad)/metal6 rnw,nwr/active   0.030 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 rnw,nwr/active   4.200 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+
+#metal6-*diff blocked by ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (ndiff,anres,rnd,ndc)/active   0.080 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (ndiff,anres,rnd,ndc)/active   4.200 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (pdiff,apres,rpd,pdc)/active   0.080 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (pdiff,apres,rpd,pdc)/active   4.200 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+
+#metal6-poly blocked by ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   0.040 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active   1.700 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active ~(poly,fp,pp,pn,pres,rp,pc,ppc,pnc,nfet,pfet,fet)/active (m6,fm6,rm6,m6c,mic,pad)/metal6   1.700 ~space/m1,~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+
+#M6->M1
+
+#metal6-metal1 blocked by ~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   0.070 ~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1   1.900 ~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 ~(m1,fm1,rm1,ndc,nsc,nwsc,pdc,psc,pc,ppc,pnc,m2c)/metal1 (m6,fm6,rm6,m6c,mic,pad)/metal6   1.900 ~space/m2,~space/m3,~space/m4,~space/m5,~space/mi
+
+#M6->M2
+
+#metal6-metal2 blocked by ~space/m3,~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (m2,fm2,rm2,m2c,m3c)/metal2   0.070 ~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m2,fm2,rm2,m2c,m3c)/metal2   2.300 ~space/m3,~space/m4,~space/m5,~space/mi
+ sideoverlap (m2,fm2,rm2,m2c,m3c)/metal2 ~(m2,fm2,rm2,m2c,m3c)/metal2 (m6,fm6,rm6,m6c,mic,pad)/metal6   2.300 ~space/m3,~space/m4,~space/m5,~space/mi
+
+#M6->M3
+
+#metal6-metal3 blocked by ~space/m4,~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (m3,fm3,rm3,m3c,m4c)/metal3   0.090 ~space/m4,~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m3,fm3,rm3,m3c,m4c)/metal3   2.800 ~space/m4,~space/m5,~space/mi
+ sideoverlap (m3,fm3,rm3,m3c,m4c)/metal3 ~(m3,fm3,rm3,m3c,m4c)/metal3 (m6,fm6,rm6,m6c,mic,pad)/metal6   2.800 ~space/m4,~space/m5,~space/mi
+
+#M6->M4
+
+#metal6-metal4 blocked by ~space/m5,~space/mi
+ overlap (m6,fm6,rm6,pad)/metal6 (m4,fm4,rm4,m4c,m5c)/metal4   0.140 ~space/m5,~space/mi
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m4,fm4,rm4,m4c,m5c)/metal4   3.600 ~space/m5,~space/mi
+ sideoverlap (m4,fm4,rm4,m4c,m5c)/metal4 ~(m4,fm4,rm4,m4c,m5c)/metal4 (m6,fm6,rm6,m6c,mic,pad)/metal6   3.600 ~space/m5,~space/mi
+
+#M6->M5
+ overlap (m6,fm6,rm6,pad)/metal6 (m5,fm5,rm5,m5c,m6c)/metal5   0.380
+ sideoverlap (m6,fm6,rm6,m6c,mic,pad)/metal6 ~(m6,fm6,rm6,m6c,mic,pad)/metal6 (m5,fm5,rm5,m5c,m6c)/metal5   5.600 ~space/mi
+ sideoverlap (m5,fm5,rm5,m5c,m6c)/metal5 ~(m5,fm5,rm5,m5c,m6c)/metal5 (m6,fm6,rm6,m6c,mic,pad)/metal6   5.600 ~space/mi
+
+#metal7
+
+#metali
+
+#Mi->M5
+
+#Mi->M6
+
+#devices
+
+ device mosfet pfet pfet pdiff,pdc nwell ERROR 70 81
+ device mosfet nfet nfet ndiff,ndc pwell,space/w ERROR 73 83
+
+ fetresis  pfet linear		-68
+ fetresis  pfet saturation	-68
+ fetresis  nfet linear		146
+ fetresis  nfet saturation	146
+
+ device resistor nwellResistor rnwell *nsd
+ device resistor polyResistor rpoly *poly
+ device resistor nwellFig1bResistor nwr nwsd
+ device resistor ndiffResistor rndiff *ndiff
+ device resistor pdiffResistor rpdiff *pdiff
+
+ device resistor metal1Resistor rmetal1 *metal1
+ device resistor metal2Resistor rmetal2 *metal2
+ device resistor metal3Resistor rmetal3 *metal3
+ device resistor metal4Resistor rmetal4 *metal4
+ device resistor metal5Resistor rmetal5 *metal5
+ device resistor metal6Resistor rmetal6 *metal6
+
+ device resistor presResistor pres *poly
+ device resistor anresResistor anres *ndiff
+ device resistor apresResistor apres *pdiff
+
+end
+
+wiring
+ contact	pdcontact	4	metal1	0	pdiff	0
+ contact	ndcontact	4	metal1	0	ndiff	0
+ contact	pcontact	4	metal1	0	poly	0
+ contact	m2contact	4	metal1	0	metal2	0
+ contact	m3contact	5	metal2	0	metal3 1
+ contact	m4contact	4	metal3	0	metal4 0
+ contact	m5contact	5	metal4	0	metal5 0
+ contact	m6contact	6	metal5	0	metal6 0
+ contact	micontact	6	metal6	0	mi 0
+
+end
+
+router
+ layer2 metal2 3 m2,fm2,rm2,m2c/m2,m3c/m2,m3c/m2 4 poly,fp,pp,pn,pres,rp,ndiff,anres,rnd,nsd,nwsd,pdiff,apres,rpd,psd,m1,fm1,rm1 1
+ layer1 metal1 3 m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 3
+ contacts m2contact 4
+ gridspacing 8
+
+end
+
+plowing
+ fixed	nfet,pfet,glass,pad
+ covered	nfet,pfet
+ drag	nfet,pfet
+
+end
+
+plot
+style colorversatec
+ ndiff,anres,rnd,ndc/a yellow \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA
+ ndiff,anres,rnd,ndc/a cyan \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555
+ nsd,nwsd,nsc/a,nwsc/a yellow \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2
+ nsd,nwsd,nsc/a,nwsc/a cyan \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151
+ pdiff,apres,rpd,pdc/a yellow \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA
+ pdiff,apres,rpd,pdc/a cyan \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555 \
+ 0000 5555 0000 5555
+ pdiff,apres,rpd,pdc/a magenta \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000
+ psd,psc/a yellow \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2 \
+ 1515 2A2A 5151 A2A2
+ psd,psc/a cyan \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151 \
+ 0000 1515 0000 5151
+ psd,psc/a magenta \
+ 2A2A 0000 A2A2 0000 \
+ 2A2A 0000 A2A2 0000 \
+ 2A2A 0000 A2A2 0000 \
+ 2A2A 0000 A2A2 0000
+ poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a magenta \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA \
+ 5555 AAAA 5555 AAAA
+ nfet yellow \
+ 0505 8282 1414 0A0A \
+ 5050 2828 4141 A0A0 \
+ 0505 8282 1414 0A0A \
+ 5050 2828 4141 A0A0
+ nfet cyan \
+ 0000 0505 0000 1414 \
+ 0000 5050 0000 4141 \
+ 0000 0505 0000 1414 \
+ 0000 5050 0000 4141
+ nfet magenta \
+ 5050 2828 4141 A0A0 \
+ 0505 8282 1414 0A0A \
+ 5050 2828 4141 A0A0 \
+ 0505 8282 1414 0A0A
+ pfet yellow \
+ 6363 A0A0 5050 2828 \
+ 3636 0A0A 0505 8282 \
+ 6363 A0A0 5050 2828 \
+ 3636 0A0A 0505 8282
+ pfet cyan \
+ 0000 5151 0000 5454 \
+ 0000 1515 0000 1515 \
+ 0000 5151 0000 5454 \
+ 0000 1515 0000 1515
+ pfet magenta \
+ 9494 0A0A 2525 8282 \
+ 4949 A0A0 5252 2828 \
+ 9494 0A0A 2525 8282 \
+ 4949 A0A0 5252 2828
+ m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 cyan \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000 \
+ AAAA 0000 AAAA 0000
+ m2,fm2,rm2,m2c/m2,m3c/m2 cyan \
+ 0000 1111 0000 4444 \
+ 0000 1111 0000 4444 \
+ 0000 1111 0000 4444 \
+ 0000 1111 0000 4444
+ m2,fm2,rm2,m2c/m2,m3c/m2 magenta \
+ 0000 4444 0000 1111 \
+ 0000 4444 0000 1111 \
+ 0000 4444 0000 1111 \
+ 0000 4444 0000 1111
+ m2c/m1,gv1 black \
+ 0000 6666 6666 0000 \
+ 0000 9999 9999 0000 \
+ 0000 6666 6666 0000 \
+ 0000 9999 9999 0000
+ pad,glass black \
+ 0300 0700 0E00 1C00 \
+ 3800 7000 E000 C000 \
+ 00C0 00E0 0070 0038 \
+ 001C 000E 0007 0003
+ nwell yellow \
+ 0800 1000 2000 4000 \
+ 8000 0001 0002 0004 \
+ 0008 0010 0020 0040 \
+ 0080 0010 0200 0400
+ nwell cyan \
+ 1000 2000 4000 8000 \
+ 0001 0002 0004 0008 \
+ 0010 0020 0040 0080 \
+ 0100 0200 0400 0800
+ pwell yellow \
+ 1000 0400 0400 0100 \
+ 0100 0040 0040 0010 \
+ 0010 0004 0004 0001 \
+ 0001 4000 4000 1000
+ pwell cyan \
+ 0000 0800 0000 0200 \
+ 0000 0080 0000 0020 \
+ 0000 0008 0000 0002 \
+ 0000 8000 0000 2000
+ pwell magenta \
+ 0800 0000 0200 0000 \
+ 0080 0000 0020 0000 \
+ 0008 0000 0002 0000 \
+ 8000 0000 2000 0000
+ m3c/m2,gv2 black \
+ 0100 0000 0000 0000 \
+ 1010 0000 0000 0000 \
+ 0001 0000 0000 0000 \
+ 1010 0000 0000 0000
+ m3c/m2,gv2 cyan \
+ 0280 0000 0820 0000 \
+ 2008 0000 8002 0000 \
+ 8002 0000 2008 0000 \
+ 0820 0000 0280 0000
+ m3c/m2,gv2 magenta \
+ 0100 06C0 0440 1830 \
+ 1010 600C 4004 8003 \
+ 0001 C006 4004 3018 \
+ 1010 0C60 0440 0380
+ m3c/m2,gv2 black \
+ 0820 0820 0820 0FE0 \
+ E00F 2008 2008 2008 \
+ 2008 2008 2008 E00F \
+ 0000 0FE0 0820 0820
+ error_p,error_s,error_ps black \
+ 0000 3C3C 4646 4A4A \
+ 5252 6262 3C3C 0000 \
+ 0000 3C3C 4646 4A4A \
+ 5252 6262 3C3C 0000
+ magnet yellow \
+ AAAA 0000 5555 0000 \
+ AAAA 0000 5555 0000 \
+ AAAA 0000 5555 0000 \
+ AAAA 0000 5555 0000
+ fence magenta \
+ FFFF 0000 0000 0000 \
+ 0000 0000 0000 0000 \
+ FFFF 0000 0000 0000 \
+ 0000 0000 0000 0000
+ rotate cyan \
+ 0000 E0E0 E0E0 E0E0 \
+ 0000 0000 0000 0000 \
+ 0000 E0E0 E0E0 E0E0 \
+ 0000 0000 0000 0000
+ pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a,gc,gc,gc X
+
+style versatec
+ pfet \
+ 07c0 0f80 1f00 3e00 \
+ 7c00 f800 f001 e003 \
+ c007 800f 001f 003e \
+ 00c7 00f8 01f0 03e0
+ nfet \
+ 1f00 0f80 07c0 03e0 \
+ 01f0 00f8 007c 003e \
+ 001f 800f c007 e003 \
+ f001 f800 7c00 3e00
+ gv1 \
+ c3c3 c3c3 0000 0000 \
+ 0000 0000 c3c3 c3c3 \
+ c3c3 c3c3 0000 0000 \
+ 0000 0000 c3c3 c3c3
+ pwell \
+ 2020 2020 2020 2020 \
+ 2020 2020 2020 2020 \
+ 0000 0000 0000 0000 \
+ 0000 0000 0000 0000
+ nwell \
+ 0808 0404 0202 0101 \
+ 0000 0000 0000 0000 \
+ 0808 0404 0202 0101 \
+ 0000 0000 0000 0000
+ poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet \
+ 0808 0400 0202 0101 \
+ 8080 4000 2020 1010 \
+ 0808 0004 0202 0101 \
+ 8080 0040 2020 1010
+ m1,fm1,rm1,ndc/m1,nsc/m1,nwsc/m1,pdc/m1,psc/m1,pc/m1,ppc/m1,pnc/m1,m2c/m1 \
+ 8080 0000 0000 0000 \
+ 0808 0000 0000 0000 \
+ 8080 0000 0000 0000 \
+ 0808 0000 0000 0000
+ pad,glass \
+ 0000 0000 1c1c 3e3e \
+ 3636 3e3e 1c1c 0000 \
+ 0000 0000 1c1c 3e3e \
+ 3636 3e3e 1c1c 0000
+ nsd,nwsd,nsc/a,nwsc/a \
+ 0808 1414 2222 4141 \
+ 8080 4040 2020 1010 \
+ 0808 1414 2222 4141 \
+ 8080 4040 2020 1010
+ m2,fm2,rm2,m2c/m2,m3c/m2 \
+ 0000 1111 0000 0000 \
+ 0000 1111 0000 0000 \
+ 0000 1111 0000 0000 \
+ 0000 1111 0000 0000
+ pdiff,apres,rpd,pdc/a,pfet \
+ 0000 0808 5555 8080 \
+ 0000 8080 5555 0808 \
+ 0000 0808 5555 8080 \
+ 0000 8080 5555 0808
+ psd,psc/a \
+ 1414 2222 0000 2222 \
+ 4141 2222 0000 2222 \
+ 1414 2222 0000 2222 \
+ 4141 2222 0000 2222
+ ndiff,anres,rnd,ndc/a,nfet \
+ 0808 1010 2020 4040 \
+ 8080 4141 2222 1414 \
+ 0808 1010 2020 4040 \
+ 8080 4141 2222 1414
+ pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a,gc,gc,gc X
+
+style gremlin
+ pfet 9
+ nfet 10
+ gv1 11
+ pwell 15
+ nwell 16
+ poly,fp,pp,pn,pres,rp,pc/a,ppc/a,pnc/a,nfet,pfet 19
+ pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a,gc,gc,gc 22
+ pad,glass 23
+ nsd,nwsd,nsc/a,nwsc/a 24
+ gv1 28
+ pdiff,apres,rpd,pdc/a,pfet 29
+ psd,psc/a 30
+ ndiff,anres,rnd,ndc/a,nfet 31
+ pc/a,ppc/a,pnc/a,ndc/a,pdc/a,psc/a,nsc/a,nwsc/a,gc,gc,gc,gv1 X
+
+end
+

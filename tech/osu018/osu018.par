@@ -1,0 +1,72 @@
+# osu018.par --- Parameter file for GrayWolf
+# NOTE:  all distance units are in centimicrons unless otherwise stated
+
+RULES
+    # values are resistance in ohms/sq and capacitance in fF/um^2
+    layer metal1 0.07 0.030 horizontal
+    layer metal2 0.07 0.017 vertical
+    layer metal3 0.07 0.006 horizontal
+    layer metal4 0.04 0.004 vertical
+
+    via via12 metal1 metal2
+    via via23 metal2 metal3
+    via via34 metal3 metal4
+
+    width metal1 60
+    width metal2 60
+    width metal3 60
+    width metal4 120
+    width via12 60
+    width via23 60
+    width via34 120
+
+    # Set spacing = track pitch - width, so that GrayWolf places pins
+    # on the right pitch.
+    # Pitches are (in um):
+    # metal1 = 200,  metal2 = 160,  metal3 = 200,  metal4 = 320
+
+    spacing metal1 metal1 140
+    spacing metal2 metal2 100
+    spacing metal3 metal3 140
+    spacing metal4 metal4 200
+
+    # Stacked vias allowed
+    spacing via12 via23 0
+    spacing via23 via34 0
+
+    overhang via12 metal1 8
+    overhang via12 metal2 6
+
+    overhang via23 metal2 8
+    overhang via23 metal3 6
+
+    overhang via34 metal3 14
+    overhang via34 metal4 16
+ENDRULES
+
+*vertical_wire_weight : 1.0
+*vertical_path_weight : 1.0
+*padspacing           : variable
+*rowSep		      : 0.0   0
+*track.pitch	      : 80
+*minimum_pad_space    : 120
+*gridX		      : 80
+*gridY		      : 100
+*gridOffsetX	      : 0
+*gridOffsetY	      : 0
+*graphics.wait        : off
+*last_chance.wait     : off
+*random.seed	      : 12345
+
+TWMC*chip.aspect.ratio : 0.75
+
+TWSC*feedThruWidth    : 80 layer 1
+TWSC*do.global.route  : on
+TWSC*ignore_feeds     : true
+TWSC*call_row_evener	: true
+TWSC*even_rows_maximally : true
+# TWSC*no.graphics    : on
+
+GENR*row_to_tile_spacing: 1
+# GENR*numrows		: 6
+GENR*flip_alternate_rows : 1

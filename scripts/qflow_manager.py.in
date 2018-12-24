@@ -1,0 +1,3841 @@
+#!ENV_PATH python3
+#
+#-------------------------------------------------------------------------
+# Qflow Manager GUI.
+#
+# This is a Python tkinter script that handles the process of running the
+# synthesis and place-and-route flow on a verilog source file.
+#
+#-------------------------------------------------------------------------
+# Written by Tim Edwards
+# efabless, inc.
+# Version 1.  August 8-17, 2017
+# Version for qflow distribution: April 19-29, 2018
+# Updated to use new migrate, DRC, LVS, and GDS scripts:  August 20, 2018
+#-------------------------------------------------------------------------
+
+import io
+import os
+import re
+import sys
+import json
+import glob
+import shutil
+import select
+import datetime
+import contextlib
+import subprocess
+
+import tkinter
+from tkinter import ttk
+from tkinter import filedialog
+
+import tksimpledialog
+import tooltip
+from consoletext import ConsoleText
+from helpwindow import HelpWindow
+from textreport import TextReport
+from pinmanager import PinManager
+from count_lvs import count_LVS_failures
+
+# User preferences file (if it exists)
+prefsfile = '~/.qflow/prefs.json'
+
+# Qflow install directory and other locations
+qflow_bin_dir = 'SUBST_BIN_DIR'
+qflow_script_dir = 'SUBST_SCRIPT_DIR'
+qflow_tech_dir = 'SUBST_TECH_DIR'
+
+# Qflow version information
+qflow_version = 'QFLOW_VERSION' + '.' + 'QFLOW_REVISION'
+
+#---------------------------------------------------------------
+# Simple dialog for confirming technology change (full reset)
+#---------------------------------------------------------------
+
+class ConfirmDialog(tksimpledialog.Dialog):
+    def body(self, master, warning, seed):
+        if warning:
+            ttk.Label(master, text=warning, wraplength=500).grid(row = 0, columnspan = 2, sticky = 'wns')
+        return self
+
+    def apply(self):
+        return 'okay'
+
+#---------------------------------------------------------------
+# More proactive dialog for confirming an invasive procedure
+# like a technology change.  Requires user to click a checkbox
+# to ensure this is not a mistake.
+#---------------------------------------------------------------
+
+class ProtectedConfirmDialog(tksimpledialog.Dialog):
+    def body(self, master, warning, seed):
+        if warning:
+            ttk.Label(master, text=warning).grid(row = 0, columnspan = 2, sticky = 'wns')
+        self.confirm = tkinter.IntVar(master)
+        self.confirm.set(0)
+        ttk.Checkbutton(master, text='I am sure I want to do this.',
+                        variable = self.confirm).grid(row = 1, columnspan = 2, sticky = 'enws')
+        return self
+
+    def apply(self):
+        return 'okay' if self.confirm.get() == 1 else ''
+
+#------------------------------------------------------
+# Main class for this application
+#------------------------------------------------------
+
+class QflowManager(ttk.Frame):
+    """Qflow Manager GUI."""
+
+    def __init__(self, parent, *args, **kwargs):
+        ttk.Frame.__init__(self, parent, *args, **kwargs)
+        self.root = parent
+        self.init_gui()
+        parent.protocol("WM_DELETE_WINDOW", self.on_quit)
+
+    def on_quit(self):
+        """Exits program."""
+        quit()
+
+    def init_gui(self):
+        """Builds GUI."""
+        global prefsfile
+        global qflow_script_dir
+        global qflow_tech_dir
+
+        message = []
+        fontsize = 11
+
+        # Read user preferences file, get default font size from it.
+        prefspath = os.path.expanduser(prefsfile)
+        if os.path.exists(prefspath):
+            with open(prefspath, 'r') as f:
+                self.prefs = json.load(f)
+            if 'fontsize' in self.prefs:
+                fontsize = self.prefs['fontsize']
+        else:
+            self.prefs = {}
+
+        s = ttk.Style()
+
+        available_themes = s.theme_names()
+        s.theme_use(available_themes[0])
+
+        s.configure('bg.TFrame', background='gray40')
+        s.configure('italic.TLabel', font=('Helvetica', fontsize, 'italic'))
+        s.configure('title.TLabel', font=('Helvetica', fontsize, 'bold italic'),
+                        foreground = 'brown', anchor = 'center')
+        s.configure('normal.TLabel', font=('Helvetica', fontsize), anchor = 'left')
+        s.configure('red.TLabel', font=('Helvetica', fontsize), foreground = 'red')
+        s.configure('green.TLabel', font=('Helvetica', fontsize), foreground = 'green3')
+        s.configure('blue.TLabel', font=('Helvetica', fontsize), foreground = 'blue')
+        s.configure('section.TLabel', font=('Helvetica', fontsize, 'bold'),
+			foreground = 'blue', anchor = 'left')
+        s.configure('normal.TButton', font=('Helvetica', fontsize),
+                        border = 3, relief = 'raised')
+        s.configure('bold.TButton', font=('Helvetica', fontsize, 'bold'),
+                        border = 3, relief = 'raised')
+        s.configure('red.TButton', font=('Helvetica', fontsize), foreground = 'red',
+                        border = 3, relief = 'raised')
+        s.configure('green.TButton', font=('Helvetica', fontsize), foreground = 'green3',
+                        border = 3, relief = 'raised')
+        s.configure('orange.TButton', font=('Helvetica', fontsize), foreground = 'orange3',
+                        border = 3, relief = 'raised')
+        s.configure('blue.TButton', font=('Helvetica', fontsize), foreground = 'blue',
+                        border = 3, relief = 'raised')
+        s.configure('redtitle.TButton', font=('Helvetica', fontsize, 'bold italic'),
+                        foreground = 'red', border = 3, relief = 'raised')
+        s.configure('bluetitle.TButton', font=('Helvetica', fontsize, 'bold italic'),
+                        foreground = 'blue', border = 3, relief = 'raised')
+
+        # These values to be overridden from arguments
+        self.rootpath = None
+        self.project = None
+        self.logfile = None
+        self.help = None
+        self.verilog = None
+        self.init_messages = []
+        self.stdout = None
+        self.stderr = None
+
+        self.sourcedir = None
+        self.synthdir = None
+        self.layoutdir = None
+        self.logdir = None
+        self.pdkdir = None
+
+        self.magicgtype = None
+        self.magicversion = None
+
+        # Create the pin manager
+        self.pinmanager = PinManager(self, fontsize = fontsize)
+
+        # Create the help window
+        if os.path.exists(qflow_script_dir + '/qflow_help.txt'):
+            self.help = HelpWindow(self, fontsize = fontsize)
+            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+                self.help.add_pages_from_file(qflow_script_dir + '/qflow_help.txt')
+                self.init_messages.append(buf.getvalue())
+
+            # Set the help display to the first page
+            self.help.page(0)
+
+        # For status/log reporting
+        self.textreport = TextReport(self, fontsize = fontsize)
+
+        self.rootpath = "(no selection)"
+        self.project = "(no selection)"
+        self.status = 'begin'
+
+        # Root window title
+        self.root.title('Qflow Manager')
+        self.root.option_add('*tearOff', 'FALSE')
+        self.pack(side = 'top', fill = 'both', expand = 'true')
+
+        pane = tkinter.PanedWindow(self, orient = 'vertical', sashrelief='groove', sashwidth=6)
+        pane.pack(side = 'top', fill = 'both', expand = 'true')
+        self.toppane = ttk.Frame(pane)
+        self.botpane = ttk.Frame(pane)
+
+        # Get username
+        if 'username' in self.prefs:
+            username = self.prefs['username']
+        else:
+            username = os.environ['USER']
+
+        # Label with the user
+        self.toppane.title_frame = ttk.Frame(self.toppane)
+        self.toppane.title_frame.pack(side = 'top', fill = 'x')
+
+        self.toppane.title_frame.title = ttk.Label(self.toppane.title_frame, text='User:', style = 'red.TLabel')
+        self.toppane.title_frame.user = ttk.Label(self.toppane.title_frame, text=username, style = 'blue.TLabel')
+
+        self.toppane.title_frame.title.grid(column=0, row=0, ipadx = 5)
+        self.toppane.title_frame.user.grid(column=1, row=0, ipadx = 5)
+
+        self.toppane.title2_frame = ttk.Frame(self.toppane)
+        self.toppane.title2_frame.pack(side = 'top', fill = 'x')
+        self.toppane.title2_frame.project_label = ttk.Label(self.toppane.title2_frame, text="Project:",
+                style = 'title.TLabel')
+        self.toppane.title2_frame.project_label.grid(column=0, row=0, ipadx = 5)
+
+        # New project select button
+        self.toppane.title2_frame.project_select = ttk.Button(self.toppane.title2_frame,
+                text=self.rootpath, style='normal.TButton', command=self.choose_project)
+        self.toppane.title2_frame.project_select.grid(column=1, row=0, ipadx = 5)
+
+        tooltip.ToolTip(self.toppane.title2_frame.project_select,
+                        text = "Select new project")
+
+        # Show path to project
+        self.toppane.title2_frame.path_label = ttk.Label(self.toppane.title2_frame,
+			text=self.rootpath, style = 'normal.TLabel')
+        self.toppane.title2_frame.path_label.grid(column=2, row=0, ipadx = 5, padx = 10)
+
+        tooltip.ToolTip(self.toppane.title2_frame.project_select,
+                        text = "Select new project")
+
+        #---------------------------------------------
+        ttk.Separator(self.toppane, orient='horizontal').pack(side = 'top', fill = 'x')
+        #---------------------------------------------
+
+        # Settings panes.  There is a separate settings pane for each synthesis step, that
+        # gets swapped in when the corresponding "Settings" button is pushed.
+        self.toppane.settings = ttk.Frame(self.toppane)
+
+        self.toppane.settings.prep_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.prep_settings
+        window.title = ttk.Label(window, text = 'Synthesis Preparation', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        # "Technology" is an option menu with selectable PDKs.  There are a
+        # limited number of PDKs available from the qflow installation,
+        # plus the 'tech/' subdirectory if it exists, plus the PDK specified
+        # on the command line with '-T', if there was one.  All of these can
+        # be determined on initialization.
+
+        window.pframe = ttk.Frame(window)
+
+        self.allpdknodes = []
+        self.allpdkdirs = []
+        allpdks = []
+        for pdk in os.listdir(qflow_tech_dir):
+            allpdks.append(qflow_tech_dir + '/' + pdk)
+
+        if os.path.exists('tech'):
+            if os.path.islink('tech'):
+                allpdks.append(os.path.realpath('tech'))
+            else:
+                allpdks.append(os.getcwd() + '/tech')
+
+        for pdkdir in allpdks:
+            # Check for variants and add them to the option menu
+            sfiles = glob.glob(pdkdir + '/*.sh')
+            variants = []
+            if len(sfiles) > 0:
+                for variant in sfiles:
+                    varfile = os.path.split(variant)[1]
+                    varroot = os.path.splitext(varfile)[0]
+                    variants.append(varroot)
+                    # This removes redundancies, but note that PDKs
+                    # could have the same name but be different anyway.
+                    if varroot not in self.allpdknodes:
+                        self.allpdknodes.append(varroot)
+                        self.allpdkdirs.append(pdkdir)
+
+        self.pdknode = tkinter.StringVar(window.pframe)
+        try:
+            self.pdknode.set(self.allpdknodes[0])
+            self.pdkdir = self.allpdkdirs[0]
+            self.currentpdk = self.allpdknodes[0]
+        except:
+            # print('Diagnostic:  self.allpdknodes = ' + str(self.allpdknodes))
+            # print('Diagnostic:  self.allpdkdirs = ' + str(self.allpdkdirs))
+            pass
+
+        window.pframe.title = ttk.Label(window.pframe, text = 'Technology:', style = 'blue.TLabel')
+        window.pframe.choosepdk = ttk.OptionMenu(window.pframe, self.pdknode,
+			self.pdknode.get(), *self.allpdknodes,
+			command = lambda _: self.check_reset(args=None))
+        window.pframe.title.pack(side = 'left')
+        window.pframe.choosepdk.pack(side = 'left')
+        window.pframe.pack(side = 'top')
+
+        # New source file select button
+        window.verilog = ttk.Frame(window)
+        window.verilog.pack(side = 'top')
+        window.verilog.title = ttk.Label(window.verilog, style = 'normal.TLabel',
+		text = 'Verilog source file:')
+        window.verilog.source_select = ttk.Button(window.verilog, text='(no selection)',
+			style='normal.TButton', command=self.choose_verilog)
+        window.verilog.title.pack(side = 'left')
+        window.verilog.source_select.pack(side = 'left')
+
+        tooltip.ToolTip(window.verilog.source_select,
+			text = "Select verilog source file location")
+
+        # Module is either reported, or if there is no module, then it is a
+        # button allowing the user to select a verilog source file to link to.
+
+        window.module = ttk.Frame(window)
+        window.module.pack(side = 'top')
+        window.module.title = ttk.Label(window.module, style = 'normal.TLabel',
+		text = 'Verilog module:')
+        self.module = tkinter.StringVar(window.module)
+        self.module.set('(none)')
+        window.module.title.pack(side = 'left', fill = 'x')
+        window.module.entry = ttk.Entry(window.module, textvariable = self.module)
+        window.module.entry.delete(0, 'end')
+        window.module.entry.insert(0, '(none)')
+        window.module.entry.pack(side = 'left')
+
+        window.stopframe = ttk.Frame(window)
+        window.stopframe.pack(side = 'top')
+
+        window.stopstitle = ttk.Label(window.stopframe, style = 'title.TLabel',
+		text = 'After every synthesis step:')
+        window.stopstitle.pack(side = 'top')
+        window.stopset = ttk.Button(window.stopframe, text="Set stop",
+		style = 'normal.TButton', command = self.set_all_stops)
+        window.stopset.pack(side = 'left')
+        window.stopclr = ttk.Button(window.stopframe, text="Clear stop",
+		style = 'normal.TButton', command = self.clear_all_stops)
+        window.stopclr.pack(side = 'left')
+
+        self.toppane.settings.synth_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.synth_settings
+        window.title = ttk.Label(window, text = 'Synthesis Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after synthesis:')
+        window.stop.title.pack(side = 'left')
+        self.synth_stop = tkinter.IntVar(window.stop)
+        self.synth_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.synth_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.place_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.place_settings
+        window.title = ttk.Label(window, text = 'Placement Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.density = ttk.Frame(window)
+        window.density.pack(side = 'top', fill = 'x')
+        window.density.title = ttk.Label(window.density, style = 'normal.TLabel',
+		text = 'Initial density:')
+        window.density.title.pack(side = 'left')
+        self.density = tkinter.StringVar(window.density)
+        window.density.entry = ttk.Entry(window.density, textvariable = self.density)
+        window.density.entry.pack(side = 'left')
+        window.density.entry.delete(0, 'end')
+        window.density.entry.insert(0, '1.0')
+
+        window.aspect = ttk.Frame(window)
+        window.aspect.pack(side = 'top', fill = 'x')
+        window.aspect.title = ttk.Label(window.aspect, style = 'normal.TLabel',
+		text = 'Aspect ratio:')
+        window.aspect.title.pack(side = 'left')
+        self.aspect = tkinter.StringVar(window.aspect)
+        window.aspect.entry = ttk.Entry(window.aspect, textvariable = self.aspect)
+        window.aspect.entry.pack(side = 'left')
+        window.aspect.entry.delete(0, 'end')
+        window.aspect.entry.insert(0, '1.0')
+
+        window.power = ttk.Frame(window)
+        window.power.pack(side = 'top', fill = 'x')
+        window.power.title = ttk.Label(window.power, style = 'normal.TLabel',
+		text = 'Create power stripes:')
+        window.power.title.pack(side = 'left')
+        self.power = tkinter.IntVar(window.power)
+        self.power.set(1)
+        window.power.check = ttk.Checkbutton(window.power, variable = self.power)
+        window.power.check.pack(side = 'left', fill = 'x')
+
+        window.power_width = ttk.Frame(window)
+        window.power_width.pack(side = 'top')
+        window.power_width.title = ttk.Label(window.power_width, style = 'normal.TLabel',
+		text = 'Stripe width:')
+        window.power_width.title.pack(side = 'left', fill = 'x')
+        self.power_width = tkinter.StringVar(window.power_width)
+        window.power_width.entry = ttk.Entry(window.power_width, textvariable = self.power_width)
+        window.power_width.entry.pack(side = 'left', fill = 'x')
+        window.power_width.entry.delete(0, 'end')
+        window.power_width.entry.insert(0, '5.0')
+
+        window.power_pitch = ttk.Frame(window)
+        window.power_pitch.pack(side = 'top', fill = 'x')
+        window.power_pitch.title = ttk.Label(window.power_pitch, style = 'normal.TLabel',
+		text = 'Stripe pitch:')
+        window.power_pitch.title.pack(side = 'left')
+        self.power_pitch = tkinter.StringVar(window.power_pitch)
+        window.power_pitch.entry = ttk.Entry(window.power_pitch, textvariable = self.power_pitch)
+        window.power_pitch.entry.pack(side = 'left')
+        window.power_pitch.entry.delete(0, 'end')
+        window.power_pitch.entry.insert(0, '150.0')
+
+        window.power_space = ttk.Frame(window)
+        window.power_space.pack(side = 'top', fill = 'x')
+        window.power_space.title = ttk.Label(window.power_space, style = 'normal.TLabel',
+		text = 'Add extra space for power stripes:')
+        window.power_space.title.pack(side = 'left')
+        self.power_space = tkinter.IntVar(window.power_space)
+        self.power_space.set(1)
+        window.power_space.check = ttk.Checkbutton(window.power_space, variable = self.power_space)
+        window.power_space.check.pack(side = 'left')
+
+        window.pins = ttk.Button(window)
+        window.pins = ttk.Button(window, text="Arrange Pins", style = 'normal.TButton',
+		command = self.runpinmanager)
+        window.pins.pack(side = 'top')
+
+        window.gui = ttk.Frame(window)
+        window.gui.pack(side = 'top', fill = 'x')
+        window.gui.title = ttk.Label(window.gui, style = 'normal.TLabel',
+		text = 'Placement graphic view:')
+        window.gui.title.pack(side = 'left')
+        self.place_graphics = tkinter.IntVar(window.gui)
+        self.place_graphics.set(1)
+        window.gui.check = ttk.Checkbutton(window.gui, variable = self.place_graphics)
+        window.gui.check.pack(side = 'left')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after placement success:')
+        window.stop.title.pack(side = 'left')
+        self.place_stop = tkinter.IntVar(window.stop)
+        self.place_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.place_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.timing_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.timing_settings
+        window.title = ttk.Label(window, text = 'Static Timing Analysis Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        # STA tools available are set at compile time
+        self.sta_tools = []
+        self.sta_tools.append('vesta')
+        if HAVE_OPENSTA:
+            self.sta_tools.append('opensta')
+        if HAVE_OPENTIMER:
+            self.sta_tools.append('opentimer')
+
+        self.run_vesta = tkinter.BooleanVar(window)
+        self.run_opensta = tkinter.BooleanVar(window)
+        self.run_opentimer = tkinter.BooleanVar(window)
+        self.run_vesta.set(1)
+        self.run_opensta.set(0)
+        self.run_opentimer.set(0)
+
+        if len(self.sta_tools) > 1:
+            window.usevesta = ttk.Frame(window)
+            window.usevesta.pack(side = 'top', fill = 'x')
+            window.usevesta.title = ttk.Label(window.usevesta, style = 'normal.TLabel',
+			text = 'Use vesta for STA:')
+            window.usevesta.title.pack(side = 'left')
+            window.usevesta.check = ttk.Checkbutton(window.usevesta, variable = self.run_vesta)
+            window.usevesta.check.pack(side = 'left')
+
+            if 'opensta' in self.sta_tools:
+                window.useopensta = ttk.Frame(window)
+                window.useopensta.pack(side = 'top', fill = 'x')
+                window.useopensta.title = ttk.Label(window.useopensta, style = 'normal.TLabel',
+				text = 'Use OpenSTA for STA:')
+                window.useopensta.title.pack(side = 'left')
+                self.run_opensta = tkinter.BooleanVar(window.useopensta)
+                window.useopensta.check = ttk.Checkbutton(window.useopensta, variable = self.run_opensta)
+                window.useopensta.check.pack(side = 'left')
+
+            if 'opentimer' in self.sta_tools:
+                window.useopentimer = ttk.Frame(window)
+                window.useopentimer.pack(side = 'top', fill = 'x')
+                window.useopentimer.title = ttk.Label(window.useopentimer, style = 'normal.TLabel',
+				text = 'Use OpenTimer for STA:')
+                window.useopentimer.title.pack(side = 'left')
+                self.run_opentimer = tkinter.BooleanVar(window.useopentimer)
+                window.useopentimer.check = ttk.Checkbutton(window.useopentimer, variable = self.run_opentimer)
+                window.useopentimer.check.pack(side = 'left')
+
+        window.longformat = ttk.Frame(window)
+        window.longformat.pack(side = 'top', fill = 'x')
+        window.longformat.title = ttk.Label(window.longformat, style = 'normal.TLabel',
+		text = 'Long format output:')
+        window.longformat.title.pack(side = 'left')
+        self.long_format = tkinter.BooleanVar(window.longformat)
+        self.long_format.set(1)
+        window.longformat.check = ttk.Checkbutton(window.longformat, variable = self.long_format)
+        window.longformat.check.pack(side = 'left')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after STA success:')
+        window.stop.title.pack(side = 'left')
+        self.sta_stop = tkinter.IntVar(window.stop)
+        self.sta_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.sta_stop)
+        window.stop.check.pack(side = 'left')
+
+        window.cont = ttk.Frame(window)
+        window.cont.pack(side = 'top', fill = 'x')
+        window.cont.title = ttk.Label(window.cont, style = 'normal.TLabel',
+		text = 'Continue flow if STA failure:')
+        window.cont.title.pack(side = 'left')
+        self.sta_cont = tkinter.IntVar(window.cont)
+        self.sta_cont.set(0)
+        window.cont.check = ttk.Checkbutton(window.cont, variable = self.sta_cont,
+			command = self.refresh)
+        window.cont.check.pack(side = 'left')
+
+        self.toppane.settings.route_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.route_settings
+        window.title = ttk.Label(window, text = 'Route Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.gui = ttk.Frame(window)
+        window.gui.pack(side = 'top', fill = 'x')
+        window.gui.title = ttk.Label(window.gui, style = 'normal.TLabel',
+		text = 'Show graphic view:')
+        window.gui.title.pack(side = 'left')
+        self.route_graphics = tkinter.BooleanVar(window.gui)
+        self.route_graphics.set(1)
+
+        window.layers = ttk.Frame(window)
+        window.layers.pack(side = 'top', fill = 'x')
+        window.layers.title = ttk.Label(window.layers, style = 'normal.TLabel',
+		text = 'Route layers:')
+        self.route_layers = tkinter.StringVar(window.layers)
+        self.route_layers.set('max')
+        window.layers.title.pack(side = 'left')
+        window.layers.entry = ttk.Entry(window.layers, textvariable = self.route_layers)
+        window.layers.entry.pack(side = 'left')
+        window.layers.entry.delete(0, 'end')
+        window.layers.entry.insert(0, 'max')
+
+        window.gui.check = ttk.Checkbutton(window.gui, variable = self.route_graphics)
+        window.gui.check.pack(side = 'left')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after route success:')
+        window.stop.title.pack(side = 'left')
+        self.route_stop = tkinter.IntVar(window.stop)
+        self.route_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.route_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.backanno_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.backanno_settings
+        window.title = ttk.Label(window, text = 'Post-Route STA Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.longformat = ttk.Frame(window)
+        window.longformat.pack(side = 'top', fill = 'x')
+        window.longformat.title = ttk.Label(window.longformat, style = 'normal.TLabel',
+		text = 'Long format output:')
+        window.longformat.title.pack(side = 'left')
+        window.longformat.check = ttk.Checkbutton(window.longformat, variable = self.long_format)
+        window.longformat.check.pack(side = 'left')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after post-layout STA success:')
+        window.stop.title.pack(side = 'left')
+        self.post_sta_stop = tkinter.IntVar(window.stop)
+        self.post_sta_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.post_sta_stop)
+        window.stop.check.pack(side = 'left')
+
+        window.cont = ttk.Frame(window)
+        window.cont.pack(side = 'top', fill = 'x')
+        window.cont.title = ttk.Label(window.cont, style = 'normal.TLabel',
+		text = 'Continue flow if post-layout STA failure:')
+        window.cont.title.pack(side = 'left')
+        self.post_sta_cont = tkinter.IntVar(window.cont)
+        self.post_sta_cont.set(0)
+        window.cont.check = ttk.Checkbutton(window.cont, variable = self.post_sta_cont,
+		command = self.refresh)
+        window.cont.check.pack(side = 'left')
+
+        self.toppane.settings.migrate_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.migrate_settings
+        window.title = ttk.Label(window, text = 'Migrate Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after migration:')
+        window.stop.title.pack(side = 'left')
+        self.migrate_stop = tkinter.IntVar(window.stop)
+        self.migrate_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.migrate_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.drc_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.drc_settings
+        window.title = ttk.Label(window, text = 'DRC Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.swap = ttk.Frame(window)
+        window.swap.pack(side = 'top', fill = 'x')
+        window.swap.title = ttk.Label(window.swap, style = 'normal.TLabel',
+		text = 'Run LVS before DRC:')
+        window.swap.title.pack(side = 'left')
+        self.drc_swap = tkinter.IntVar(window.swap)
+        self.drc_swap.set(0)
+        window.swap.check = ttk.Checkbutton(window.swap, variable = self.drc_swap,
+		command = self.qflow_swap_drc_lvs)
+        window.swap.check.pack(side = 'left')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after DRC success:')
+        window.stop.title.pack(side = 'left')
+        self.drc_stop = tkinter.IntVar(window.stop)
+        self.drc_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.drc_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.lvs_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.lvs_settings
+        window.title = ttk.Label(window, text = 'LVS Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after LVS success:')
+        window.stop.title.pack(side = 'left')
+
+        self.lvs_stop = tkinter.IntVar(window.stop)
+        self.lvs_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.lvs_stop)
+        window.stop.check.pack(side = 'left')
+
+        self.toppane.settings.gds_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.gds_settings
+        window.title = ttk.Label(window, text = 'GDS Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+
+        window.gdsview = ttk.Frame(window)
+        window.gdsview.pack(side = 'top', fill = 'x')
+        window.gdsview.title = ttk.Label(window.gdsview, style = 'normal.TLabel',
+		text = 'Use GDS view of standard cells:')
+        window.gdsview.title.pack(side = 'left')
+        self.gdsview = tkinter.BooleanVar(window.gdsview)
+        self.gdsview.set(0)
+
+        window.stop = ttk.Frame(window)
+        window.stop.pack(side = 'top', fill = 'x')
+        window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
+		text = 'Stop flow after GDS success:')
+        window.stop.title.pack(side = 'left')
+        self.gds_stop = tkinter.IntVar(window.stop)
+        self.gds_stop.set(0)
+        window.stop.check = ttk.Checkbutton(window.stop, variable = self.gds_stop)
+        window.stop.check.pack(side = 'left')
+
+        window.gdsview.check = ttk.Checkbutton(window.gdsview, variable = self.gdsview)
+        window.gdsview.check.pack(side = 'left')
+
+        self.toppane.settings.test_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.test_settings
+        window.title = ttk.Label(window, text = 'Testbench Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+        window.message = ttk.Label(window, style = 'normal.TLabel',
+	 	text = '(there are no user-configurable settings for testbench simulation)')
+        window.message.pack(side = 'top')
+
+        self.toppane.settings.clean_settings = ttk.Frame(self.toppane.settings)
+        window = self.toppane.settings.clean_settings
+        window.title = ttk.Label(window, text = 'Cleanup Settings', style = 'title.TLabel')
+        window.title.pack(side = 'top')
+        window.purge = ttk.Frame(window)
+        window.purge.pack(side = 'top', fill = 'x')
+        window.purge.title = ttk.Label(window.purge, style = 'normal.TLabel',
+		text = 'Purge:')
+        window.purge.title.pack(side = 'left')
+        self.purge = tkinter.BooleanVar(window.purge)
+        self.purge.set(0)
+
+        window.purge.check = ttk.Checkbutton(window.purge, variable = self.purge,
+			command = self.gui_set_status)
+        window.purge.check.pack(side = 'left')
+
+        #------------------------------------------------
+        # Place the preparation settings window to start.
+
+        self.toppane.settings.prep_settings.grid(row = 0, column = 0, sticky = 'news')
+        self.settings_window = self.toppane.settings.prep_settings
+
+        # Create synthesis flow checklist
+        self.toppane.checklist = ttk.Frame(self.toppane)
+        self.toppane.checklist.pack(side = 'left', fill = 'both', expand = 'true')
+
+        # Fill checklist
+        self.toppane.checklist.title = ttk.Label(self.toppane.checklist, text="Checklist",
+		style = 'title.TLabel') 
+        self.toppane.checklist.title.grid(column = 0, row = 0, ipadx = 5, padx = 5, sticky = 'nsw')
+
+        self.toppane.checklist.prep = ttk.Label(self.toppane.checklist, text="Preparation",
+		style = 'section.TLabel') 
+        self.toppane.checklist.prep.grid(column = 0, row = 1, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.prep_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='qflow.log': self.textdisplay(filename)) 
+        self.toppane.checklist.prep_result.grid(column = 1, row = 1, ipadx = 2, padx = 2)
+        self.toppane.checklist.prep_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'bold.TButton', state='enabled', command = self.qflow_prep) 
+        self.toppane.checklist.prep_run.grid(column = 2, row = 1, ipadx = 2, padx = 2)
+        self.toppane.checklist.prep_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.prep_settings: self.replace_settings(window)) 
+        self.toppane.checklist.prep_settings.grid(column = 3, row = 1, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.prep_result, text = "Show synthesis preparation log file")
+        tooltip.ToolTip(self.toppane.checklist.prep_run, text = "Run synthesis preparation")
+        tooltip.ToolTip(self.toppane.checklist.prep_settings, text = "Show settings for synthesis preparation")
+
+        self.toppane.checklist.synth = ttk.Label(self.toppane.checklist, text="Synthesis",
+		style = 'section.TLabel') 
+        self.toppane.checklist.synth.grid(column = 0, row = 2, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.synth_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/synth.log': self.textdisplay(filename)) 
+        self.toppane.checklist.synth_result.grid(column = 1, row = 2, ipadx = 2, padx = 2)
+        self.toppane.checklist.synth_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_synth) 
+        self.toppane.checklist.synth_run.grid(column = 2, row = 2, ipadx = 2, padx = 2)
+        self.toppane.checklist.synth_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.synth_settings: self.replace_settings(window)) 
+        self.toppane.checklist.synth_settings.grid(column = 3, row = 2, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.synth_result, text = "Show synthesis log file")
+        tooltip.ToolTip(self.toppane.checklist.synth_run, text = "Run synthesis")
+        tooltip.ToolTip(self.toppane.checklist.synth_settings, text = "Show settings for synthesis")
+
+        self.toppane.checklist.place = ttk.Label(self.toppane.checklist, text="Placement",
+		style = 'section.TLabel') 
+        self.toppane.checklist.place.grid(column = 0, row = 3, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.place_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/place.log': self.textdisplay(filename))
+        self.toppane.checklist.place_result.grid(column = 1, row = 3, ipadx = 2, padx = 2)
+        self.toppane.checklist.place_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_place) 
+        self.toppane.checklist.place_run.grid(column = 2, row = 3, ipadx = 2, padx = 2)
+        self.toppane.checklist.place_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.place_settings: self.replace_settings(window)) 
+        self.toppane.checklist.place_settings.grid(column = 3, row = 3, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.place_result, text = "Show placement log file")
+        tooltip.ToolTip(self.toppane.checklist.place_run, text = "Run placement")
+        tooltip.ToolTip(self.toppane.checklist.place_settings, text = "Show settings for placement")
+
+        self.toppane.checklist.timing = ttk.Label(self.toppane.checklist, text="Static Timing Analysis",
+		style = 'section.TLabel') 
+        self.toppane.checklist.timing.grid(column = 0, row = 4, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.timing_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/sta.log': self.textdisplay(filename))
+        self.toppane.checklist.timing_result.grid(column = 1, row = 4, ipadx = 2, padx = 2)
+        self.toppane.checklist.timing_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_sta) 
+        self.toppane.checklist.timing_run.grid(column = 2, row = 4, ipadx = 2, padx = 2)
+        self.toppane.checklist.timing_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.timing_settings: self.replace_settings(window)) 
+        self.toppane.checklist.timing_settings.grid(column = 3, row = 4, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.timing_result, text = "Show static timing analysis log file")
+        tooltip.ToolTip(self.toppane.checklist.timing_run, text = "Run static timing analysis")
+        tooltip.ToolTip(self.toppane.checklist.timing_settings, text = "Show settings for static timing analysis")
+
+        self.toppane.checklist.route = ttk.Label(self.toppane.checklist, text="Routing",
+		style = 'section.TLabel') 
+        self.toppane.checklist.route.grid(column = 0, row = 5, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.route_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/route.log': self.textdisplay(filename))
+        self.toppane.checklist.route_result.grid(column = 1, row = 5, ipadx = 2, padx = 2)
+        self.toppane.checklist.route_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_route) 
+        self.toppane.checklist.route_run.grid(column = 2, row = 5, ipadx = 2, padx = 2)
+        self.toppane.checklist.route_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.route_settings: self.replace_settings(window)) 
+        self.toppane.checklist.route_settings.grid(column = 3, row = 5, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.route_result, text = "Show routing log file")
+        tooltip.ToolTip(self.toppane.checklist.route_run, text = "Run routing")
+        tooltip.ToolTip(self.toppane.checklist.route_settings, text = "Show settings for routing")
+
+        self.toppane.checklist.post = ttk.Label(self.toppane.checklist, text="Post-Route STA",
+		style = 'section.TLabel') 
+        self.toppane.checklist.post.grid(column = 0, row = 6, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.backanno_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/post_sta.log': self.textdisplay(filename))
+        self.toppane.checklist.backanno_result.grid(column = 1, row = 6, ipadx = 2, padx = 2)
+        self.toppane.checklist.backanno_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_backanno) 
+        self.toppane.checklist.backanno_run.grid(column = 2, row = 6, ipadx = 2, padx = 2)
+        self.toppane.checklist.backanno_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.backanno_settings: self.replace_settings(window)) 
+        self.toppane.checklist.backanno_settings.grid(column = 3, row = 6, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.backanno_result, text = "Show post-route static timing analysis log file")
+        tooltip.ToolTip(self.toppane.checklist.backanno_run, text = "Run post-route static timing analysis")
+        tooltip.ToolTip(self.toppane.checklist.backanno_settings, text = "Show settings for post-route static timing analysis")
+
+        self.toppane.checklist.migrate = ttk.Label(self.toppane.checklist, text="Migration",
+		style = 'section.TLabel') 
+        self.toppane.checklist.migrate.grid(column = 0, row = 7, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.migrate_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='qflow.log': self.textdisplay(filename))
+        self.toppane.checklist.migrate_result.grid(column = 1, row = 7, ipadx = 2, padx = 2)
+        self.toppane.checklist.migrate_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_migrate) 
+        self.toppane.checklist.migrate_run.grid(column = 2, row = 7, ipadx = 2, padx = 2)
+        self.toppane.checklist.migrate_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.migrate_settings: self.replace_settings(window)) 
+        self.toppane.checklist.migrate_settings.grid(column = 3, row = 7, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.migrate_result, text = "Show migration log file")
+        tooltip.ToolTip(self.toppane.checklist.migrate_run, text = "Migrate files to project area")
+        tooltip.ToolTip(self.toppane.checklist.migrate_settings, text = "Show settings for file migration")
+
+        self.toppane.checklist.drc = ttk.Label(self.toppane.checklist, text="DRC",
+		style = 'section.TLabel') 
+        self.toppane.checklist.drc.grid(column = 0, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.drc_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/drc.log': self.textdisplay(filename))
+        self.toppane.checklist.drc_result.grid(column = 1, row = 8, ipadx = 2, padx = 2)
+        self.toppane.checklist.drc_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_drc) 
+        self.toppane.checklist.drc_run.grid(column = 2, row = 8, ipadx = 2, padx = 2)
+        self.toppane.checklist.drc_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.drc_settings: self.replace_settings(window)) 
+        self.toppane.checklist.drc_settings.grid(column = 3, row = 8, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.drc_result, text = "Show DRC results")
+        tooltip.ToolTip(self.toppane.checklist.drc_run, text = "Run DRC")
+        tooltip.ToolTip(self.toppane.checklist.drc_settings, text = "Show settings for DRC")
+
+        self.toppane.checklist.lvs = ttk.Label(self.toppane.checklist, text="LVS",
+		style = 'section.TLabel') 
+        self.toppane.checklist.lvs.grid(column = 0, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.lvs_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='comp.out': self.textdisplay(filename))
+        self.toppane.checklist.lvs_result.grid(column = 1, row = 9, ipadx = 2, padx = 2)
+        self.toppane.checklist.lvs_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_lvs) 
+        self.toppane.checklist.lvs_run.grid(column = 2, row = 9, ipadx = 2, padx = 2)
+        self.toppane.checklist.lvs_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.lvs_settings: self.replace_settings(window)) 
+        self.toppane.checklist.lvs_settings.grid(column = 3, row = 9, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.lvs_result, text = "Show LVS results")
+        tooltip.ToolTip(self.toppane.checklist.lvs_run, text = "Run LVS")
+        tooltip.ToolTip(self.toppane.checklist.lvs_settings, text = "Show settings for LVS")
+
+
+        self.toppane.checklist.gds = ttk.Label(self.toppane.checklist, text="GDS",
+		style = 'section.TLabel') 
+        self.toppane.checklist.gds.grid(column = 0, row = 10, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.gds_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/gdsii.log': self.textdisplay(filename))
+        self.toppane.checklist.gds_result.grid(column = 1, row = 10, ipadx = 2, padx = 2)
+        self.toppane.checklist.gds_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_gds) 
+        self.toppane.checklist.gds_run.grid(column = 2, row = 10, ipadx = 2, padx = 2)
+        self.toppane.checklist.gds_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.gds_settings: self.replace_settings(window)) 
+        self.toppane.checklist.gds_settings.grid(column = 3, row = 10, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.gds_result, text = "Show GDS output results")
+        tooltip.ToolTip(self.toppane.checklist.gds_run, text = "Generate GDS")
+        tooltip.ToolTip(self.toppane.checklist.gds_settings, text = "Show settings for GDS")
+
+        # NOTE: Testbench section to be implemented later (create widgets but do not grid them)
+
+        self.toppane.checklist.test = ttk.Label(self.toppane.checklist, text="Testbench",
+		style = 'section.TLabel') 
+        # self.toppane.checklist.test.grid(column = 0, row = 11, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.test_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='log/testbench.log': self.textdisplay(filename))
+        # self.toppane.checklist.test_result.grid(column = 1, row = 11, ipadx = 2, padx = 2)
+        self.toppane.checklist.test_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_tb) 
+        # self.toppane.checklist.test_run.grid(column = 2, row = 11, ipadx = 2, padx = 2)
+        self.toppane.checklist.test_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.test_settings: self.replace_settings(window)) 
+        # self.toppane.checklist.test_settings.grid(column = 3, row = 11, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.test_result, text = "Show testbench simulation results")
+        tooltip.ToolTip(self.toppane.checklist.test_run, text = "Run testbench simulation")
+        tooltip.ToolTip(self.toppane.checklist.test_settings, text = "Show settings for testbench simulation")
+
+        self.toppane.checklist.clean = ttk.Label(self.toppane.checklist, text="Cleanup",
+		style = 'section.TLabel') 
+        self.toppane.checklist.clean.grid(column = 0, row = 12, ipadx = 2, padx = 2, sticky = 'nsw')
+        self.toppane.checklist.clean_result = ttk.Button(self.toppane.checklist, text="(not done)",
+		style = 'normal.TButton',
+		command = lambda filename='qflow.log': self.textdisplay(filename))
+        self.toppane.checklist.clean_result.grid(column = 1, row = 12, ipadx = 2, padx = 2)
+        self.toppane.checklist.clean_run = ttk.Button(self.toppane.checklist, text="Run",
+		style = 'normal.TButton', state='disabled', command = self.qflow_cleanup) 
+        self.toppane.checklist.clean_run.grid(column = 2, row = 12, ipadx = 2, padx = 2)
+        self.toppane.checklist.clean_settings = ttk.Button(self.toppane.checklist,
+		text="Settings", style = 'normal.TButton',
+		command =lambda window=self.toppane.settings.clean_settings: self.replace_settings(window)) 
+        self.toppane.checklist.clean_settings.grid(column = 3, row = 12, ipadx = 2, padx = 2)
+        tooltip.ToolTip(self.toppane.checklist.clean_result, text = "Show cleanup log file")
+        tooltip.ToolTip(self.toppane.checklist.clean_run, text = "Run cleanup")
+        tooltip.ToolTip(self.toppane.checklist.clean_settings, text = "Show settings for cleanup")
+
+        #---------------------------------------------
+
+        ttk.Separator(self.toppane, orient='vertical').pack(side = 'left', fill = 'y')
+        self.toppane.settings.pack(side = 'left', fill = 'both', expand = 'true')
+
+        # Add a text window below the project name to capture output.  Redirect
+        # print statements to it.
+
+        self.botpane.console = ttk.Frame(self.botpane)
+        self.botpane.console.pack(side = 'top', fill = 'both', expand = 'true')
+
+        self.text_box = ConsoleText(self.botpane.console, wrap='word', height = 4)
+        self.text_box.pack(side='left', fill='both', expand='true')
+        console_scrollbar = ttk.Scrollbar(self.botpane.console)
+        console_scrollbar.pack(side='right', fill='y')
+        # attach console to scrollbar
+        self.text_box.config(yscrollcommand = console_scrollbar.set)
+        console_scrollbar.config(command = self.text_box.yview)
+
+        # Add button bar at the bottom of the window
+        self.botpane.bbar = ttk.Frame(self.botpane)
+        self.botpane.bbar.pack(side = 'top', fill = 'x')
+
+        # Define the "quit" button and action
+        self.botpane.bbar.quit_button = ttk.Button(self.botpane.bbar, text='Quit', command=self.on_quit,
+                style = 'normal.TButton')
+        self.botpane.bbar.quit_button.grid(column = 0, row = 0, padx = 5)
+        tooltip.ToolTip(self.botpane.bbar.quit_button, text = "Quit the synthesis flow manager")
+
+        # Define help button
+        if self.help:
+            self.botpane.bbar.help_button = ttk.Button(self.botpane.bbar, text='Help',
+			command=self.help.open, style = 'normal.TButton')
+            self.botpane.bbar.help_button.grid(column = 1, row = 0, padx = 5)
+            tooltip.ToolTip(self.botpane.bbar.help_button, text = "Show help window")
+
+        # Define layout edit button
+        self.botpane.bbar.edit_button = ttk.Button(self.botpane.bbar, text='Edit Layout', command=self.edit_layout,
+                style = 'normal.TButton')
+        self.botpane.bbar.edit_button.grid(column = 2, row = 0, padx = 5)
+
+        # Add the panes once the internal geometry is known.
+        pane.add(self.toppane)
+        pane.add(self.botpane)
+        pane.paneconfig(self.toppane, stretch='first')
+
+    def print(self, message, file=None):
+        # Local print routine.  
+        if not file:
+            file = ConsoleText.StdoutRedirector(self.text_box)
+        if self.stdout:
+            print(message, file=file)
+        else:
+            self.init_messages.append(message)
+        
+
+    def text_to_console(self):
+        # Redirect stdout and stderr to the console as the last thing to do. . .
+        # Otherwise errors in the GUI get sucked into the void.
+
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
+        sys.stdout = ConsoleText.StdoutRedirector(self.text_box)
+        sys.stderr = ConsoleText.StderrRedirector(self.text_box)
+
+        if len(self.init_messages) > 0:
+            for message in self.init_messages:
+                print(message)
+            self.init_messages = []
+
+    # Open and configure the pin manager
+
+    def runpinmanager(self):
+        sdir = self.synthdir
+        ldir = self.layoutdir
+        vlogfile = sdir + '/' + self.project + '.v'
+        cel2file = ldir + '/' + self.project + '.cel2'
+
+        self.pinmanager.readpads(cel2file, vlogfile)
+        self.pinmanager.populate()
+        self.pinmanager.open()
+
+    # Set all "stop" variables so that synthesis stops after every step
+
+    def set_all_stops(self):
+        self.synth_stop.set(1)
+        self.place_stop.set(1)
+        self.sta_stop.set(1)
+        self.route_stop.set(1)
+        self.post_sta_stop.set(1)
+        self.migrate_stop.set(1)
+        self.drc_stop.set(1)
+        self.lvs_stop.set(1)
+        self.gds_stop.set(1)
+
+    # Clear all "stop" variables so that synthesis continues after every step
+
+    def clear_all_stops(self):
+        self.synth_stop.set(0)
+        self.place_stop.set(0)
+        self.sta_stop.set(0)
+        self.route_stop.set(0)
+        self.post_sta_stop.set(0)
+        self.migrate_stop.set(0)
+        self.drc_stop.set(0)
+        self.lvs_stop.set(0)
+        self.gds_stop.set(0)
+
+    # Display a text file
+
+    def textdisplay(self, filename):
+        mdir = self.layoutdir
+        ldir = self.logdir
+
+        # Look for the file as given or in one of the subdirectories above
+        if os.path.exists(filename):
+            fullname = filename
+        else:
+            fullname = self.rootpath + '/' + filename
+            if not os.path.exists(fullname):
+                fullname = mdir + '/' + filename
+                if not os.path.exists(fullname):
+                    fullname = ldir + '/' + filename
+                    if not os.path.exists(fullname):
+                        return
+         
+        self.textreport.display(fullname)
+
+    # Layout edit function (run magic interactively)
+
+    def edit_layout(self):
+
+        status = self.status.split(':')[0]
+        ldir = self.rootpath + '/layout'
+        logdir = self.rootpath + '/log'
+        laystate = ''
+
+        # How the layout is loaded and displayed depends on the current state.
+        if status == 'prep' or status == 'synth' or status == 'place':
+            self.print('There is no layout to view.')
+            return
+        elif status == 'timing' or status == 'route':
+            self.print('Displaying the placed and unrouted layout')
+            laystate = 'place'
+        elif status == 'backanno' or status == 'migrate':
+            self.print('Displaying the completed routed layout, abstract view')
+            laystate = 'route1'
+        elif  status == 'lvs' or status == 'drc':
+            self.print('Displaying the completed routed layout, abstract view')
+            laystate = 'route2'
+        elif status == 'gds' or status == 'clean' or status == 'done':
+            self.print('Displaying the completed routed layout, full view')
+            laystate = 'gds'
+
+        # Pick up LEF files from the project .cfg file
+        leffiles = []
+        if laystate == 'place' or laystate == 'route1' or laystate == 'route2':
+            leffiles = self.get_project_leffiles()
+
+        # Pick up GDS files from the technology .sh file
+        gdsfiles = []
+        if laystate == 'gds':
+            gdsfiles = self.get_project_gdsfiles()
+
+        # Make a copy of the .magicrc file for startup with some
+        # layout commands running automatically at startup.
+
+        self.update_idletasks()
+
+        if os.path.isfile(ldir + '/.magicrc'):
+            with open(ldir + '/.magicrc', 'r') as ifile:
+                rclines = ifile.read().splitlines()
+
+            with open(ldir + '/qflow.magicrc', 'w') as ofile:
+                for line in rclines:
+                    print(line, file=ofile)
+                print('', file=ofile)
+                print('# Qflow: read layout for review', file=ofile)
+                # The following line causes magic to open a layout window,
+                # so that following commands can include interactive layout.
+                print('openwrapper', file=ofile)
+                print('box 0 0 0 0', file=ofile)
+                print('drc off', file=ofile)
+                for leffile in leffiles:
+                    print('lef read ' + leffile, file=ofile)
+                for gdsfile in gdsfiles:
+                    print('gds read ' + gdsfile, file=ofile)
+                if laystate == 'gds':
+                    print('load gds_top', file=ofile)
+                    print('gds read ' + self.project, file=ofile)
+                else:
+                    if laystate == 'route1':
+                        # .mag file was created by 1st migration, but is not routed,
+                        # so use the DEF instead.
+                        print('def read ' + self.project, file=ofile)
+                    else:
+                        print('load ' + self.project, file=ofile)
+                        if not os.path.isfile(ldir + '/' + self.project + '.mag'):
+                            print('def read ' + self.project, file=ofile)
+                print('select top cell', file=ofile)
+                print('expand', file=ofile)
+                print('view', file=ofile)
+                
+        # Run magic in batch mode to find the version number and the
+        # available graphics options. OpenGL graphics are preferred, if
+        # available, followed by Cairo graphic, and finally X11 24-bit.
+
+        # NOTE:  There is a weird effect where OpenGL fails due to a
+        # security clampdown on Nvidia cards, causing the X11 server
+        # to generate an error.  For unknown reasons, this causes
+        # the subprocess to block even though Popen() is supposedly
+        # non-blocking, and doesn't use pipes.  The best workaround
+        # is to not use OpenGL unless the ~/.qflow/prefs.json file
+        # has 'graphics': 'OGL'.  Adding a "Settings" button that
+        # creates the prefs.json file and exposes the known entries
+        # is on the to-do list.
+
+        self.update_idletasks()
+
+        if not self.magicgtype:
+            mproc = subprocess.Popen([qflow_bin_dir + '/magic', '-d', '0', '-noconsole'],
+			stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+			universal_newlines = True)
+            magicpair = mproc.communicate(timeout=1)
+            if 'graphics' in self.prefs:
+                self.magicgtype = self.prefs['graphics']
+            else:
+                self.magicgtype = 'X11'
+            for line in magicpair[1].splitlines():
+                if 'XR' in line:
+                    self.magicgtype = 'XR'
+                    break
+                # elif 'OGL' in line:
+                #     self.magicgtype = 'OGL'
+                #     break
+
+        self.update_idletasks()
+
+        if not self.magicversion:
+            mproc = subprocess.Popen([qflow_bin_dir + '/magic', '-dnull', '-noconsole', '--version'],
+			stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+			universal_newlines = True)
+            magicpair = mproc.communicate(timeout=1)
+            self.magicversion = magicpair[0].splitlines()[0]
+            self.print('Magic version is ' + self.magicversion)
+
+        self.update_idletasks()
+
+        # Run magic interactively until the user exits.
+        mproc = subprocess.Popen([qflow_bin_dir + '/magic', '-d', self.magicgtype, '-rcfile', 'qflow.magicrc'],
+		stdout = self.stdout, stderr = self.stderr, cwd = ldir)
+
+        # Do not wait for user to exit.  The temporary magicrc file may remain in place.
+        # magicpair = mproc.communicate()
+        # Remove the load.magrc file
+        # os.remove(ldir + '/qflow.magicrc')
+
+    # Modify the GUI to run LVS before DRC (visual only;  keeps the checklist
+    # from running out-of-order).
+
+    def qflow_swap_drc_lvs(self):
+        swapstate = self.drc_swap.get()
+        if swapstate == 0:
+            # DRC before LVS
+            self.toppane.checklist.drc.grid(column = 0, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_result.grid(column = 1, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_run.grid(column = 2, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_settings.grid(column = 3, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.lvs.grid(column = 0, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.lvs_result.grid(column = 1, row = 9, ipadx = 2, padx = 2)
+            self.toppane.checklist.lvs_run.grid(column = 2, row = 9, ipadx = 2, padx = 2)
+            self.toppane.checklist.lvs_settings.grid(column = 3, row = 9, ipadx = 2, padx = 2)
+        else:
+            # LVS before DRC
+            self.toppane.checklist.lvs.grid(column = 0, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.lvs_result.grid(column = 1, row = 8, ipadx = 2, padx = 2)
+            self.toppane.checklist.lvs_run.grid(column = 2, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.lvs_settings.grid(column = 3, row = 8, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc.grid(column = 0, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_result.grid(column = 1, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_run.grid(column = 2, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+            self.toppane.checklist.drc_settings.grid(column = 3, row = 9, ipadx = 2, padx = 2, sticky = 'nsw')
+        # Now get the status again. . . 
+        self.qflow_get_status()
+        # And set the GUI again. . .
+        self.gui_set_status()
+	
+    # Set the GUI according to self.status
+
+    def gui_set_status(self):
+        status = self.status
+
+        passfailrex = re.compile('([a-z]+):([a-z]+)')
+        pfmatch = passfailrex.match(status)
+        if pfmatch:
+            status = pfmatch.group(1)
+            passfail = pfmatch.group(2)
+        else:
+            passfail = 'none'
+
+        if passfail == 'pass':
+            pftext = 'Okay'
+            pfstyle = 'green.TButton'
+        elif passfail == 'warn':
+            pftext = 'Warning'
+            pfstyle = 'orange.TButton'
+        elif passfail == 'fail':
+            pftext = 'Fail'
+            pfstyle = 'red.TButton'
+        else:
+            pftext = '(not done)'
+            pfstyle = 'normal.TButton'
+
+        if status == 'begin':
+            # There is no status, so get one
+            self.qflow_get_status()
+
+        if self.drc_swap.get() == 0:
+            stages = ['begin', 'prep', 'synth', 'place', 'timing', 'route', 'backanno', 'migrate', 'drc', 'lvs', 'gds', 'clean', 'done']
+        else:
+            stages = ['begin', 'prep', 'synth', 'place', 'timing', 'route', 'backanno', 'migrate', 'lvs', 'drc', 'gds', 'clean', 'done']
+
+        try:
+            stage = stages.index(status) - 1
+        except ValueError:
+            self.print('Error:  Unknown synthesis flow stage ' + status)
+            stage = -1
+        else:
+            # Set GUI according to the stage
+            if status == 'done':
+                self.print('Current qflow status:  Project is completed.')
+            else:
+                self.print('Current qflow status:  Next project action is ' + status)
+            # self.print('Diagnostic:  stage is ' + str(stage))
+
+        self.toppane.checklist.prep_run.config(state = 'enabled')
+        if stage <= 0:
+            result = pftext if stage == 0 else "(not done)"
+            style = pfstyle if stage == 0 else "normal.TButton"
+            self.toppane.checklist.prep_result.configure(text=result, style=style)
+            self.toppane.checklist.synth_run.config(state = 'disabled')
+        else:
+            self.toppane.checklist.prep_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.synth_run.config(state = 'enabled', text = 'Run')
+        if stage <= 1:
+            result = pftext if stage == 1 else "(not done)"
+            style = pfstyle if stage == 1 else "normal.TButton"
+            self.toppane.checklist.synth_result.configure(text=result, style=style)
+            self.toppane.checklist.place_run.config(state = 'disabled')
+        else:
+            self.toppane.checklist.synth_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.place_run.config(state = 'enabled', text = 'Run')
+        if stage <= 2:
+            result = pftext if stage == 2 else "(not done)"
+            style = pfstyle if stage == 2 else "normal.TButton"
+            self.toppane.checklist.place_result.configure(text=result, style=style)
+            self.toppane.checklist.timing_run.config(state = 'disabled')
+        else:
+            self.toppane.checklist.place_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.timing_run.config(state = 'enabled', text = 'Run')
+        if stage <= 3:
+            result = pftext if stage == 3 else "(not done)"
+            style = pfstyle if stage == 3 else "normal.TButton"
+            self.toppane.checklist.timing_result.configure(text=result, style=style)
+            self.toppane.checklist.route_run.config(state = 'disabled')
+        else:
+            if self.sta_cont.get() == 1:
+                self.toppane.checklist.timing_result.configure(text='Unknown', style='normal.TButton')
+            else:
+                self.toppane.checklist.timing_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.route_run.config(state = 'enabled', text = 'Run')
+        if stage <= 4:
+            result = pftext if stage == 4 else "(not done)"
+            style = pfstyle if stage == 4 else "normal.TButton"
+            self.toppane.checklist.route_result.configure(text=result, style=style)
+            self.toppane.checklist.backanno_run.config(state = 'disabled')
+        else:
+            self.toppane.checklist.route_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.backanno_run.config(state = 'enabled', text = 'Run')
+
+        if stage <= 5:
+            result = pftext if stage == 5 else "(not done)"
+            style = pfstyle if stage == 5 else "normal.TButton"
+            self.toppane.checklist.backanno_result.configure(text=result, style=style)
+            self.toppane.checklist.migrate_run.config(state = 'disabled')
+        else:
+            if self.post_sta_cont.get() == 1:
+                self.toppane.checklist.backanno_result.configure(text='Unknown', style='normal.TButton')
+            else:
+                self.toppane.checklist.backanno_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.migrate_run.config(state = 'enabled', text = 'Run')
+
+        if stage <= 6:
+            result = pftext if stage == 6 else "(not done)"
+            style = pfstyle if stage == 6 else "normal.TButton"
+            self.toppane.checklist.migrate_result.configure(text=result, style=style)
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.drc_run.config(state = 'disabled')
+            else:
+                self.toppane.checklist.lvs_run.config(state = 'disabled')
+        else:
+            self.toppane.checklist.migrate_result.configure(text='Okay', style='green.TButton')
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.drc_run.config(state = 'enabled', text = 'Run')
+            else:
+                self.toppane.checklist.lvs_run.config(state = 'enabled', text = 'Run')
+        if stage <= 7:
+            result = pftext if stage == 7 else "(not done)"
+            style = pfstyle if stage == 7 else "normal.TButton"
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.drc_result.configure(text=result, style=style)
+                self.toppane.checklist.lvs_run.config(state = 'disabled')
+            else:
+                self.toppane.checklist.lvs_result.configure(text=result, style=style)
+                self.toppane.checklist.drc_run.config(state = 'disabled')
+        else:
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.drc_result.configure(text='Okay', style='green.TButton')
+                self.toppane.checklist.lvs_run.config(state = 'enabled', text = 'Run')
+            else:
+                self.toppane.checklist.lvs_result.configure(text='Okay', style='green.TButton')
+                self.toppane.checklist.drc_run.config(state = 'enabled', text = 'Run')
+        if stage <= 8:
+            result = pftext if stage == 8 else "(not done)"
+            style = pfstyle if stage == 8 else "normal.TButton"
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.lvs_result.configure(text=result, style=style)
+            else:
+                self.toppane.checklist.drc_result.configure(text=result, style=style)
+            self.toppane.checklist.gds_run.config(state = 'disabled')
+        else:
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.lvs_result.configure(text='Okay', style='green.TButton')
+            else:
+                self.toppane.checklist.drc_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.gds_run.config(state = 'enabled', text = 'Run')
+        if stage <= 9:
+            result = pftext if stage == 9 else "(not done)"
+            style = pfstyle if stage == 9 else "normal.TButton"
+            self.toppane.checklist.gds_result.configure(text=result, style=style)
+            if self.purge.get() == 0:
+                self.toppane.checklist.clean_run.config(state = 'disabled')
+            else:
+                self.toppane.checklist.clean_run.config(state = 'enabled')
+        else:
+            self.toppane.checklist.gds_result.configure(text='Okay', style='green.TButton')
+            self.toppane.checklist.clean_run.config(state = 'enabled', text = 'Run')
+        if stage <= 10:
+            result = pftext if stage == 10 else "(not done)"
+            style = pfstyle if stage == 10 else "normal.TButton"
+            self.toppane.checklist.clean_result.configure(text=result, style=style)
+        else:
+            self.toppane.checklist.clean_result.configure(text='Okay', style='green.TButton')
+
+        if stage == 0:
+            self.toppane.checklist.prep_run.config(style = 'bold.TButton', text = 'Run')
+            self.replace_settings(self.toppane.settings.prep_settings)
+        else:
+            self.toppane.checklist.prep_run.config(style = 'normal.TButton')
+        if stage == 1:
+            self.toppane.checklist.synth_run.config(style = 'bold.TButton', text = 'Run')
+            self.replace_settings(self.toppane.settings.synth_settings)
+        else:
+            self.toppane.checklist.synth_run.config(style = 'normal.TButton')
+        if stage == 2:
+            self.replace_settings(self.toppane.settings.place_settings)
+            self.toppane.checklist.place_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.place_run.config(style = 'normal.TButton')
+        if stage == 3:
+            self.replace_settings(self.toppane.settings.timing_settings)
+            self.toppane.checklist.timing_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.timing_run.config(style = 'normal.TButton')
+        if stage == 4:
+            self.replace_settings(self.toppane.settings.route_settings)
+            self.toppane.checklist.route_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.route_run.config(style = 'normal.TButton')
+        if stage == 5:
+            self.replace_settings(self.toppane.settings.backanno_settings)
+            self.toppane.checklist.backanno_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.backanno_run.config(style = 'normal.TButton')
+        if stage == 6:
+            self.replace_settings(self.toppane.settings.migrate_settings)
+            self.toppane.checklist.migrate_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.migrate_run.config(style = 'normal.TButton')
+        if stage == 7:
+            if self.drc_swap.get() == 0:
+                self.replace_settings(self.toppane.settings.drc_settings)
+                self.toppane.checklist.drc_run.config(style = 'bold.TButton', text = 'Run')
+            else:
+                self.replace_settings(self.toppane.settings.lvs_settings)
+                self.toppane.checklist.lvs_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.drc_run.config(style = 'normal.TButton')
+            else:
+                self.toppane.checklist.lvs_run.config(style = 'normal.TButton')
+        if stage == 8:
+            if self.drc_swap.get() == 0:
+                self.replace_settings(self.toppane.settings.lvs_settings)
+                self.toppane.checklist.lvs_run.config(style = 'bold.TButton', text = 'Run')
+            else:
+                self.replace_settings(self.toppane.settings.drc_settings)
+                self.toppane.checklist.drc_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            if self.drc_swap.get() == 0:
+                self.toppane.checklist.lvs_run.config(style = 'normal.TButton')
+            else:
+                self.toppane.checklist.drc_run.config(style = 'normal.TButton')
+        if stage == 9:
+            self.replace_settings(self.toppane.settings.gds_settings)
+            self.toppane.checklist.gds_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.gds_run.config(style = 'normal.TButton')
+        if stage == 10:
+            self.replace_settings(self.toppane.settings.clean_settings)
+            self.toppane.checklist.clean_run.config(style = 'bold.TButton', text = 'Run')
+        else:
+            self.toppane.checklist.clean_run.config(style = 'normal.TButton')
+
+    # Determine how many steps of the process have already been worked through,
+    # and set the GUI accordingly.
+
+    def qflow_get_status(self):
+        # Defaults
+        srcdir = self.rootpath + '/source'
+        sdir = self.rootpath + '/synthesis'
+        ldir = self.rootpath + '/layout'
+        logdir = self.rootpath + '/log'
+        if not self.pdkdir:
+            tdir = self.rootpath + '/tech'
+        else:
+            tdir = self.pdkdir
+        if not self.pdknode.get():
+            pdkname = '(unknown)'
+        else:
+            pdkname = self.pdknode.get()
+
+        self.print('Determining current status of project.')
+        if self.rootpath:
+            self.print('Path to project = ' + self.rootpath)
+        else:
+            self.print('Project path not set.')
+
+        # Step zero:  Prior to any run of qflow, check for the presence of
+        # a "qflow_vars.sh" file, and determine if the setup has been run.
+
+        self.print("Step zero.")
+        varrex = re.compile('^[ \t]*set[ \t]+([^ \t]+)[ \t]*=[ \t]*([^ \t\n#]+)')
+        if os.path.exists(self.rootpath + '/qflow_vars.sh'):
+            self.print('Reading qflow_vars.sh setup file.')
+            with open(self.rootpath + '/qflow_vars.sh', 'r') as ifile:
+                for line in ifile:
+                    vmatch = varrex.match(line)
+                    if vmatch:
+                        key = vmatch.group(1)
+                        value = vmatch.group(2)
+                        if key == 'projectpath':
+                            self.rootpath = value
+                        elif key == 'techdir':
+                            tdir = value
+                        elif key == 'sourcedir':
+                            srcdir = value
+                        elif key == 'synthdir':
+                            sdir = value
+                        elif key == 'layoutdir':
+                            ldir = value
+                        elif key == 'logdir':
+                            logdir = value
+                        elif key == 'techname':
+                            pdkname = value
+        
+        self.sourcedir = srcdir
+        self.synthdir = sdir
+        self.layoutdir = ldir
+        self.logdir = logdir
+        self.pdkdir = tdir
+        result = self.set_pdk(self.pdkdir, pdkname)
+
+        if not result:
+            # Failed:  Clear project and module, and require user to set up
+            # everything from the GUI selection buttons
+            self.project = "(no selection)"
+            self.status = 'begin'
+            self.module.set('(none)')
+            self.toppane.title2_frame.project_select.config(text = self.rootpath)
+            return
+
+        # Step one:  If qflow_exec.sh exists, then the module name is embedded in the
+        # synthesize command.  Use this to set the module name in the prep settings.
+
+        self.print("Step one.")
+        cmdrex = re.compile('#?[ \t]*([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+')
+        if os.path.exists(self.rootpath + '/qflow_exec.sh'):
+            self.print('Reading qflow_exec.sh file.')
+            with open(self.rootpath + '/qflow_exec.sh', 'r') as ifile:
+                for line in ifile:
+                    cmatch = cmdrex.match(line)
+                    if cmatch:
+                        command = cmatch.group(1)
+                        if 'synthesize.sh' in command:
+                            module = cmatch.group(3)
+                            self.module.set(module)
+                            self.project = module
+                            break
+
+        # Step two:  Prep is done if project_vars.sh exists and all qflow
+        # subdirectories exist.
+
+        self.print("Step two.")
+        stime = 0
+        message = None
+        if not os.path.exists(self.rootpath):
+            self.print("No root path.  Status set to 'begin'")
+            self.status = 'begin'
+            return
+
+        if os.path.exists(self.sourcedir):
+            # Check for verilog source file set
+            if self.verilog:
+                sourcefile = self.verilog
+            else:
+                sourcefile = srcdir + '/' + self.project + '.v'
+                if not os.path.exists(sourcefile):
+                    # Check if there is only one source file
+                    sourcefiles = os.listdir(srcdir)
+                    if len(sourcefiles) == 1:
+                        vext = os.path.splitext(sourcefiles[0])[1]
+                        if vext == '.v' or vext == '.sv':
+                            sourcefile = srcdir + '/' + sourcefiles[0] 
+                # To do:  If there are multiple source files, check
+                # them all for matching top-level modules.
+
+            # Check timestamp on verilog source file
+            if os.path.exists(sourcefile):
+                # self.print('Diagnostic: verilog source file is ' + sourcefile)
+                vfile = os.path.realpath(sourcefile)
+                statbuf = os.stat(vfile)
+                stime = statbuf.st_mtime
+                self.verilog = sourcefile
+ 
+                # If no module has been set, then set the module to the
+                # first module found in the file.  If the file defines
+                # multiple modules and one of them is the project name,
+                # then use that preferentially.
+
+                modrex = re.compile('[ \t]*module[ \t]+([^ \t]+)[ \t]*\(')
+                self.print('Reading source file to verify module name.')
+                with open(sourcefile, 'r') as ifile:
+                    vlines = ifile.read().splitlines()
+                    found = 0
+                    for vline in vlines:
+                        mmatch = modrex.match(vline)
+                        if mmatch:
+                            modname = mmatch.group(1)
+                            if self.project and self.project == modname:
+                                self.print('Module name is ' + modname)
+                                self.module.set(modname)
+                                found = 3
+                            elif self.module.get() == '(none)':
+                                self.print('Module name is ' + modname)
+                                self.module.set(modname)
+                                self.project = modname
+                                found = 2
+                            elif found == 0:
+                                tentative = modname
+                                found = 1
+                    if found == 1:
+                        self.module.set(tentative)
+                        self.project = tentative
+                    if found > 0:
+                        self.toppane.settings.prep_settings.verilog.source_select.config(text = os.path.split(self.verilog)[1])
+            else:
+                message = 'No source file ' + str(sourcefile) + ' found.'
+        else:
+            message = 'No source path created.'
+
+        if not os.path.exists(self.rootpath + '/project_vars.sh'):
+            message = 'No project_vars.sh file created.'
+            stime = 0
+
+        if stime == 0:
+            if message:
+                self.print('Status: ' + message)
+            self.print('Status set to "prep"')
+            self.status = 'prep'
+            return
+        else:
+            self.status = 'synth'
+
+        # Step three:  Check for .v file 
+        self.print("Step three.")
+        vlogfile = sdir + '/' + self.project + '.v'
+        if os.path.exists(vlogfile):
+            statbuf = os.stat(vlogfile)
+            if statbuf.st_mtime >= stime:
+                self.status = 'place'
+                stime = statbuf.st_mtime
+            else:
+                self.print('Status: structural verilog file predates functional verilog file.')
+                self.print('Status set to "synth"')
+                return
+        else:
+            self.print('Status: no .v file.')
+            self.print('Status set to "synth"')
+            return
+
+        # Step four: Check for _unroute.def file
+        self.print("Step four.")
+        deffile = ldir + '/' + self.project + '_unroute.def'
+        if os.path.exists(deffile):
+            statbuf = os.stat(deffile)
+            if statbuf.st_mtime >= stime:
+                self.status = 'timing'
+                stime = statbuf.st_mtime
+
+                # Did addspacers fail to create power stripes due to bad user input?
+                logfile = self.rootpath + 'log/place.log'
+                if os.path.exists(logfile):
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'No room for stripes' in line:
+                                self.print('Status: Log file reports power buses not placed.')
+                                self.print('Status set to "place"')
+                                self.status = 'place:fail'
+                                return
+            else:
+                self.print('Status: _unroute.def file predates .v file.')
+                self.print('Status set to "place"')
+                self.status = 'place'
+                return
+        else:
+            self.print('Status: no _unroute.def file.')
+            self.print('Status set to "place"')
+            self.status = 'place'
+            return
+
+        # Step five: Check for static timing analysis result in sta.log
+        self.print("Step five.")
+        logfile = self.logdir + '/sta.log'
+        if os.path.exists(logfile):
+            statbuf = os.stat(logfile)
+            if statbuf.st_mtime >= stime:
+                # Check for "MET" or "VIOLATED" indicating output from
+                # OpenSTA or OpenTimer, or 'Design meets minimum hold timing'
+                # for output from vesta.
+                sta_ok = False
+                is_not_vesta = False
+                with open(logfile, 'r') as ifile:
+                    for line in ifile:
+                        if 'Design meets minimum' in line:
+                            sta_ok = True
+                            break
+                        elif 'MET' in line or 'VIOLATED' in line:
+                            is_not_vesta = True
+                            break
+                if is_not_vesta:
+                    sta_ok = True
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'VIOLATED' in line:
+                                sta_ok = False
+                                break
+                if not sta_ok:
+                    self.print('Status: STA log file incomplete or timing failed.')
+                    if self.sta_cont.get() == 0:
+                        self.print('Status set to "timing"')
+                        self.status = 'timing:fail'
+                        return
+                    else:
+                        self.print('Ignoring fail state and continuing flow.')
+
+                self.status = 'route'
+                stime = statbuf.st_mtime
+            else:
+                self.print('Status: STA log file predates verilog file.')
+                self.print('Status set to "timing"')
+                self.status = 'timing'
+                return
+        else:
+            self.print('Status: no STA log file.')
+            self.print('Status set to "timing"')
+            self.status = 'timing'
+            return
+
+        # Step six: Check for .def file
+        self.print("Step six.")
+        deffile = ldir + '/' + self.project + '.def'
+        if os.path.exists(deffile):
+            statbuf = os.stat(deffile)
+            if statbuf.st_mtime >= stime:
+                # DEF file exists, but did all routes get completed?
+                logfile = self.logdir + '/route.log'
+                if os.path.exists(logfile):
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'Final: Failed net routes:' in line:
+                                self.print('Status: log file reports unrouted nets.')
+                                self.print('Status set to "route"')
+                                self.status = 'route:fail'
+                                return
+                    self.status = 'backanno'
+                    stime = statbuf.st_mtime
+                else:
+                    self.print('Status: No route log file.')
+                    self.print('Status set to "route"')
+                    self.status = 'route'
+                    return
+            else:
+                self.print('Status: .def file predates _unroute.def file.')
+                self.print('Status set to "route"')
+                self.status = 'route'
+                return
+        else:
+            self.print('Status: no .def file.')
+            self.print('Status set to "route"')
+            self.status = 'route'
+            return
+
+        # Step seven: Check for static timing analysis result in post_sta.log
+        self.print("Step seven.")
+        logfile = self.logdir + '/post_sta.log'
+        if os.path.exists(logfile):
+            statbuf = os.stat(logfile)
+            if statbuf.st_mtime >= stime:
+                # Check specifically for 'Design meets minimum hold timing'
+                # for vesta or MET or VIOLATED for OpenSTA and OpenTimer
+                is_not_vesta = False
+                sta_ok = False
+                with open(logfile, 'r') as ifile:
+                    for line in ifile:
+                        if 'Design meets minimum' in line:
+                            sta_ok = True
+                            break
+                        elif 'MET' in line or 'VIOLATED' in line:
+                            is_not_vesta = True
+                            break
+                if is_not_vesta:
+                    sta_ok = True
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'VIOLATED' in line:
+                                sta_ok = False
+                                break
+                if not sta_ok:
+                    self.print('Status: post-route STA log file incomplete or timing failed.')
+                    if self.post_sta_cont.get() == 0:
+                        self.print('Status set to "backanno"')
+                        self.status = 'backanno:fail'
+                        return
+                    else:
+                        self.print('Ignoring fail state and continuing flow.')
+
+                self.status = 'migrate'
+                stime = statbuf.st_mtime
+            else:
+                self.print('Status: post-route STA log file predates verilog file.')
+                self.print('Status set to "backanno"')
+                self.status = 'backanno'
+                return
+        else:
+            self.print('Status: no STA log file.')
+            self.print('Status set to "backanno"')
+            self.status = 'backanno'
+            return
+
+        # Step eight: Check for .mag file
+        self.print("Step eight.")
+        magfile = self.layoutdir + '/' + self.project + '.mag'
+        if os.path.exists(magfile):
+            statbuf = os.stat(magfile)
+            if statbuf.st_mtime >= stime:
+                if self.drc_swap.get() == 0:
+                    self.status = 'drc'
+                else:
+                    self.status = 'lvs'
+                stime = statbuf.st_mtime
+            else:
+                self.print('Status: .mag file predates .def file.')
+                self.print('Status set to "migrate"')
+                self.status = 'migrate'
+                return
+        else:
+            self.print('Status: no .mag file.')
+            self.print('Status set to "migrate"')
+            self.status = 'migrate'
+            return
+
+        self.print("Step nine.")
+        if self.drc_swap.get() == 0:
+            # Step nine: Check for drc results in drc.log file
+            logfile = self.logdir + '/drc.log'
+            if os.path.exists(logfile):
+                statbuf = os.stat(logfile)
+                if statbuf.st_mtime >= stime:
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'No DRC errors' in line:
+                                stime = statbuf.st_mtime
+                                self.status = 'lvs'
+                                break
+                            elif 'DRC error count' in line or 'DRC failure:' in line:
+                                self.print('Status: logfile reports ' + line)
+                                self.print('Status set to "drc"')
+                                self.status = 'drc:fail'
+                                return
+                else:
+                    self.print('Status: drc.log predates comp.json file.')
+                    self.print('Status set to "drc"')
+                    self.status = 'drc'
+                    return
+            else:
+                self.print('Status: no DRC log file created.')
+                self.print('Status set to "drc"')
+                self.status = 'drc'
+                return
+        else:
+            # Step nine: Check for comp.json file
+            compfile = self.layoutdir + '/comp.json'
+            if os.path.exists(compfile):
+                statbuf = os.stat(compfile)
+                if statbuf.st_mtime >= stime:
+                    failures = count_LVS_failures(compfile)
+                    total = failures[0]
+                    if total == 0:
+                        self.status = 'gds'
+                        stime = statbuf.st_mtime
+                    else:
+                        self.print('Status: comp.json reports ' + str(total) + ' LVS errors.')
+                        self.print('Status set to "drc"')
+                        self.status = 'lvs:fail'
+                        return
+                else:
+                    self.print('Status: comp.json file predates .mag file.')
+                    self.print('Status set to "lvs"')
+                    self.status = 'lvs'
+                    return
+            else:
+                self.print('Status: no comp.json file.')
+                self.print('Status set to "lvs"')
+                self.status = 'lvs'
+                return
+
+
+        self.print("Step ten.")
+        if self.drc_swap.get() == 0:
+            # Step ten: Check for comp.json file
+            compfile = self.layoutdir + '/comp.json'
+            if os.path.exists(compfile):
+                statbuf = os.stat(compfile)
+                if statbuf.st_mtime >= stime:
+                    failures = count_LVS_failures(compfile)
+                    total = failures[0]
+                    if total == 0:
+                        self.status = 'gds'
+                        stime = statbuf.st_mtime
+                    else:
+                        self.print('Status: comp.json reports ' + str(total) + ' LVS errors.')
+                        self.print('Status set to "lvs"')
+                        self.status = 'lvs:fail'
+                        return
+                else:
+                    self.print('Status: comp.json file predates .mag file.')
+                    self.print('Status set to "lvs"')
+                    self.status = 'lvs'
+                    return
+            else:
+                self.print('Status: no comp.json file.')
+                self.print('Status set to "lvs"')
+                self.status = 'lvs'
+                return
+        else:
+            # Step ten: Check for drc results in drc.log file
+            logfile = self.logdir + '/drc.log'
+            if os.path.exists(logfile):
+                statbuf = os.stat(logfile)
+                if statbuf.st_mtime >= stime:
+                    with open(logfile, 'r') as ifile:
+                        for line in ifile:
+                            if 'No DRC errors' in line:
+                                stime = statbuf.st_mtime
+                                self.status = 'gds'
+                                break
+                            elif 'DRC error count' in line or 'DRC failure:' in line:
+                                self.print('Status: logfile reports ' + line)
+                                self.print('Status set to "lvs"')
+                                self.status = 'drc:fail'
+                                return
+                else:
+                    self.print('Status: drc.log predates comp.json file.')
+                    self.print('Status set to "drc"')
+                    self.status = 'drc'
+                    return
+            else:
+                self.print('Status: no DRC log file created.')
+                self.print('Status set to "drc"')
+                self.status = 'drc'
+                return
+
+        # Step eleven: Check for project.gds file
+        self.print("Step eleven.")
+        gdsfile = ldir + '/' + self.project + '.gds'
+        if os.path.exists(gdsfile):
+            statbuf = os.stat(gdsfile)
+            if statbuf.st_mtime >= stime:
+                self.status = 'clean'
+                stime = statbuf.st_mtime
+            else:
+                self.print('Status: GDS file predates comp.json file.')
+                self.print('Status set to "gds"')
+                self.status = 'gds'
+                return
+        else:
+            self.print('Status: no GDS file.')
+            self.print('Status set to "gds"')
+            self.status = 'gds'
+            return
+
+        if self.status != 'clean':
+            self.print('Status: no GDS file found.')
+            self.print('Status set to "gds"')
+            return
+
+        # Step twelve: Check for any residual file not removed by the
+        # cleanup process.
+        self.print("Step twelve.")
+        junkfile = srcdir + '/' + self.project + '_mapped.v'
+        if os.path.exists(junkfile):
+            self.print('Status: _mapped.v file still sitting around.')
+            self.print('Status set to "clean"')
+            return
+        else:
+            self.print('Status: project is done.')
+            self.print('Status set to "done"')
+            self.status = 'done'
+
+    # "Full refresh":  Get the current flow state and set the GUI to match.
+
+    def refresh(self):
+        self.qflow_get_status()
+        self.gui_set_status()
+
+    # Read an existing project_vars.sh file and seed the values in the GUI
+    # It is okay for project_vars.sh file not to exist (GUI values will
+    # retain defaults).  If "remove" is true, remove the file after reading.
+
+    def read_project_vars(self, remove):
+        varsfile = self.rootpath + '/project_vars.sh'
+
+        if not os.path.exists(varsfile):
+            return False
+
+        densrex = re.compile('[ \t]*set initial_density =[ \t]*([0-9\.]+)$')
+        powrrex = re.compile('[ \t]*set addspacers_options =[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
+        vstarex = re.compile('[ \t]*set vesta_options =[ \t]*(.*)$')
+        ostarex = re.compile('[ \t]*set opensta_options =[ \t]*(.*)$')
+        otimerex = re.compile('[ \t]*set opentimer_options =[ \t]*(.*)$')
+        showrex = re.compile('[ \t]*set route_show =[ \t]*(.*)$')
+        lyerrex = re.compile('[ \t]*set route_layers =[ \t]*(.*)$')
+        runvstarex = re.compile('[ \t]*set run_vesta =[ \t]*(.*)$')
+        runostarex = re.compile('[ \t]*set run_opensta =[ \t]*(.*)$')
+        runotimerex = re.compile('[ \t]*set run_opentimer =[ \t]*(.*)$')
+
+        # Power stripe defaults may be overridden, but we need to
+        # grab the defaults from the file instead of setting
+        # values that may be inappropriate for the process.
+        powrdef = re.compile('#[ \t]*set addspacers_options =[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
+        pow2rex = re.compile('[ \t]*set addspacers_options =[ \t]*""$')
+
+        with open(varsfile, 'r') as ifile:
+            varstext = ifile.read()
+            varslines = varstext.splitlines()
+
+            # Set default (or at least sane) values before reading
+            self.density.set("1.0")
+            self.aspect.set("1.0")
+            self.long_format.set(1)
+            self.power.set(1)
+            self.power_space.set(1)
+            self.power_pitch.set("150.0")
+            self.power_width.set("5.0")
+            self.route_graphics.set(1)
+            self.purge.set(0)
+            self.route_layers.set('max')
+
+            for line in varslines:
+                dmatch = densrex.match(line)
+                if dmatch:
+                    self.density.set(dmatch.group(1))
+                vmatch = vstarex.match(line)
+                if vmatch:
+                    if vmatch.group(1) == '"--long"':
+                        self.long_format.set(1)
+                # Currently no options handled for OpenSTA or OpenTimer
+                # other than use/don't-use flag
+                rvmatch = runvstarex.match(line)
+                if rvmatch:
+                    self.run_vesta.set(rvmatch.group(1))
+                rosmatch = runostarex.match(line)
+                if rosmatch:
+                    self.run_opensta.set(rosmatch.group(1))
+                rotmatch = runotimerex.match(line)
+                if rotmatch:
+                    self.run_opentimer.set(rotmatch.group(1))
+
+                smatch = showrex.match(line)
+                if smatch:
+                    if smatch.group(1) == 'false':
+                        self.route_graphics.set(0)
+
+                lmatch = lyerrex.match(line)
+                if lmatch:
+                    self.route_layers.set(lmatch.group(1))
+
+                pmatch = powrrex.match(line)
+                if pmatch:
+                    self.power.set(1)
+                    self.power_pitch.set(pmatch.group(2))
+                    self.power_width.set(pmatch.group(1))
+                    self.print('pitch = ' + pmatch.group(2) + ' width = ' + pmatch.group(1))
+                    if 'nostretch' in pmatch.group(3):
+                        self.power_space.set(0)
+
+                # Pick up default values even if the entry is commented out
+                dmatch = powrdef.match(line)
+                if dmatch:
+                    self.power.set(1)
+                    self.power_pitch.set(dmatch.group(2))
+                    self.power_width.set(dmatch.group(1))
+                    if 'nostretch' in dmatch.group(3):
+                        self.power_space.set(0)
+
+                # Empty string for addspacers_options indicates option has been
+                # disabled manually although the default setting is on.
+                dmatch = pow2rex.match(line)
+                if dmatch:
+                    self.power.set(0)
+        if remove:
+            os.remove(varsfile)
+        return True
+
+    # Regenerate the project_vars.sh file from values in the GUI
+
+    def update_project_vars(self):
+        pvars = self.rootpath + '/project_vars.sh'
+
+        # Check which variables need to be set in the project_vars file
+        do_density = False
+        try:
+            density = float(self.density.get())
+        except:
+            density = 1.0
+            self.print("Error:  Density is not a number!", file=sys.stderr)
+        if density < 1.0:
+            do_density = True
+
+        do_power = False
+        if (self.power.get() == 1):
+            do_power = True
+
+        # Power striping values are not dependent on do_power
+        try:
+            power_width = float(self.power_width.get())
+        except:
+            self.print("Error:  Power rail width is not a number, setting to 5.0", file=sys.stderr)
+            power_width = 5.0
+        try:
+            power_pitch = float(self.power_pitch.get())
+        except:
+            self.print("Error:  Power rail pitch is not a number, setting to 150.0", file=sys.stderr)
+            power_pitch = 150.0
+        power_space = self.power_space.get()
+
+        do_long = False
+        if (self.long_format.get() == 1):
+            do_long = True
+            long_format = self.long_format.get()
+
+        do_graph = False
+        if (self.route_graphics.get() == 1):
+            do_graph = True
+
+        do_layers = False
+        if (self.route_layers.get() != 'max'):
+            do_layers = True
+            try:
+                route_layers = int(self.route_layers.get())
+            except ValueError:
+                do_layers = False
+
+        run_vesta = False
+        if (self.run_vesta.get() == 1):
+            run_vesta = True
+        run_opensta = False
+        if (self.run_opensta.get() == 1):
+            run_opensta = True
+        run_opentimer = False
+        if (self.run_opentimer.get() == 1):
+            run_opentimer = True
+
+        commentrex = re.compile('^[ \t]*#')
+        densrex = re.compile('#?[ \t]*set initial_density =')
+        powrrex = re.compile('#?[ \t]*set addspacers_options =')
+        vstarex = re.compile('#?[ \t]*set vesta_options =')
+        ostarex = re.compile('#?[ \t]*set opensta_options =')
+        otimerex = re.compile('#?[ \t]*set opentimer_options =')
+        showrex = re.compile('#?[ \t]*set route_show =')
+        lyerrex = re.compile('#?[ \t]*set route_layers =')
+        rvstarex = re.compile('#?[ \t]*set run_vesta =')
+        rostarex = re.compile('#?[ \t]*set run_opensta =')
+        rotimerex = re.compile('#?[ \t]*set run_opentimer =')
+
+        with open(pvars, 'r') as ifile:
+            vartext = ifile.read()
+            varlines = vartext.splitlines()
+            newlines = []
+            seenpwr = False
+            for line in varlines:
+                linesub = line
+                is_comment = commentrex.match(line)
+                if densrex.match(line):
+                    if do_density:
+                        linesub = 'set initial_density = ' + str(density)
+                    elif not is_comment:
+                        linesub = '# set initial_density = '
+
+                if powrrex.match(line):
+                    if seenpwr:
+                        continue
+                    seenpwr = True
+                    linesub = ''
+                    if not do_power:
+                        linesub = '# '
+                    linesub += 'set addspacers_options = "-stripe ' + str(power_width) + ' ' + str(power_pitch) + ' PG'
+                    if power_space == 0:
+                        linesub += ' -nostretch'
+                    linesub += '"'
+                    if not do_power:
+                        # Copy addspacers_options to a comment so it is not used but
+                        # can be found and the values read back.
+                        newlines.append(linesub)
+                        linesub = 'set addspacers_options = ""'
+
+                if vstarex.match(line):
+                    if do_long:
+                        linesub = 'set vesta_options = "--long"'
+                    elif not is_comment:
+                        linesub = '# set vesta_options = "--period 1E5"'
+
+                if ostarex.match(line):
+                    if not is_comment:
+                        linesub = '# set opensta_options = '
+
+                if otimerex.match(line):
+                    if not is_comment:
+                        linesub = '# set opentimer_options = '
+
+                if rvstarex.match(line):
+                    if run_vesta:
+                        linesub = '# set run_vesta = 1'
+                    elif not is_comment:
+                        linesub = 'set run_vesta = 0'
+
+                if rostarex.match(line):
+                    if run_opensta:
+                        linesub = 'set run_opensta = 1'
+                    elif not is_comment:
+                        linesub = '# set run_opensta ='
+
+                if rotimerex.match(line):
+                    if run_opentimer:
+                        linesub = 'set run_opentimer = 1'
+                    elif not is_comment:
+                        linesub = '# set run_opentimer ='
+
+                if showrex.match(line):
+                    if do_graph:
+                        linesub = 'set route_show = 1'
+                    elif not is_comment:
+                        linesub = '# set route_show ='
+
+                if lyerrex.match(line):
+                    if do_layers:
+                        linesub = 'set route_layers = ' + str(route_layers)
+                    elif not is_comment:
+                        linesub = '# set route_layers ='
+
+                newlines.append(linesub)
+
+        with open(pvars, 'w') as ofile:
+            for line in newlines:
+                self.print(line, file=ofile)
+
+    # Read an existing .par file and seed the values in the GUI
+    # It is okay for the .par file not to exist (GUI values will
+    # retain defaults)
+
+    def read_par_file(self, remove):
+        ldir = self.layoutdir
+        parfile = ldir + '/' + self.project + '.par'
+
+        if not os.path.exists(parfile):
+            return
+
+        aspectrex = re.compile('[ \t]*TWMC\*chip.aspect.ratio[ \t]+:[ \t]+([0-9\.]+)')
+        graphrex = re.compile('[ \t]*TWSC\*no.graphics[ \t]+:[ \t]+([a-z]+)')
+
+        with open(parfile, 'r') as ifile:
+            partext = ifile.read()
+            parlines = partext.splitlines()
+            for line in parlines:
+                amatch = aspectrex.match(line)
+                if amatch:
+                    self.aspect.set(amatch.group(1))
+                gmatch = graphrex.match(line)
+                if gmatch:
+                    gval = gmatch.group(1)
+                    if gval == 'yes':
+                        self.place_graphics.set(1)
+                    else:
+                        self.place_graphics.set(0)
+        if remove:
+            os.remove(parfile)
+
+    # Regenerate the .par file from values in the GUI
+
+    def update_par_file(self):
+        ldir = self.layoutdir
+        parfile = ldir + '/' + self.project + '.par'
+
+        commentrex = re.compile('[ \t]*#')
+
+        # Check which variables need to be set in the project_vars file
+        try:
+            aspect = float(self.aspect.get())
+        except:
+            aspect = 1.0
+            self.print('Error: Aspect ratio is not a number!', file=sys.stderr)
+        aspectrex = re.compile('#?[ \t]*TWMC\*chip.aspect.ratio[ \t]+:[ \t]+([0-9\.]+)')
+
+        do_graph = False
+        if self.place_graphics.get() == 1:
+            do_graph = True
+
+        graphrex = re.compile('#?[ \t]*TWSC\*no.graphics[ \t]+:[ \t]+([a-z]+)')
+
+        with open(parfile, 'r') as ifile:
+            partext = ifile.read()
+            parlines = partext.splitlines()
+            newlines = []
+            for line in parlines:
+                linesub = line
+                is_comment = commentrex.match(line)
+                if graphrex.match(line):
+                    if not do_graph:
+                        linesub = 'TWSC*no.graphics : on'
+                    elif not is_comment:
+                        linesub = '# TWSC*no.graphics : on'
+
+                if aspectrex.match(line):
+                    linesub = 'TWMC*chip.aspect.ratio : ' + str(aspect)
+
+                newlines.append(linesub)
+
+        with open(parfile, 'w') as ofile:
+            for line in newlines:
+                self.print(line, file=ofile)
+
+    def replace_settings(self, window):
+        oldwindow = self.settings_window
+        oldwindow.grid_forget()
+        # Place new settings window
+        window.grid(row = 0, column = 0, sticky = 'news')
+        self.settings_window = window
+        return
+
+    def qflow_prep(self):
+        global qflow_tech_dir
+
+        if self.sourcedir == None:
+            self.print('Must select a project directory, verilog source file, or have a',
+			file=stderr)
+            self.print('verilog file in the current directory or source/ subdirectory.',
+			file=stderr)
+            return
+
+        self.status = 'prep'
+        self.gui_set_status()
+        self.toppane.checklist.prep_result.configure(text="In progress", style='green.TButton')
+        self.update_idletasks()
+
+        failed = False
+
+        datestring = datetime.datetime.now().strftime('%c')
+
+        vdir = self.sourcedir
+
+        # Was a qflow workspace already created?  If so, does it have a
+        # directory 'source' with a .v file in it?
+
+        if not os.path.exists(self.rootpath):
+            self.print('No directory "' + self.rootpath + '" exists, cannot continue.',
+				file=sys.stderr)
+            failed = True
+        elif not self.verilog or not os.path.exists(self.verilog):
+            if not os.path.exists(vdir):
+                # Check for verilog source file in flat qflow workspace
+                found = False
+                filelist = os.listdir(self.rootpath)
+                for filename in filelist:
+                    if os.path.splitext(filename)[1] == '.v':
+                        if os.path.splitext(filename)[0] == self.project:
+                            self.verilog = self.rootpath + '/' + filename
+                            found = True
+                            break
+                        elif os.path.splitext(filename)[0] == self.module.get():
+                            self.verilog = self.rootpath + '/' + filename
+                            found = True
+                            break
+                if not found:
+                    self.print('No verilog source file found in qflow directory.', file=sys.stderr)
+                    failed = True
+            else:
+                # Check for verilog source file in normal qflow workspace
+                found = False
+                filelist = os.listdir(vdir)
+                for filename in filelist:
+                    if os.path.splitext(filename)[1] == '.v':
+                        if os.path.splitext(filename)[0] == self.project:
+                            self.verilog = vdir + '/' + filename
+                            found = True
+                            break
+                        elif os.path.splitext(filename)[0] == self.module.get():
+                            self.verilog = vdir + '/' + filename
+                            found = True
+                            break
+                if not found:
+                    self.print('No verilog source file found in qflow/source directory.', file=sys.stderr)
+                    failed = True
+                    return
+
+        if not failed:
+            # Make sure hierarchical qflow workspace exists
+            if not os.path.exists(self.rootpath):
+                self.print('Creating qflow workspace.')
+                os.makedirs(self.rootpath)
+            if not os.path.exists(self.sourcedir):
+                os.makedirs(self.sourcedir)
+            if not os.path.exists(self.synthdir):
+                os.makedirs(self.synthdir)
+            if not os.path.exists(self.layoutdir):
+                os.makedirs(self.layoutdir)
+            # Make sure qflow/log exists (qflow should create it, but just a failsafe)
+            if not os.path.exists(self.logdir):
+                os.makedirs(self.logdir)
+
+            # Create symbolic link to source file(s) from source
+            vroot = os.path.split(self.verilog)[1]
+            if not os.path.exists(self.sourcedir + '/' + vroot):
+                try:
+                    os.symlink(self.verilog, self.sourcedir + '/' + vroot)
+                except FileExistsError:
+                    self.print('Symbolic link to source already exists.')
+
+                else:
+                    # Symbolically link all .v or .sv files in the same
+                    # directory
+                    sourcedir = os.path.split(self.verilog)[0]
+                    vsrcfiles = glob.glob(sourcedir + '/*.v')
+                    vsrcfiles.extend(glob.glob(sourcedir + '/*.sv'))
+                    for vsrc in vsrcfiles:
+                        try:
+                            vsrcroot = os.path.split(vsrc)[1]
+                            os.symlink(vsrc, self.sourcedir + '/' + vsrcroot)
+                        except FileExistsError:
+                            pass
+
+            if not self.pdkdir:
+                # Standard location is '/tech' as a directory or symbolic
+                # link, unless a full path has been provided with -T on the
+                # command line.
+
+                techpath = self.rootpath + '/tech'
+                if os.path.islink(techpath) or os.path.isdir(techpath):
+                    techpath = os.path.realpath(techpath)
+                    self.pdkdir = techpath
+                else:
+                    # Fallback method if techdir is not set from command line or
+                    # technology selection button.
+                    self.pdkdir = self.allpdkdirs[0]
+                    self.print('Technology was not set, defaulting to ' + self.allpdknodes[0], file=sys.stderr)
+
+            # Set technology from techdir link
+            techpath = os.path.realpath(self.pdkdir)
+            techscripts = glob.glob(techpath + '/*.sh')
+            curpdk = self.pdknode.get()
+
+            # Check that the currently selected PDK node is in techscripts,
+            # otherwise set the PDK node to the first entry in techscripts.
+
+            techname = None
+            for script in techscripts:
+                techroot = os.path.split(script)[1]
+                techname = os.path.splitext(techroot)[0]
+                if techname == curpdk:
+                    break
+
+            if not techname:
+                techroot = os.path.split(techscripts[0])[1]
+                techname = os.path.splitext(techroot)[0]
+
+            if not techname in self.allpdknodes:
+                self.allpdknodes.append(techname)
+                self.allpdkdirs.append(techpath)
+            self.pdknode.set(techname)
+            self.pdkdir = techpath
+            self.currentpdk = techname
+
+        if not failed:
+
+            # Read file contents into GUI settings (if they exist)
+            # Remove the files in preparation for regeneration
+            existing = self.read_project_vars(remove=True)
+            self.read_par_file(remove=True)
+
+            # Set the project name from the verilog module name
+            self.project = self.module.get()
+            technode = self.pdknode.get()
+
+            self.print('Running: qflow -p ' + self.rootpath + ' -T ' + technode + ' ' + self.project)
+            p = subprocess.Popen(['qflow', '-p', self.rootpath, '-T', technode,
+			self.project], stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = self.rootpath)
+            qflowpair = p.communicate(timeout=10)
+
+            with open(self.logdir + '/prep.log', 'w') as ofile:
+                self.print('Qflow project preparation output log ' + datestring, file=ofile)
+                for line in qflowpair[0].splitlines():
+                    self.print(line.decode('utf-8'))
+                    self.print(line.decode('utf-8'), file=ofile)
+                for line in qflowpair[1].splitlines():
+                    self.print(line.decode('utf-8'), file=sys.stderr)
+                    self.print(line.decode('utf-8'), file=ofile)
+
+            # If the project_vars.sh file did not exist prior to calling qflow,
+            # then read the contents of the new file to seed various forms in
+            # the flow manager
+            if not existing:
+                self.read_project_vars(remove=False)
+
+            # Pull foundry and node from tech directory/symbolic link 
+            pdkdir = os.path.realpath(self.pdkdir)
+            pdksplit = os.path.split(pdkdir)
+            node = pdksplit[1]
+            foundry = os.path.split(pdksplit[0])[1]
+
+            # Check for bad return code
+            if p.returncode != 0:
+                self.print('Error: qflow returned error code ' + str(p.returncode), file=sys.stderr)
+                failed = True
+            else:
+                self.print('qflow exited with status 0')
+
+        if failed:
+            self.toppane.checklist.prep_result.configure(text="Fail", style='red.TButton')
+
+        else:
+            # If the process got this far, enable the next button and mark step as done.
+            self.status = 'synth'
+            self.gui_set_status()
+        return
+
+    def qflow_synth(self):
+        # If the synthesis is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.synth_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run synth if preparation has been run and passed.
+        status = self.toppane.checklist.prep_result.cget('text')
+        if status != 'Okay':
+            self.print('Cannot run synthesis until preparation has passed.')
+            return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'synth'
+        self.gui_set_status()
+        self.toppane.checklist.synth_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.synth_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' synthesize')
+        self.update_idletasks()
+        failed = False
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'synthesize'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        synthdir = self.synthdir
+        filename = synthdir + '/' + self.project + '.spc'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_synth)
+        return
+
+    def qflow_place(self):
+        # If the placement is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.place_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run place if synthesis has been run and passed.
+        status = self.toppane.checklist.synth_result.cget('text')
+        if status != 'Okay':
+            self.print('Cannot run placement until synthesis has passed.')
+            return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'place'
+        self.gui_set_status()
+        self.toppane.checklist.place_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.place_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' place')
+        self.update_idletasks()
+        failed = False
+
+        # Check for density and power striping options and update project_vars.sh
+        self.update_project_vars()
+
+        # Check for aspect ratio and graphics option and update <project>par
+        self.update_par_file()
+
+        layoutdir = self.layoutdir
+
+        # Create cel2 file from the pin manager
+        cel2file = layoutdir + '/' + self.project + '.cel2'
+        self.pinmanager.writepads(cel2file)
+
+        # Run the qflow placement script
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'place'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = layoutdir + '/' + self.project + '.def'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_place)
+        return
+
+    def qflow_sta(self):
+        # If the placement is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.timing_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run timing analysis if placement has been run and passed.
+        status = self.toppane.checklist.place_result.cget('text')
+        if status != 'Okay':
+            self.print('Cannot run static timing analysis until placement has passed.')
+            return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'timing'
+        self.gui_set_status()
+        self.toppane.checklist.timing_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.timing_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' sta')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'sta'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.logdir + '/sta.log'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_timing)
+        return
+
+    def qflow_route(self):
+        # If the routing is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.route_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run routing if static timing analysis has been run and passed.
+        status = self.toppane.checklist.timing_result.cget('text')
+        if status != 'Okay':
+            # Okay if forcibly skipped
+            if self.sta_cont.get() == 0:
+                self.print('Cannot run routing until static timing analysis has passed.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'route'
+        self.gui_set_status()
+        self.toppane.checklist.route_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.route_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' route')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        layoutdir = self.layoutdir
+        filename = layoutdir + '/' + self.project + '.def'
+
+        # Need to copy the _unroute.def file to .def, which is not (currently) done by qflow
+        unroute = layoutdir + '/' + self.project + '_unroute.def'
+        if os.path.exists(unroute):
+            shutil.copy(unroute, filename)
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'route'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_route)
+        return
+
+    def qflow_backanno(self):
+        # If the STA is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.backanno_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run post-route timing analysis if routing has been run and passed.
+        status = self.toppane.checklist.route_result.cget('text')
+        if status != 'Okay':
+            self.print('Cannot run post-route static timing analysis until routing has passed.')
+            return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'backanno'
+        self.gui_set_status()
+        self.toppane.checklist.backanno_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.backanno_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' backanno')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'backanno'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.logdir + '/post_sta.log'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_backanno)
+        return
+
+    def qflow_migrate(self):
+        # If the migration is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.migrate_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        # Can only run migration if post-route timing has been run.
+        status = self.toppane.checklist.backanno_result.cget('text')
+        if status != 'Okay':
+            # Okay if forcibly skipped
+            if self.post_sta_cont.get() == 0:
+                self.print('Cannot run migration until post-route static timing analysis has passed.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'migrate'
+        self.gui_set_status()
+        self.toppane.checklist.migrate_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.migrate_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' migrate')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'migrate'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.layoutdir + '/' + self.project + '.spice'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_migrate)
+        return
+
+    def qflow_drc(self):
+        # If the DRC is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.drc_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        if self.drc_swap.get() == 0:
+            # Can only run DRC if migration has been run and completed.
+            status = self.toppane.checklist.migrate_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run DRC check until migration has been run.')
+                return
+        else:
+            # Can only run DRC if LVS comparison has been run and passed.
+            status = self.toppane.checklist.lvs_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run DRC check until LVS has passed.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'drc'
+        self.gui_set_status()
+        self.toppane.checklist.drc_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.drc_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' drc')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'drc'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.logdir + '/drc.log'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_drc)
+        return
+
+    def qflow_lvs(self):
+        # If the LVS is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.lvs_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        if self.drc_swap.get() == 0:
+            # Can only run LVS comparison if DRC has been run and passed.
+            status = self.toppane.checklist.drc_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run LVS comparison until DRC has passed.')
+                return
+        else:
+            # Can only run DRC comparison if migration has been run and passed.
+            status = self.toppane.checklist.migrate_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run LVS comparison until migration is complete.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'lvs'
+        self.gui_set_status()
+        self.toppane.checklist.lvs_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.lvs_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' lvs')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'lvs'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.logdir + '/lvs.log'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_lvs)
+        return
+
+    def qflow_gds(self):
+        # If the GDS is currently in progress, the 'Run' button stops it.
+        status = self.toppane.checklist.gds_run.cget('text')
+        if status == 'Stop':
+            # Stop the running process
+            self.stop_proc()
+            self.gui_set_status()
+            return
+
+        if self.drc_swap.get() == 0:
+            # Can only run GDS generation if LVS has been run and passed.
+            status = self.toppane.checklist.lvs_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run GDS generation until LVS comparison has passed.')
+                return
+        else:
+            # Can only run GDS generation if DRC has been run and passed.
+            status = self.toppane.checklist.drc_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run GDS generation until DRC comparison has passed.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'gds'
+        self.gui_set_status()
+        self.toppane.checklist.gds_result.configure(text="In progress", style='normal.TButton')
+        self.toppane.checklist.gds_run.configure(text="Stop", style='normal.TButton')
+
+        self.print('Running: qflow ' + self.project + ' gdsii')
+        self.update_idletasks()
+
+        # Check for long format option and update project_vars.sh
+        self.update_project_vars()
+
+        self.qflowproc = subprocess.Popen(['qflow', self.project, 'gdsii'],
+		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        filename = self.logdir + '/gdsii.log'
+        try:
+            statbuf = os.stat(filename)
+        except:
+            filemtime = 0
+        else:
+            filemtime = statbuf.st_mtime
+        self.watchclock(filename, filemtime, self.done_gds)
+        return
+
+    #----------------------------------------------------------------------
+    # Pick up GDS file from the technology .sh file
+    # Note that there needs to be a way to handle multiple GDS files. . .
+
+    def get_project_gdsfiles(self):
+        global qflow_bin_dir
+
+        pdkdir = os.path.realpath(self.pdkdir)
+        pdkscript = pdkdir + '/' + self.pdknode.get() + '.sh'
+
+        gdsfiles = []
+        gdsfile = None
+        with open(pdkscript, 'r') as ifile:
+            gdsrex = re.compile('set gdsfile=\"?([^\t\n\";]+)')
+            shtext = ifile.read()
+            shlines = shtext.splitlines()
+            for line in shlines:
+                lmatch = gdsrex.match(line)
+                if lmatch:
+                    # Remove any comment from the end of the line
+                    gdsfile = re.sub(' +#.*$', '', lmatch.group(1))
+                    break
+
+        if gdsfile:
+            for f in gdsfile.split():
+                gdsfiles.append(pdkdir + '/' + f)
+
+        if gdsfiles == []:
+            # Fallback measure in case of no entry in the script file:
+            # Select any .gds file in the tech directory.
+            pdkfiles = os.listdir(pdkdir)
+            for pdkfile in pdkfiles:
+                if os.path.splitext(pdkfile)[1] == '.gds':
+                    gdsfiles.append(pdkdir + '/' + pdkfile)
+
+        return gdsfiles
+
+    # Pick up LEF files from the project .cfg file
+    def get_project_leffiles(self):
+        global qflow_bin_dir
+
+        layoutdir = self.layoutdir
+        leffiles = []
+        with open(layoutdir + '/' + self.project + '.cfg', 'r') as ifile:
+            lefrex = re.compile('read_lef[ \t]+([^ \t]+)$')
+            cfgtext = ifile.read()
+            cfglines = cfgtext.splitlines()
+            for line in cfglines:
+                lmatch = lefrex.match(line)
+                if lmatch:
+                    leffiles.append(lmatch.group(1))
+        if len(leffiles) == 0:
+            # Fallback measure in case of non-Tcl/Tk qrouter.  Uses keyword "lef"
+            # instead of command "read_lef".
+            with open(layoutdir + '/' + self.project + '.cfg', 'r') as ifile:
+                lefrex = re.compile('^[ \t]*lef[ \t]+([^ \t]+)$')
+                cfgtext = ifile.read()
+                cfglines = cfgtext.splitlines()
+                for line in cfglines:
+                    lmatch = lefrex.match(line)
+                    if lmatch:
+                        leffiles.append(lmatch.group(1))
+
+        return leffiles
+
+    def qflow_tb(self):
+        # Can only run testbench if DRC has been run and passed.
+        status = self.toppane.checklist.drc_result.cget('text')
+        if status != 'Okay':
+            self.print('Cannot run testbench simulation until DRC has passed.')
+            return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'test'
+        self.gui_set_status()
+        self.toppane.checklist.test_result.configure(text="In progress", style='normal.TButton')
+
+        self.update_idletasks()
+        failed = False
+
+        # Run any testbench like the characterization tool and report pass/fail status.
+
+        self.print('Not yet implemented')        
+
+        if failed:
+            self.toppane.checklist.test_result.configure(text="Fail", style='red.TButton')
+        else:
+            self.status = 'clean'
+            self.gui_set_status()
+        return
+
+    # Check reset:  Callback from PDK selection option menu
+
+    def check_reset(self, args):
+
+        # When the "Technology:" is changed via the option menu button, this
+        # precipitates a full reset in preparation for a technology change.
+        # Must confirm with the user before deleting lots of files!
+
+        newpdk = self.pdknode.get()
+        if newpdk == self.currentpdk:
+            # Selected the current technology, so no need to do anything.
+            return
+
+        self.print('Change technology to ' + newpdk + ' requested.')
+
+        # Okay to just reset if still in preparation
+        if self.status != 'prep' and self.status != 'begin':
+            warning = 'Confirm change of technology to ' + newpdk + '?'
+            confirm = ProtectedConfirmDialog(self, warning).result
+            if not confirm == 'okay':
+               self.pdknode.set(self.currentpdk)
+               return
+            self.print('Technology change confirmed!')
+
+        self.currentpdk = newpdk
+
+        # Remove the master script files, or the original PDK just gets
+        # read back from qflow_vars.sh.  project_vars.sh has PDK-related
+        # information in it, and qflow_exec.sh is irrelevant anyway.
+
+        # self.print('Diagnostic:  Removing master setup files.')
+        if os.path.exists('qflow_vars.sh'):
+            os.remove('qflow_vars.sh')
+        if os.path.exists('qflow_exec.sh'):
+            os.remove('qflow_exec.sh')
+        if os.path.exists('project_vars.sh'):
+            os.remove('project_vars.sh')
+
+        # Set the PDK directory path to match the PDK name
+        for testname, testdir in zip(self.allpdknodes, self.allpdkdirs):
+            if testname == newpdk:
+                self.pdkdir = testdir
+
+        self.purge.set(1)
+        self.qflow_cleanup()
+        self.qflow_get_status()
+        self.gui_set_status()
+
+    def qflow_cleanup(self):
+        # Can only run cleanup if DRC has been run and passed, unless the request is to
+        # do a complete purge and reset.
+        # (NOTE: Eventually needs to be dependent on testbench, not DRC)
+        do_purge = self.purge.get()
+        if do_purge == 0:
+            status = self.toppane.checklist.drc_result.cget('text')
+            if status != 'Okay':
+                self.print('Cannot run cleanup until DRC has passed.')
+                return
+
+        # Reset all the buttons and status labels below this one
+        self.status = 'clean'
+        self.gui_set_status()
+        self.toppane.checklist.clean_result.configure(text="In progress", style='normal.TButton')
+
+        self.update_idletasks()
+        failed = False
+
+        srcdir = self.sourcedir
+        sdir = self.synthdir
+        ldir = self.layoutdir
+        logdir = self.logdir
+
+        # Remove files in qflow
+        rfiles = []
+        rfiles.append(srcdir + '/' + self.project + '_mapped.v')
+        rfiles.append(srcdir + '/' + self.project + '_mapped_tmp.v')
+
+        rfiles.append(sdir + '/' + self.project + '_anno.v')
+        rfiles.append(sdir + '/' + self.project + '_bak.v')
+        rfiles.append(sdir + '/' + self.project + '_nofanout')
+        rfiles.append(sdir + '/' + self.project + '_synth.rtl.v')
+        rfiles.append(sdir + '/' + self.project + '_synth.rtlbb.v')
+        rfiles.append(sdir + '/' + self.project + '_synth.rtlnopwr.v')
+        rfiles.append(sdir + '/' + self.project + '.rtl.v')
+        rfiles.append(sdir + '/' + self.project + '.rtlbb.v')
+        rfiles.append(sdir + '/' + self.project + '.rtlnopwr.v')
+        rfiles.append(sdir + '/tmp.v')
+
+        rfiles.append(ldir + '/' + self.project + '.info')
+        rfiles.append(ldir + '/' + self.project + '.mtmp')
+        rfiles.append(ldir + '/' + self.project + '.obs')
+        rfiles.append(ldir + '/' + self.project + '.pin')
+        rfiles.append(ldir + '/' + self.project + '.pl1')
+        rfiles.append(ldir + '/' + self.project + '.pl2')
+
+        # "purge" clears out all files except the minimum set needed to
+        # rebuild the design.
+        if do_purge == 1:
+            rfiles.append(srcdir + '/' + self.project + '.ys')
+            rfiles.append(sdir + '/' + self.project + '.v')
+            rfiles.append(sdir + '/' + self.project + '.spc')
+            rfiles.append(sdir + '/' + self.project + '.xspice')
+            rfiles.append(sdir + '/' + self.project + '.rtl.v')
+            rfiles.append(sdir + '/' + self.project + '.rtlbb.v')
+            rfiles.append(sdir + '/' + self.project + '.rtlnopwr.v')
+            rfiles.append(sdir + '/' + self.project + '_synth.rtl.v')
+            rfiles.append(sdir + '/' + self.project + '_synth.rtlbb.v')
+            rfiles.append(sdir + '/' + self.project + '_synth.rtlnopwr.v')
+            rfiles.append(sdir + '/' + self.project + '.dly')
+            rfiles.append(sdir + '/' + self.project + '.spef')
+            rfiles.append(sdir + '/' + self.project + '.sdf')
+            rfiles.append(sdir + '/' + self.project + '_powerground')
+            rfiles.append(ldir + '/' + self.project + '.cel')
+            rfiles.append(ldir + '/' + self.project + '.cfg')
+            rfiles.append(ldir + '/' + self.project + '.def')
+            rfiles.append(ldir + '/' + self.project + '.lef')
+            rfiles.append(ldir + '/' + self.project + '.mag')
+            rfiles.append(ldir + '/' + self.project + '.gds')
+            rfiles.append(ldir + '/' + self.project + '.rc')
+            rfiles.append(ldir + '/comp.out')
+            rfiles.append(ldir + '/comp.json')
+            rfiles.append(ldir + '/qflow.magicrc')
+            rfiles.append(ldir + '/' + self.project + '_unroute.def')
+            rfiles.append(logdir + '/drc.log')
+            rfiles.append(logdir + '/lvs.log')
+            rfiles.append(logdir + '/gdsii.log')
+            rfiles.append(logdir + '/migrate.log')
+            rfiles.append(logdir + '/place.log')
+            rfiles.append(logdir + '/post_sta.log')
+            rfiles.append(logdir + '/prep.log')
+            rfiles.append(logdir + '/route.log')
+            rfiles.append(logdir + '/sta.log')
+            rfiles.append(logdir + '/synth.log')
+
+        for rfile in rfiles:
+            if os.path.exists(rfile):
+                os.remove(rfile)
+
+        # Remove .ext files in layout
+        if os.path.isdir(ldir):
+            mfiles = os.listdir(ldir)
+            for file in mfiles:
+                if os.path.splitext(file)[1] == '.ext':
+                    os.remove(ldir + '/' + file)
+
+        if failed:
+            self.toppane.checklist.clean_result.configure(text="Fail", style='red.TButton')
+        else:
+            if do_purge == 1:
+                self.status = 'prep'
+                self.qflow_get_status()
+            else:
+                self.status = 'done'
+            self.gui_set_status()
+
+        # For safety, the "purge" setting is volatile
+        if do_purge == 1:
+            self.purge.set(0)
+        return
+
+    def done_synth(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if yosys reported an error
+        logfile = self.logdir + '/synth.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Errors detected in verilog' in line:
+                        self.print("Failure to synthesize the verilog.")
+                        failed = True
+                        break
+                    elif 'Synthesis flow stopped' in line:
+                        self.print("Synthesis script failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        # Was a .v file created and put in the synthesis directory?
+
+        if not os.path.exists(self.synthdir + '/' + self.project + '.v'):
+            self.print("Qflow synthesis failed to generate an output .v file")
+            failed = True
+
+        if failed:
+            self.toppane.checklist.synth_result.configure(text="Fail", style='red.TButton')
+        else:
+            self.status = 'place'
+            self.gui_set_status()
+
+        if self.status == 'place' and self.synth_stop.get() == 0:
+            self.qflow_place()
+
+    def done_place(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if placement errors stopped the synthesis flow.
+        logfile = self.logdir + '/place.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("Place script failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.place_result.configure(text="Fail", style='red.TButton')
+        else:
+            self.status = 'timing'
+            self.gui_set_status()
+
+        if self.status == 'timing' and self.place_stop.get() == 0:
+            self.qflow_sta()
+
+    def done_timing(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/sta.log shows an error occurring
+        logfile = self.logdir + '/sta.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("STA failed with error condition (see log file).")
+                        failed = True
+                        break
+                    elif 'Design fails' in line:
+                        self.print("STA failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.timing_result.configure(text="Fail", style='red.TButton')
+            if self.sta_cont.get() == 1:
+                self.status = 'route'
+                self.gui_set_status()
+        else:
+            self.status = 'route'
+            self.gui_set_status()
+
+        if self.status == 'route' and self.sta_stop.get() == 0:
+            self.qflow_route()
+
+    def done_route(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if qrouter reported failed routes
+        logfile = self.logdir + '/route.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Final: Failed net routes:' in line:
+                        self.print("Route attempt resulted in failed routes.")
+                        failed = True
+                        break
+                    elif 'Synthesis flow stopped' in line:
+                        self.print("Route script failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.route_result.configure(text="Fail", style='red.TButton')
+        else:
+            self.status = 'backanno'
+            self.gui_set_status()
+
+        if self.status == 'backanno' and self.route_stop.get() == 0:
+            self.qflow_backanno()
+
+    def done_backanno(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/post_sta.log shows an error occurring
+        logfile = self.logdir + '/post_sta.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("Post-route STA failed with error condition (see log file).")
+                        failed = True
+                        break
+                    elif 'Design fails' in line:
+                        self.print("Post-route STA failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.backanno_result.configure(text="Fail", style='red.TButton')
+            if self.post_sta_cont.get() == 1:
+                self.status = 'migrate'
+                self.gui_set_status()
+        else:
+            self.status = 'migrate'
+            self.gui_set_status()
+
+        if self.status == 'migrate' and self.post_sta_stop.get() == 0:
+            self.qflow_migrate()
+
+    def done_migrate(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/migrate.log shows an error occurring
+        logfile = self.logdir + '/migrate.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("Migration failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.migrate_result.configure(text="Fail", style='red.TButton')
+        else:
+            if self.drc_swap.get() == 0:
+                self.status = 'drc'
+            else:
+                self.status = 'lvs'
+            self.gui_set_status()
+
+        if self.drc_swap.get() == 0:
+            if self.status == 'drc' and self.migrate_stop.get() == 0:
+                self.qflow_drc()
+        else:
+            if self.status == 'lvs' and self.migrate_stop.get() == 0:
+                self.qflow_lvs()
+
+    def done_drc(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/drc.log shows an error occurring
+        logfile = self.logdir + '/drc.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("DRC failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.drc_result.configure(text="Fail", style='red.TButton')
+        else:
+            if self.drc_swap.get() == 0:
+                self.status = 'lvs'
+            else:
+                self.status = 'gds'
+            self.gui_set_status()
+
+        if self.drc_swap.get() == 0:
+            if self.status == 'lvs' and self.drc_stop.get() == 0:
+                self.qflow_lvs()
+        else:
+            if self.status == 'gds' and self.drc_stop.get() == 0:
+                self.qflow_gds()
+
+    def done_lvs(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/lvs.log shows an error occurring
+        logfile = self.logdir + '/lvs.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("LVS failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.lvs_result.configure(text="Fail", style='red.TButton')
+        else:
+            if self.drc_swap.get() == 0:
+                self.status = 'gds'
+            else:
+                self.status = 'drc'
+            self.gui_set_status()
+
+        if self.drc_swap.get() == 0:
+            if self.status == 'gds' and self.lvs_stop.get() == 0:
+                self.qflow_gds()
+        else:
+            if self.status == 'drc' and self.lvs_stop.get() == 0:
+                self.qflow_drc()
+
+    def done_gds(self, filename, status):
+        failed = False
+
+        if status == 'stop' or status == 'fail':
+            failed = True
+
+        # Check if log/gdsii.log shows an error occurring
+        logfile = self.logdir + '/gdsii.log'
+        if os.path.exists(logfile):
+            with open(logfile, 'r') as ifile:
+                for line in ifile:
+                    if 'Synthesis flow stopped' in line:
+                        self.print("GDS generation failed with error condition (see log file).")
+                        failed = True
+                        break
+
+        if failed:
+            self.toppane.checklist.gds_result.configure(text="Fail", style='red.TButton')
+        else:
+            self.status = 'clean'
+            self.gui_set_status()
+
+        if self.status == 'clean' and self.gds_stop.get() == 0:
+            self.qflow_cleanup()
+
+    #------------------------------------------------------------------
+    def logprint(self, message, doflush=False):
+        if self.logfile:
+            self.logfile.buffer.write(message.encode('utf-8'))
+            self.logfile.buffer.write('\n'.encode('utf-8'))
+            if doflush:
+                self.logfile.flush()
+
+    def printout(self, output):
+        # Generate output
+        if not output:
+            return
+
+        outlines = output.splitlines()
+        for line in outlines:
+            try:
+                self.print(line)
+            except TypeError:
+                line = line.decode('utf-8')
+                self.print(line)
+
+    def printwarn(self, output):
+        # Check output for warning or error
+        if not output:
+            return 0
+
+        warnrex = re.compile('.*warning', re.IGNORECASE)
+        errrex = re.compile('.*error', re.IGNORECASE)
+
+        errors = 0
+        outlines = output.splitlines()
+        for line in outlines:
+            try:
+                wmatch = warnrex.match(line)
+            except TypeError:
+                line = line.decode('utf-8')
+                wmatch = warnrex.match(line)
+            ematch = errrex.match(line)
+            if ematch:
+                errors += 1
+            if ematch or wmatch:
+                self.print(line)
+        return errors
+
+    def choose_verilog(self):
+        srcfile = filedialog.askopenfilename(initialdir = os.getcwd(),
+			title = "Find a verilog source file.",
+			filetypes = (("verilog files","*.v"),
+			("system verilog files","*.sv"), ("all files","*.*")))
+        if srcfile != '':
+            self.print("Selected source file " + str(srcfile))
+            self.set_verilog(srcfile)
+            self.qflow_get_status()
+
+    def choose_project(self):
+        project = filedialog.askdirectory(initialdir = os.getcwd(),
+			title = "Find a project.")
+        if project != '':
+            self.print("Selected project " + str(project))
+            self.set_project(project)
+
+    def set_pdk(self, pdkdir, pdkname):
+        global qflow_tech_dir
+
+        # If pdkdir is None, then check if pdkname is (first) in tech/ and
+        # then in the install tech directory.  Otherwise, look for pdkname
+        # in pdkdir.  If pdkname has an extension (like ".sh"), then
+        # remove it first.
+
+        found = False
+        if not pdkdir:
+            pdkdir = os.path.split(pdkname)[0]
+            pdkrootname = os.path.splitext(os.path.split(pdkname)[1])[0]
+            if pdkdir == '':
+
+                # Try tech/
+                if os.path.exists('tech'):
+                    if os.path.isfile('tech/' + pdkrootname + '.sh'):
+                        pdkdir = 'tech'
+                        found = True
+
+                # Try local subdirectory other than 'tech'
+                if not found:
+                    psrch = glob.glob('./*/' + pdkrootname + '.sh')
+                    if len(psrch) > 0:
+                        if os.path.isfile(psrch[0]):
+                            pdkdir = os.path.split(psrch[0])[0]
+                            found = True
+
+                # Try installed tech directories
+                if not found:
+                    if os.path.isdir(qflow_tech_dir):
+                        psrch = glob.glob(qflow_tech_dir + '/*/' + pdkrootname + '.sh')
+                        if len(psrch) > 0:
+                            if os.path.isfile(psrch[0]):
+                                pdkdir = os.path.split(psrch[0])[0]
+                                found = True
+                if found:
+                    self.print('Technology set to ' + pdkrootname + ' in ' + pdkdir + ' directory')
+                else:
+                    self.print('No technology setup file found.')
+                    return False
+        else:
+            if not os.path.isdir(pdkdir):
+                self.print('Error:  No tech directory ' + pdkdir + ' found.', file=sys.stderr)
+                return False
+            else:
+                if pdkname == None:
+                    pdkname = os.path.split(pdkdir)[1]
+                    pdkdir = os.path.split(pdkdir)[0]
+                pdkrootname = os.path.splitext(pdkname)[0]
+                if not os.path.isfile(pdkdir + '/' + pdkrootname + '.sh'):
+                    self.print('Error:  No tech setup file ' + pdkdir + '/' + pdkrootname + '.sh.', file=sys.stderr)
+                    return False
+            
+        # "Technology" is set to the directory containing the setup file
+        found = False
+        for testname, testdir in zip(self.allpdknodes, self.allpdkdirs):
+            if testname == pdkrootname:
+                found = True
+                # First check if pdkdir might be a symbolic link to testdir.
+                if os.path.islink(pdkdir):
+                    realpdkdir = os.path.realpath(pdkdir)
+                else:
+                    realpdkdir = pdkdir
+                if testdir != pdkdir:
+                    if self.status != 'begin' and self.status != 'prep':
+                        self.print('Error:  Tech directory mismatch for technology ' + pdkrootname + ': ' + pdkdir + ' vs. ' + testdir, file=sys.stderr)
+                    self.check_reset(args=None)
+                break
+
+        if not found:
+            self.allpdknodes.append(pdkrootname)
+            self.allpdkdirs.append(pdkdir)
+
+        if self.currentpdk != pdkrootname:
+            self.print('PDK changed from ' + self.currentpdk + ' to ' + pdkrootname)
+
+        self.pdknode.set(pdkrootname)
+        self.currentpdk = pdkrootname
+        self.pdkdir = pdkdir
+
+        # self.print("Diagnostic: set_pdk()")
+        # self.print('qflow_tech_dir = ' + qflow_tech_dir)
+        # self.print('self.technology = ' + self.technology.get())
+        # self.print('self.techvariants = ' + str(self.techvariants))
+        # self.print('self.pdknode = ' + pdkrootname)
+        # self.print('self.pdkdir = ' + pdkdir)
+
+        return True
+
+    def set_verilog(self, srcfile):
+
+        # self.print('Diagnostic: set_verilog:')
+
+        if srcfile and os.path.exists(srcfile):
+            rootname = os.path.split(srcfile)[1]
+            srcpath = os.path.split(srcfile)[0]
+            if srcpath == '':
+                srcpath = '.'
+
+            if self.rootpath:
+                # Create a source directory and put the file here as a
+                # symbolic link.
+                if not self.sourcedir:
+                    sourcedir = self.rootpath + '/source'
+                    self.sourcedir = sourcedir
+                else:
+                    sourcedir = self.sourcedir
+                    
+                if not os.path.exists(sourcedir):
+                    os.makedirs(sourcedir)
+                if not os.path.exists(sourcedir + '/' + rootname):
+                    relpath = os.path.relpath(srcpath + '/' + rootname, sourcedir)
+                    os.symlink(relpath, sourcedir + '/' + rootname)
+                self.verilog = sourcedir + '/' + rootname
+            else:
+                # Save the file and call set_verilog when self.rootpath is known.
+                self.verilog = srcfile
+
+            # Update verilog source button
+            self.toppane.settings.prep_settings.verilog.source_select.config(text = rootname)
+            # self.print('rootname = ' + rootname)
+            # self.print('srcpath = ' + srcpath)
+
+        # self.print('srcfile = ' + str(srcfile))
+        # self.print('self.verilog = ' + str(self.verilog))
+
+    def set_project(self, rootpath, project_name=None):
+        if self.logfile:
+            self.logfile.close()
+            self.logfile = None
+
+        # The top-level cell name must match the directory name.
+        if os.path.isdir(rootpath):
+            # Make sure selected project directory is the current
+            # working directory or various parts of the script
+            # will fail.
+            os.chdir(rootpath)
+        else:
+            rootpath = os.getcwd()
+       
+        # If rootpath is a verilog filename, then the project path
+        # is the current working directory by definition.
+
+        rootname = os.path.split(rootpath)[1]
+        project = None
+
+        if project_name:
+            project = project_name
+
+        if not project:
+            project = os.path.splitext(rootname)[0]
+
+        # self.print('Diagnostic: set_project:')
+        # self.print('rootname = ' + rootname)
+        # self.print('rootpath = ' + rootpath)
+        # self.print('project = ' + project)
+
+        if self.project != project:
+            # The only time that self.project is set from the project
+            # directory name is when the project is selected from the
+            # menu button.  This may be immediately overwritten when
+            # checking the project directory for a qflow_vars.sh, so
+            # it only remains that way as a default if starting a new
+            # project from an empty or non-existing directory.
+
+            self.project = project
+            self.module.set(project)
+
+            # Close any open logfile.
+            if self.logfile:
+                self.logfile.close()
+                self.logfile = None
+
+            # Put new log file called 'qflow.log' in the log/ subdirectory
+            try:
+                self.logdir = rootpath + '/log'
+                if os.path.exists(self.logdir):
+                    self.logfile = open(self.logdir + '/qflow.log', 'w')
+                    # Print some initial information to the logfile.
+                    self.logprint('Starting new log file ' + datetime.datetime.now().strftime('%c'),
+				doflush=True)
+                else:
+                    self.logfile = None
+                    self.logdir = None
+            except:
+                self.logfile = None
+                self.logdir = None
+
+            # Update project button
+            self.toppane.title2_frame.project_select.config(text = self.project)
+
+            # If rootpath is pointing to a verilog file, then set self.verilog
+            # to this, and set rootpath to the current working directory.
+            if os.path.isfile(rootpath):
+                self.verilog = rootpath
+                self.rootpath = os.getcwd()
+            else:
+                self.rootpath = rootpath
+
+            self.toppane.title2_frame.path_label.config(text = self.rootpath)
+
+            # Set the verilog source
+            self.set_verilog(self.verilog)
+
+            # Read from the project_vars.sh file
+            self.read_project_vars(remove = False)
+
+            # Find what status the project is in and set the status accordingly
+            self.qflow_get_status()
+
+            # Read from the project .par file to get GUI settings
+            self.read_par_file(remove = False)
+
+            # Set the GUI state to match the status
+            self.gui_set_status()
+
+        # self.print('Diagnostic: set_project (exit):')
+        # self.print('self.project = ' + self.project)
+        # self.print('self.rootpath = ' + self.rootpath)
+        # self.print('self.verilog = ' + str(self.verilog))
+        # self.print('self.module = ' + self.module.get())
+
+    def stop_proc(self):
+        if not self.qflowproc:
+            self.print("No process running.")
+            return
+        self.print('Stopping process')
+        self.update_idletasks()
+        self.qflowproc.terminate()
+        try:
+            self.qflowproc.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.qflowproc.kill()
+            self.qflowproc.communicate()
+            self.print('Qflow process killed.')
+        else:
+            self.print('Qflow process terminated.')
+        self.update_idletasks()
+        # Let watchclock() see that the process is gone and reset the GUI state.
+
+    def watchclock(self, filename, filemtime, callback):
+        if self.qflowproc == None:
+            return
+
+        while True:
+
+            qflow_status = self.qflowproc.poll()
+            if qflow_status != None:
+                try:
+                    output = self.qflowproc.communicate(timeout=10)
+                except ValueError:
+                    self.print("qflow forced stop, status " + str(qflow_status), file=sys.stderr)
+                else:
+                    for line in output[0].splitlines():
+                        self.print(line.decode('utf-8'))
+                    for line in output[1].splitlines():
+                        self.print(line.decode('utf-8'), file=sys.stderr)
+                    self.print("qflow exited with status " + str(qflow_status))
+                break
+            else:
+
+                self.update_idletasks()
+
+                sresult = select.select([self.qflowproc.stdout, self.qflowproc.stderr], [], [], 0)[0]
+
+                if self.qflowproc.stdout in sresult:
+                    outstring = self.qflowproc.stdout.readline().decode().strip()
+                    self.logprint(outstring, doflush=True)
+                    self.print(outstring)
+                elif self.qflowproc.stderr in sresult:
+                    errstring = self.qflowproc.stderr.readline().decode().strip()
+                    self.logprint(errstring, doflush = True)
+                    self.print(errstring, file=sys.stderr)
+                else:
+                    break
+
+        # If filename file is modified, then call the callback function;  otherwise, restart the clock.
+        try:
+            statbuf = os.stat(filename)
+        except:
+            newtime = 0
+        else:
+            newtime = statbuf.st_mtime
+        if (newtime > filemtime) or (qflow_status != None):
+            if qflow_status != None:
+                self.qflowproc = None
+            else:
+                # Re-run to catch last output.
+                self.after(500, lambda: self.watchclock(filename, filemtime, callback))
+                return
+            if qflow_status != 0:
+                self.print('Errors encountered in synthesis flow.', file=sys.stderr)
+                self.logprint('Errors in synthesis flow, qflow status = ' + str(qflow_status), doflush=True)
+                callback(filename, 'fail')
+            else:
+                callback(filename, 'pass')
+        elif not self.qflowproc:
+            # Process terminated by "stop"
+            callback(filename, 'stop')
+        else:
+            self.after(500, lambda: self.watchclock(filename, filemtime, callback))
+
+if __name__ == '__main__':
+
+    numargs = len(sys.argv)
+
+    if numargs > 4:
+        print('Usage:')
+        print('qflow_manager.py [<tech_name> [<project_name> [<module_name>]]]')
+        sys.exit(1)
+
+    root = tkinter.Tk()
+    app = QflowManager(root)
+
+    if numargs <= 1:
+        self.print('No technology set from command line.  Will check current directory.')
+        app.set_pdk(None, None)
+    else:
+        tech_name = sys.argv[1]
+        app.set_pdk(None, tech_name)
+
+    if numargs <= 2:
+        app.print('No project set from command line.  Will check current directory.')
+        app.set_project(os.getcwd())
+
+    elif numargs == 3:
+        # 1-argument list = file name (file root name = module name)
+        app.print('Project source file is ' + sys.argv[2] + ' in command line.')
+        app.print('The module name is assumed to be the same as the project name w/o the extension.')
+        app.set_project(sys.argv[2])
+
+    if numargs == 4:
+        # 2-argument list = file name, module name
+        app.print('Project set to ' + sys.argv[2] + ' from command line.')
+        app.print('Module set to ' + sys.argv[3] + ' from command line.')
+        app.set_project(sys.argv[2], project_name=sys.argv[3])
+
+    app.text_to_console()
+    root.mainloop()

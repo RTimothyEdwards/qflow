@@ -1,0 +1,1989 @@
+#!TCLSH_PATH
+#---------------------------------------------------------------------------
+# addspacers.tcl ---
+#
+# Read LEF file and parse for fill cells;  get the number and width of
+#	the different fill cells available.
+# Read the DEF file once, to find the number of rows and the endpoint
+#	of each row.  This is not a general purpose script. . . we assume
+#	output is from GrayWolf and place2def, so cells are aligned on
+#	the left, and components appear in order, row by row, from left
+#	to right.
+# Read the DEF file again, up to the COMPONENTS section.
+# Modify the COMPONENTS section to add the spacer cells, and write out
+#	the annotated DEF file.
+#
+# Updated 6/7/2017 to add option to split layout at intervals and
+# insert a stripe of minimum size for the addition of a power bus.
+# This is an ad hoc solution that does not consider how the overall
+# timing is affected by stretching routes that have to cross this
+# stripe.  Use of "-nostretch" will place the stripes over the existing
+# layout without making extra space with fill.  This is generally
+# preferred unless it makes the cell unroutable.
+#
+# Updated 5/18/2018 to generate an output file with the instances
+# added to the design, so these can be incorporated into the netlist.
+#---------------------------------------------------------------------------
+
+namespace path {::tcl::mathop ::tcl::mathfunc}
+
+if {$argc < 3} {
+    puts stdout "Usage:  addspacers \[<options>\] <project_name> <lef_file> <fill_cell>"
+    puts stdout "Options:"
+    puts stdout "  -stripe <width> <pitch> <pattern> \[-nostretch\] \[-techlef <tech.lef>\]"
+    exit 0
+}
+
+# NOTE:  DEF values are by default centimicrons (UNITS DISTANCE MICRONS 100)
+# but may be in nanometers if the LEF file declares a manufacturing grid
+# that is smaller than centimicrons.  Pick up the scalefactor (100 or 1000)
+# from the DEF file written by the place2def script.
+
+set argidx 0
+set dostripes false	;# no power bus striping by default
+set stripewidth 0
+set stripepitch 0
+set stripeoffset 0
+set numstripes 0
+set dostretch true
+set techlef ""
+set hardlef []
+set pitchx 0
+set layers {}
+set vias {}
+set viarules {}
+set obslist {}
+
+while true {
+    set arg0 [lindex $argv $argidx]
+    if {$arg0 == "-stripe"} {
+	incr argidx
+	set dostripes true
+	set stripewidth [lindex $argv $argidx]
+	set stripewidthreq $stripewidth
+	incr argidx
+	set stripepitch [lindex $argv $argidx]
+	incr argidx
+	set stripepattern [lindex $argv $argidx]
+    } elseif {$arg0 == "-stripewidth"} {
+	incr argidx
+	set dostripes true
+	set stripewidthreq $stripewidth
+	set stripewidth [lindex $argv $argidx]
+    } elseif {$arg0 == "-stripepitch"} {
+	incr argidx
+	set dostripes true
+	set stripepitch [lindex $argv $argidx]
+    } elseif {$arg0 == "-stripepattern"} {
+	incr argidx
+	set dostripes true
+	set stripepattern [lindex $argv $argidx]
+    } elseif {$arg0 == "-techlef"} {
+	incr argidx
+	set techlef [lindex $argv $argidx]
+    } elseif {$arg0 == "-hardlef"} {
+	incr argidx
+	lappend hardlef [lindex $argv $argidx]
+    } elseif {$arg0 == "-nostretch"} {
+	set dostretch false
+    } else {
+	break
+    }
+    incr argidx
+}
+
+set topname [file rootname [lindex $argv $argidx]]
+incr argidx
+set lefname [lindex $argv $argidx]
+incr argidx
+set fillcell [lindex $argv $argidx]
+
+set defname ${topname}.def
+set defoutname ${topname}_filled.def
+
+set units 100		;# write centimicron units into the DEF file (default)
+
+# Input arguments are assumed to be in microns.  Convert them to the
+# DEF file units.
+
+set diexlow 0
+set diexhigh 0
+set dieylow 0
+set dieyhigh 0
+
+#-----------------------------------------------------------------
+# Open all files for reading and writing
+#-----------------------------------------------------------------
+
+if [catch {open $lefname r} flef] {
+    puts stderr "Error: can't open LEF file $lefname for input"
+    return
+}
+
+if [catch {open $defname r} fdef] {
+    puts stderr "Error: can't open DEF file $defname for input"
+    return
+}
+
+if {$techlef != ""} {
+    if [catch {open $techlef r} ftech] {
+	puts stderr "Warning: can't open LEF tech file $techlef for input"
+	puts stderr "Will add obstruction layers but no power/ground stripes"
+	set techlef ""
+    }
+}
+
+#----------------------------------------------------------------
+# Initial read of top of DEF file to determine what the units
+# conversion is going to be.
+#----------------------------------------------------------------
+
+while {[gets $fdef line] >= 0} {
+    if [regexp {[ \t]*#} $line lmatch] {
+	continue
+    } elseif [regexp {[ \t]*UNITS[ \t]+DISTANCE[ \t]+MICRONS[ \t]+([^ \t]+)} $line lmatch dunits] {
+        # Units are expected to be 100 (centimicrons) but may be divided further
+	# and affect how we generate geometry for the power and ground nets.
+	set units $dunits
+	break
+    }
+}
+# Close and reopen the file for the second pass
+close $fdef
+set fdef [open $defname r]
+
+# Multiply stripe width and pitch values by units to get output values
+set stripewidth [* $units $stripewidth]
+set stripepitch [* $units $stripepitch]
+
+#----------------------------------------------------------------------
+# Parse a viarule section for generating power bus connections
+# Cut layer has "RECT" and "SPACING".  Metal layers have "ENCLOSURE"
+# (new style) or "OVERHANG" (old style).  The old style is unclear,
+# so only support what's in the OSU standard cells, which have overhang
+# in all directions (METALOVERHANG is zero).  May add support for more
+# varieties if the interpretation of the unclear syntax is known.
+#----------------------------------------------------------------------
+
+proc parse_viarule {leffile viarulename} {
+    global units
+
+    set viarulerec [dict create]
+    dict set viarulerec name $viarulename
+    set llx 0
+    set lly 0
+    set urx 0
+    set ury 0
+    set xspace 0
+    set yspace 0
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*LAYER[ \t]+([^ \t]+)[ \t]*;} $line lmatch layername] {
+	    # Pick up layername
+	    continue
+	} elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch llx lly urx ury] {
+	    set llx [* $llx $units]
+	    set lly [* $lly $units]
+	    set urx [* $urx $units]
+	    set ury [* $ury $units]
+	    dict set viarulerec ${layername} [list $llx $lly $urx $ury $xspace $yspace]
+	} elseif [regexp {[ \t]*SPACING[ \t]+([^ \t]+)[ \t]+BY[ \t]+([^ \t]+)[ \t]*;} $line lmatch xspace yspace] {
+            set xspace [* $xspace $units]
+            set yspace [* $yspace $units]
+	    dict set viarulerec ${layername} [list $llx $lly $urx $ury $xspace $yspace]
+	} elseif [regexp {[ \t]*METALOVERHANG[ \t]+([^ \t]+)[ \t]*;} $line lmatch overhang] {
+            # Ignore this.
+            continue
+	} elseif [regexp {[ \t]*OVERHANG[ \t]+([^ \t]+)[ \t]*;} $line lmatch overhang] {
+            # NOTE:  Assuming METALOVERHANG is 0 and OVERHANG is on all sides.
+            set overhang [* $overhang $units]
+	    dict set viarulerec ${layername} [list $overhang $overhang]
+	} elseif [regexp {[ \t]*ENCLOSURE[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch xencl yencl] {
+            set xencl [* $xencl $units]
+            set yencl [* $yencl $units]
+	    dict set viarulerec ${layername} [list $xencl $yencl]
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch viaruletest] {
+	    if {"$viaruletest" != "$viarulename"} {
+	        puts -nonewline stderr "Unexpected END statement $line while "
+	        puts stderr "reading viarule $viarulename"
+	    }
+	    break
+	}
+    }
+    if {[dict size $viarulerec] == 0} {
+	return ""
+    } else {
+	return $viarulerec
+    }
+}
+
+
+#----------------------------------------------------------------
+# Parse a via section for routing information
+#
+# (Note:  this routine only saves one RECT entry for each layer.
+# The intention is only to capture the name of the via, the
+# overall dimension, and the layers used.)
+#----------------------------------------------------------------
+
+proc parse_via {leffile vianame} {
+    global units
+
+    set viarec [dict create]
+    set type NONE
+    dict set viarec name $vianame
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*LAYER[ \t]+([^ \t]+)[ \t]*;} $line lmatch layername] {
+	    continue
+	} elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch llx lly urx ury] {
+	    set llx [* $llx $units]
+	    set lly [* $lly $units]
+	    set urx [* $urx $units]
+	    set ury [* $ury $units]
+	    dict set viarec ${layername} [list $llx $lly $urx $ury]
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch viatest] {
+	    if {"$viatest" != "$vianame"} {
+	        puts -nonewline stderr "Unexpected END statement $line while "
+	        puts stderr "reading via $vianame"
+	    }
+	    break
+	}
+    }
+    return $viarec
+}
+
+#----------------------------------------------------------------
+# Parse a layer section for routing information
+#----------------------------------------------------------------
+
+proc parse_layer {leffile layername layernum} {
+    global units
+
+    set layerrec [dict create]
+    set pitch 0
+    set type NONE
+    dict set layerrec name $layername
+    dict set layerrec number 0
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*TYPE[ \t]+([^ \t]+)[ \t]*;} $line lmatch type] {
+	    dict set layerrec type $type
+	    if {$type == "ROUTING"} {
+		incr layernum
+		dict set layerrec number $layernum
+	    }
+	    if {$type == "CUT"} {
+		dict set layerrec number $layernum
+	    }
+	} elseif [regexp {[ \t]*DIRECTION[ \t]+([^ \t]+)[ \t]*;} $line lmatch direc] {
+	    dict set layerrec direction $direc
+	} elseif [regexp {[ \t]*WIDTH[ \t]+([^ \t]+)[ \t]*;} $line lmatch width] {
+	    dict set layerrec width [* $width $units]
+	} elseif [regexp {[ \t]*SPACING[ \t]+([^ \t]+)[ \t]*;} $line lmatch space] {
+	    dict set layerrec spacing [* $space $units]
+	} elseif [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line \
+		lmatch xpitch ypitch] {
+	    dict set layerrec xpitch [* $xpitch $units]
+	    dict set layerrec ypitch [* $ypitch $units]
+	} elseif [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]*;} $line lmatch pitch] {
+	    set pitch [* $pitch $units]
+	    continue
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch layertest] {
+	    if {"$layertest" != "$layername"} {
+	        puts -nonewline stderr "Unexpected END statement $line while "
+	        puts stderr "reading layer $layername"
+	    }
+	    break
+	}
+    }
+
+    if {$pitch != 0} {
+	set orient [dict get $layerrec direction]
+	if {$orient == "VERTICAL"} {
+	    dict set layerrec xpitch $pitch
+	    dict set layerrec ypitch 0
+	} elseif {$orient == "HORIZONTAL"} {
+	    dict set layerrec ypitch $pitch
+	    dict set layerrec xpitch 0
+	}
+    }
+    return $layerrec
+}
+
+#----------------------------------------------------------------
+# Parse port information for a macro pin from the LEF MACRO block
+# Here, needed only for power and ground pins.
+# Assume that the power and ground ports define one rectangle that
+# reaches from end to end of the cell, and record that rectangle.
+# There are vaious contingencies in case the power rail does not
+# reach the cell bounds (which shouldn't happen), and in case the
+# power rail is a polygon that contains internal geometry.
+#----------------------------------------------------------------
+
+proc parse_port {pinname macroname leffile ox oy} {
+    global $macroname units
+
+    set x2 [+ $ox [set ${macroname}(w)]]
+
+    while {[gets $leffile line] >= 0} {
+        if [regexp {[ \t]*LAYER[ \t]+([^ \t]+)[\t ]*;} $line lmatch layername] {
+            if {![regexp {.*(\d).*} $layername lmatch layernum]} {set layernum 0}
+            set ${macroname}(${pinname},layer) $layernum
+        } elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} \
+                        $line lmatch llx lly urx ury] {
+	    set llx [* $llx $units]
+	    set lly [* $lly $units]
+	    set urx [* $urx $units]
+	    set ury [* $ury $units]
+	    if {$llx < $ox} {set llx $ox}
+	    if {$urx > $x2} {set urx $x2}
+	    if {($llx == $ox) && ($urx == $x2)} {
+		set ${macroname}(${pinname},llx) $llx
+		set ${macroname}(${pinname},lly) $lly
+		set ${macroname}(${pinname},urx) $urx
+		set ${macroname}(${pinname},ury) $ury
+	    }
+	    # To do:  If bus is made of more than one rectangle, merge
+	    # leftmost and rightmost rectangles into one entry.
+
+	} elseif [regexp {[ \t]*POLYGON[ \t]+(.*)[ \t]*;} $line lmatch rest] {
+
+	    # parse POLYGON records.  To capture the main power stripe
+	    # from a polygon, look for one line stretching from beginning
+	    # to end of the cell.  Then find the one or two lines attached
+	    # to the long one at the corners.  Assume the power stripe
+	    # height is the shorter of the two lines.
+
+	    # Sort polygon points into X and Y arrays
+	    set i 0
+	    set xvals {}
+	    set yvals {}
+	    foreach coord $rest {
+		if {$i == 0} {
+		    lappend xvals $coord
+		} else {
+		    lappend yvals $coord
+		}
+		set i [expr 1 - $i]
+	    }
+
+	    # This code is based on the fact that standard cells are not
+	    # going to have metal jutting up or down from the power rails
+	    # at the extremities, because there the cells overlap other
+	    # cells (problem would be if *all* cells have a metal tab at
+	    # the overlap).  There are more complicated ways to extract
+	    # the largest rectangle of a polygon, but this should suffice
+	    # until a counterexample arises.
+
+	    # Find indexes of points at minimum and maximum X
+	    set minx [lindex $xvals 0]
+	    set maxx $minx
+	    set minxidx {}
+	    set maxxidx {}
+	    for {set i 0} {$i < [llength $xvals]} {incr i} {
+		set testx [lindex $xvals $i]
+		if {$testx <= $ox} {lappend minxidx $i}
+		if {$testx >= $x2} {lappend maxxidx $i}
+		if {$testx < $minx} {set minx $testx}
+		if {$testx > $maxx} {set maxx $testx}
+	    }
+	    # Clip extrema to cell bounds, if needed
+	    if {$minx < $ox} {set minx $ox}
+	    if {$maxx > $x2} {set maxx $x2}
+
+	    # If minxidx or maxxidx are empty, then set to the minx
+	    # and maxx indices.
+	    if {[llength $minxidx] == 0} {
+		for {set i 0} {$i < [llength $xvals]} {incr i} {
+		    set testx [lindex $xvals $i]
+		    if {$testx == $minx} {lappend minxidx $i}
+		}
+	    }
+	    if {[llength $maxxidx] == 0} {
+		for {set i 0} {$i < [llength $xvals]} {incr i} {
+		    set testx [lindex $xvals $i]
+		    if {$testx == $maxx} {lappend maxxidx $i}
+		}
+	    }
+
+	    # Find Y value minimum and maximum at both extrema
+	    set ymin [lindex $yvals 0]
+	    set ymax $ymin
+	    for {set i 0} {$i < [llength $minxidx]} {incr i} {
+		set j [lindex $minxidx $i]
+		set testy [lindex $yvals $j]
+		if {$testy < $ymin} {set ymin $testy}
+		if {$testy > $ymax} {set ymax $testy}
+	    }
+	    for {set i 0} {$i < [llength $maxxidx]} {incr i} {
+		set j [lindex $maxxidx $i]
+		set testy [lindex $yvals $j]
+		if {$testy < $ymin} {set ymin $testy}
+		if {$testy > $ymax} {set ymax $testy}
+	    }
+	    
+	    set llx [* $minx $units]
+	    set lly [* $ymin $units]
+	    set urx [* $maxx $units]
+	    set ury [* $ymax $units]
+
+	    set ${macroname}(${pinname},llx) $llx
+	    set ${macroname}(${pinname},lly) $lly
+	    set ${macroname}(${pinname},urx) $urx
+	    set ${macroname}(${pinname},ury) $ury
+
+        } elseif [regexp {[ \t]*END[ \t]*$} $line lmatch] { break }
+    }
+}
+
+#----------------------------------------------------------------
+# Parse pin information from the LEF MACRO block
+#----------------------------------------------------------------
+
+proc parse_pin {pinname macroname leffile ox oy} {
+    global $macroname
+
+    set portuse ""
+    while {[gets $leffile line] >= 0} {
+        if [regexp {[ \t]*PORT} $line lmatch] {
+	    if {($portuse == "POWER") || ($portuse == "GROUND") || ($portuse == "")} {
+	        parse_port $pinname $macroname $leffile $ox $oy
+	    }
+        } elseif [regexp {[ \t]*DIRECTION[ \t]+([^ \t]+)[ \t]*;} $line lmatch porttype] {
+	    set porttype [string toupper $porttype]
+            set ${macroname}(${pinname},type) $porttype
+        } elseif [regexp {[ \t]*DIRECTION[ \t]+([^:]+);} $line lmatch porttype] {
+	    set porttype [string toupper $porttype]
+            set ${macroname}(${pinname},type) $porttype
+        } elseif [regexp {[ \t]*USE[ \t]+([^ \t]+)[ \t]*;} $line lmatch portuse] {
+	    set portuse [string toupper $portuse]
+            set ${macroname}(${pinname},use) $portuse
+        } elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch pintest] {
+            if {"$pintest" == "$pinname"} {
+                break
+            } else {
+                puts stdout "Unexpected END statement $line while parsing pin $pinname"
+            }
+        }
+    }
+}
+
+#----------------------------------------------------------------
+# Read through a LEF file section that we don't care about.
+#----------------------------------------------------------------
+
+proc skip_section {leffile sectionname} {
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+	    if {"$sectiontest" != "$sectionname"} {
+		puts -nonewline stderr "Unexpected END statement $line "
+		puts stderr "while reading section $sectionname"
+	    }
+	    break
+	}
+    }
+}
+
+#----------------------------------------------------------------
+# Parse the macro contents of the LEF file and retain the information
+# about cell size and pin positions.
+#----------------------------------------------------------------
+
+proc parse_macro {leffile macroname} {
+    global $macroname units
+
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*SYMMETRY[ \t]+([^ \t]+)[ \t]*;} $line lmatch symmetry] {
+	    set ${macroname}(symmetry) $symmetry
+	} elseif [regexp {[ \t]*ORIGIN[ \t]+(.+)[ \t]+(.+)[ \t]*;} $line lmatch x y] {
+	    set x [expr {int($x * $units)}]
+	    set y [expr {int($y * $units)}]
+	    set ${macroname}(x) $x
+	    set ${macroname}(y) $y
+	} elseif [regexp {[ \t]*SIZE[ \t]+(.+)[ \t]+BY[ \t]+(.+)[ \t]*;} \
+                        $line lmatch w h] {
+	    set w [expr {int($w * $units)}]
+	    set h [expr {int($h * $units)}]
+	    set ${macroname}(w) $w
+	    set ${macroname}(h) $h
+
+	} elseif [regexp {[ \t]*PIN[ \t]+([^ \t]+)[ \t]*$} $line lmatch pinname] {
+	    # Get power and ground information, the values in the fill cell
+	    # will be used to generate power and ground stripes
+	    parse_pin $pinname $macroname $leffile $x $y
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch macrotest] {
+	    if {"$macrotest" == "$macroname"} {
+		break
+	    } else {
+		puts stderr "Unexpected END statement $line while reading macro $macroname"
+	    }
+	}
+    }
+}
+
+#-----------------------------------------------------------------
+# Read a LEF file.  Returns a list of fill cells if the LEF file
+# was a standard cell set macro file.
+# NOTE:  Route layers are assumed to be listed from bottom to top,
+# so that the layer number can be determined by the position that
+# the layer description occurs in the LEF file.
+#-----------------------------------------------------------------
+
+proc read_lef {flef fillcell} {
+    global layers vias viarules
+    set layernum 0
+    set fillcells {}
+    while {[gets $flef line] >= 0} {
+        # Ignore comment lines
+        if [regexp {[ \t]*#} $line lmatch] {
+	    continue
+	} elseif [regexp {[ \t]*MACRO[ \t]+([^ \t]+)[ \t]*$} $line lmatch macroname] {
+	    # Parse the "macro" statement
+	    parse_macro $flef $macroname
+	    if {[regexp "^$fillcell" $macroname] == 1} {
+		# Remember this for later if it's a fill cell
+		lappend fillcells $macroname
+	    }
+	} elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
+	    set newlayer [parse_layer $flef $layername $layernum]
+	    lappend layers $newlayer
+	    set newnum [dict get $newlayer number]
+	    if {$newnum != 0} {set layernum $newnum}
+	} elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
+	    lappend vias [parse_via $flef $vianame]
+	} elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
+	    set result [parse_viarule $flef $viarulename]
+	    if {$result != ""} {
+		lappend viarules $result
+	    }
+	} elseif [regexp {[ \t]*SITE[ \t]+([^ \t]+)[ \t]*$} $line lmatch sitename] {
+	    skip_section $flef $sitename
+	} elseif [regexp {[ \t]*UNITS[ \t]*$} $line lmatch] {
+	    skip_section $flef UNITS
+	} elseif [regexp {[ \t]*PROPERTYDEFINITIONS[ \t]*$} $line lmatch] {
+	    skip_section $flef PROPERTYDEFINITIONS
+	} elseif [regexp {[ \t]*SPACING[ \t]*$} $line lmatch] {
+	    skip_section $flef SPACING
+	} elseif [regexp {[ \t]*END[ \t]+LIBRARY[ \t]*$} $line lmatch] {
+	    break
+	} elseif [regexp {^[ \t]*#} $line lmatch] {
+	    # Comment line, ignore.
+	} elseif ![regexp {^[ \t]*$} $line lmatch] {
+	    # Other things we don't care about
+	    set matches 0
+	    if [regexp {[ \t]*NAMESCASESENSITIVE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*VERSION} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*BUSBITCHARS} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*DIVIDERCHAR} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*USEMINSPACING} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*CLEARANCEMEASURE} $line lmatch] {
+		incr matches
+	    } elseif [regexp {[ \t]*MANUFACTURINGGRID} $line lmatch] {
+		incr matches
+	    } elseif {$fillcell != ""} {
+		puts stderr "Unexpected input in LEF file:  Only macro defs were expected!"
+		puts -nonewline stdout "Line is: $line"
+		flush stdout
+	    }
+	}
+    }
+    return $fillcells
+}
+
+#-----------------------------------------------------------------
+# Read the tech LEF file for via and layer information
+#-----------------------------------------------------------------
+
+if {$techlef != ""} {
+    puts stdout "Reading technology LEF file ${techlef}."
+    read_lef $ftech ""
+}
+
+if {[llength $hardlef] > 0} {
+    foreach leffile $hardlef {
+	puts stdout "Reading hard macro LEF file ${leffile}."
+	if [catch {open $leffile r} fhard] {
+	    puts stderr "Error: can't open LEF file $lefname for input"
+	} else {
+	    read_lef $fhard ""
+	    close $fhard
+	}
+    }
+}
+
+#-----------------------------------------------------------------
+# Read the LEF macro file and get the fill cells and their widths
+#-----------------------------------------------------------------
+
+puts stdout "Reading ${fillcell} macros from LEF file."
+flush stdout
+
+set fillcells [read_lef $flef $fillcell]
+
+# If the macro file doesn't define any fill cells, there's not a
+# whole lot we can do, unless we're adding power stripes without
+# stretching.
+
+if {[llength $fillcells] == 0} {
+    puts stdout "No fill cells (${fillname}) found in macro file ${lefname}!"
+    if {$dostripes == false || $dostretch == true} {exit 1}
+}
+
+# Get routing grid X pitch from the layer information
+
+set testpitch 0
+foreach layer $layers {
+    if {[dict get $layer type] != "ROUTING"} {continue}
+    set layerpitch [dict get $layer xpitch]
+    if {$layerpitch > 0} {
+	if {$testpitch == 0} {
+	    set testpitch $layerpitch
+	} elseif {$layerpitch < $testpitch} {
+	    set testpitch $layerpitch
+	}
+    }
+}
+set pitchx $testpitch
+
+# If neither LEF file defined layers, then set "needspecial" to false,
+# because there is not enough information to know how to write the
+# specialnets section.  Flag a warning.
+
+if {$pitchx == 0} {
+    puts stderr "No technology layer information in LEF files."
+    puts stderr "Cannot create physical geometry for power and ground."
+    set needspecial false
+}
+
+#-----------------------------------------------------------------
+# Parse the COMPONENTS section of the DEF file
+# Assuming this file was generated by place2def, each component
+# should be on a single line.
+#-----------------------------------------------------------------
+
+proc parse_components {deffile rows} {
+    upvar $rows rdict
+    while {[gets $deffile line] >= 0} {
+        if [regexp {[ \t]*#} $line lmatch] {
+	    continue
+	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+	    if {"$sectiontest" != "COMPONENTS"} {
+		puts -nonewline stderr "Unexpected END statement $line "
+		puts stderr "while reading section COMPONENTS"
+	    }
+	    break
+	} elseif [regexp {[ \t]*-[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+\+[ \t]+PLACED[ \t]+\([ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+\)[ \t]+([^ \t]+)[ \t]+;} $line lmatch \
+		instance macro px py orient] {
+	    if [catch {set row [dict get $rdict $py]}] {
+		dict set rdict $py [list $px $instance $macro $orient]
+	    } else {
+		set rowmax [lindex $row 0]
+		if {$px > $rowmax} {
+		    dict set rdict $py [list $px $instance $macro $orient]
+		}
+	    }
+	} else {
+	    puts -nonewline stderr "Unexpected statement $line "
+	    puts stderr "while reading section COMPONENTS"
+	}
+    }
+}
+
+#-----------------------------------------------------------------
+# Get the power pin name from a macro
+#-----------------------------------------------------------------
+
+proc get_power {macroname} {
+    global $macroname
+    foreach name [array names $macroname] {
+	if {[set ${macroname}(${name})] == "POWER"} {
+            set cidx [- [string first "," $name] 1]
+ 	    return [string range $name 0 $cidx]
+        }
+    }
+    return ""
+}
+
+#-----------------------------------------------------------------
+# Get the ground pin name from a macro
+#-----------------------------------------------------------------
+
+proc get_ground {macroname} {
+    global $macroname
+    foreach name [array names $macroname] {
+	if {[set ${macroname}(${name})] == "GROUND"} {
+            set cidx [- [string first "," $name] 1]
+ 	    return [string range $name 0 $cidx]
+        }
+    }
+    return ""
+}
+
+#-----------------------------------------------------------------
+# Get the first input pin name from a macro.  This is for use in
+# writing fillcells.txt, for which a cell with no input pin
+# should write PIN=-, so return "-" if there is no input pin.
+#-----------------------------------------------------------------
+
+proc get_inputpin {macroname} {
+    global $macroname
+    foreach name [array names $macroname] {
+	if {[set ${macroname}(${name})] == "INPUT"} {
+            set cidx [- [string first "," $name] 1]
+ 	    return [string range $name 0 $cidx]
+        }
+    }
+    return "-"
+}
+
+#-----------------------------------------------------------------
+# Write entries for SPECIALNETS corresponding to the power and
+# ground stripes.  If we have VIARULE statements, then the power
+# posts are constructed from the VIARULE vias.  Where layers
+# are missing, or if there were no VIARULE statements, then the
+# power posts are constructed from known VIA types.
+#-----------------------------------------------------------------
+
+proc write_special {stripeinfo stripefills stripewidth stripepattern
+		rows dieylow dieyhigh fanno} {
+    global fmin vias viarules layers pitchx obslist
+
+    # Take 1st fill cell and find name of power and ground buses
+    set fillmacro [lindex $stripefills 0]
+    global $fillmacro
+
+    # Parse layers for topmost vertical route layer.  LEF syntax
+    # apparently depends on route layers to be described in order
+    # bottom to top in the LEF file, so we rely on this convention.
+
+    set tnum 0
+    set topmet 0
+    foreach layer $layers {
+	if {[dict get $layer type] != "ROUTING"} {continue}
+	if {[dict get $layer direction] == "VERTICAL"} {
+	    set lnum [dict get $layer number]
+	    if {$lnum > $tnum} {
+		set tnum $lnum
+	    }
+	}
+	set lnum [dict get $layer number]
+	if {$lnum > $topmet} {
+	    set topmet $lnum
+	}
+    }
+    if {$tnum == 0} {
+	puts stdout "Error in metal layer definitions. . . cannot continue."
+	exit 1
+    } elseif {$tnum < 3} {
+	puts stderr "Warning:  No vertical routing layer at metal 3 or above"
+	puts stderr "Only posts will be placed, and not connected"
+    }
+ 
+    # Create list of route layers in order.
+    set layerlist {}
+    for {set i 1} {$i <= $topmet} {incr i} {
+	foreach layer $layers {
+	    if {[dict get $layer type] == "ROUTING"} {
+		set lnum [dict get $layer number]
+		if {$lnum == $i} {
+		    lappend layerlist [dict get $layer name]
+		}
+	    }
+	}
+    }
+
+    # Parse vias for the smallest size via on each metal layer (except top)
+    # These will only be used if no viagen statement exists.
+
+    set basevias {}
+    set baseviarules {}
+    set viaoffsets {}
+    set viaheights {}
+    set viaspaces {}
+    set nvias {}
+    set blayer ""
+    set tlayer ""
+    set clayer ""
+    set cwidth 0
+    set cspace 0
+    for {set i 1} {$i <= [- $topmet 1]} {incr i} {
+	foreach layer $layers {
+	    if {[dict get $layer type] == "ROUTING"} {
+		set lnum [dict get $layer number]
+		if {$lnum == $i} {
+		    set blayer [dict get $layer name]
+		} elseif {$lnum == [+ $i 1]} {
+		    set tlayer [dict get $layer name]
+		}
+	    } elseif {[dict get $layer type] == "CUT"} {
+		set lnum [dict get $layer number]
+		if {$lnum == $i} {
+		    set clayer [dict get $layer name]
+		    if [catch {set cwidth [dict get $layer width]}] {set cwidth 0}
+		    if [catch {set cspace [dict get $layer spacing]}] {set cspace 0}
+		}
+	    }
+	}
+
+	set bestvia ""
+	set bestarea 0
+	set bestwidth 0
+	set bestheight 0
+	set bestcutwidth 0
+	set bestcutsep 0
+
+	# First look in the VIARULE records, then fall back on VIA records.
+
+	foreach viarule $viarules {
+	    set viarulename [dict get $viarule name]
+            set match 0
+	    dict for {layername viarulespec} $viarule {
+		if {$layername == $tlayer} {
+		    incr match
+		} elseif {$layername == $blayer} {
+		    incr match
+		}
+	    }
+	    if {$match == 2} {		;# Found matching VIARULE
+		lappend baseviarules ${viarulename}
+		lappend basevias ""
+		lappend viaoffsets 0
+		lappend viaheights [dict get $viarule height]
+		lappend viaspaces 0
+		lappend nvias 0
+		break
+	    }
+	}
+
+	if {$match != 2} {
+	    foreach via $vias {
+		set areab 0
+		set areat 0
+		foreach vlayer [dict keys $via] {
+		    if {$vlayer == $blayer} {
+			set coords [dict get $via $vlayer]
+			set llx [lindex $coords 0]
+			set lly [lindex $coords 1]
+			set urx [lindex $coords 2]
+			set ury [lindex $coords 3]
+			set widthb [expr ($urx - $llx)]
+			set heightb [expr ($ury - $lly)]
+			set areab [expr $widthb * $heightb]
+		    } elseif {$vlayer == $tlayer} {
+			set coords [dict get $via $vlayer]
+			set llx [lindex $coords 0]
+			set lly [lindex $coords 1]
+			set urx [lindex $coords 2]
+			set ury [lindex $coords 3]
+			set widtht [expr ($urx - $llx)]
+			set heightt [expr ($ury - $lly)]
+			set areat [expr $widtht * $heightt]
+		    }
+		}
+		if {($areab > 0) && ($areat > 0)} {
+		    set area [max $areab $areat]
+		    set width [max $widthb $widtht]
+		    set height [max $heightb $heightt]
+		    if {($bestvia == "") || ($area < $bestarea)} {
+			set bestvia [dict get $via name]
+			set bestarea $area
+			set bestwidth $width
+			set bestheight $height
+			if {$cwidth == 0} {
+			    set coords [dict get $via $clayer]
+			    set llx [lindex $coords 0]
+			    set urx [lindex $coords 2]
+			    set bestcutwidth [- $urx $llx]
+			} else {
+			    set bestcutwidth $cwidth
+			}
+			if {$cspace != 0} {
+			    set bestcutsep $cspace
+			}
+		    }
+		}
+	    }
+
+	    if {$bestvia == ""} {
+		puts stdout "Warning:  no via found between $blayer and $tlayer"
+		continue
+	    }
+
+	    if {$bestcutsep == 0} {
+		# If no cut spacing info, assume that abutting vias satisfy
+		# the spacing minimum.
+		set bestcutsep [- $bestwidth $cwidth]
+	    }
+
+	    # Find the minimum separation between these vias.  Find the
+	    # minimum separation of the cuts within the via, and then
+	    # use that to determine the number of vias across a power bus
+
+	    lappend basevias $bestvia
+	    lappend baseviarules ""
+	    lappend viaheights $bestheight
+	    set vspace [expr $bestcutwidth + $bestcutsep]
+	    if {$vspace > 0} {
+		lappend viaspaces $vspace
+
+		# Two computations:  One is simply the available with divided by
+		# the spacing between contacts, with half the space on either
+		# side.  However, if there is a metal overlap that is large,
+		# then the overlap will limit the number of vias, so take the
+		# smaller of the two calculations.
+
+		set numvias1 [expr int(floor($stripewidth / $vspace))]
+		set numvias2 [expr int(floor((($stripewidth - $bestwidth) / ($bestcutwidth + $bestcutsep)) + 1))]
+		set numvias [expr min($numvias1, $numvias2)]
+		if {$numvias2 < $numvias1} {
+		    set voffset [/ [+ $vspace $bestwidth] 2]
+		} else {
+		    set voffset [/ $vspace 2]
+		}
+		lappend viaoffsets $voffset
+		lappend nvias $numvias
+
+		puts stdout "Stripe width $stripewidth fits $numvias $bestvia at cut width $bestcutwidth separation $bestcutsep"
+	    } else {
+		puts stdout "Warning: couldn't get cut size and spacing for via $bestvia"
+		lappend viaspaces $bestwidth
+		lappend nvias [expr floor($stripewidth / $bestwidth)]
+		lappend viaoffsets [/ $bestwidth 2]
+	    }
+	}
+    }
+
+    # topmet will be used to index basevias and layerlist, which are
+    # 0 to tnum - 1, not 1 to tnum, unless there is no top metal to
+    # use for the vertical power bus, in which case it is 1 to tnum.
+
+    if {$tnum >= 3} {
+	set topmet [- $tnum 1]
+    } else {
+	set topmet $tnum
+    }
+
+    set powername [get_power $fillmacro]
+
+    set pllx [set ${fillmacro}(${powername},llx)]
+    set plly [set ${fillmacro}(${powername},lly)]
+    set purx [set ${fillmacro}(${powername},urx)]
+    set pury [set ${fillmacro}(${powername},ury)]
+    set h [set ${fillmacro}(h)]
+    set y [/ [+ $plly $pury] 2.0]
+
+    puts $fanno "- ${powername}"
+    set j 0
+    set first true
+    foreach stripe $stripeinfo {
+	set smean [lindex $stripe 0]
+	set slow  [lindex $stripe 1]
+	set shigh [lindex $stripe 2]
+
+	if {[- $shigh $slow] > 0} {
+	   set smean [/ [+ $shigh $slow] 2.0]
+	}
+	# Make sure smean is on pitch
+	set nw [expr int($smean / $fmin)]
+	set smean [* $nw $fmin]
+
+	set slow [- $smean [/ $stripewidth 2.0]]
+	set shigh [+ $smean [/ $stripewidth 2.0]]
+
+	set pattern [string index $stripepattern $j]
+	if {$pattern == "P"} {
+	    set drows [dict keys $rows]
+	    foreach rowy $drows {
+		set orient [lindex [dict get $rows $rowy] 3]
+		if {$orient == "S" || $orient == "FS"} {
+		    set ay [- $h $y]
+		} else {
+		    set ay $y
+		}
+		for {set i 0} {$i < $topmet} {incr i} {
+		    set ry [+ $rowy $ay]
+		    set layer [lindex $layerlist $i]
+		    set via [lindex $basevias $i]
+		    set viarule [lindex $baseviarules $i]
+		    set vh [lindex $viaheights $i]
+		    set ovh [expr int($vh)]
+
+		    # If post is in an obstruction area, then skip it.
+		    set dopost true
+		    foreach obs $obslist {
+		       set obsllx [lindex $obs 0]
+		       set obslly [lindex $obs 1]
+		       set obsurx [lindex $obs 2]
+		       set obsury [lindex $obs 3]
+		       if {$smean > $obsllx && $smean < $obsurx &&
+				$ry > $obslly && $ry < $obsury} {
+			  set dopost false
+			  puts stdout "No post here!"
+			  break
+		       }
+		    }
+		    if {!$dopost} {continue}
+
+		    if $first {
+		        puts -nonewline $fanno "+ FIXED "
+		        set first false
+		    } else {
+		        puts -nonewline $fanno "  NEW "
+		    }
+
+		    if {$viarule != ""} {
+                        # Simply put a single VIARULE via
+			set ory [expr int($ry)]
+			set osmean [expr int($smean)]
+			puts $fanno "$layer $ovh ( $osmean $ory ) ( * * ) ${viarule}_post"
+		    } else {
+			# No VIARULE, so drop down a number of vias
+
+			set vs [lindex $viaspaces $i]
+			set vo [lindex $viaoffsets $i]
+			set nv [lindex $nvias $i]
+			set x1 $slow
+			set oshigh [expr int($shigh)]
+			set ory [expr int($ry)]
+			set ox1 [expr int($x1)]
+
+			puts $fanno "$layer $ovh ( $oshigh $ory ) ( $ox1 * )"
+			set x2 [+ $x1 $vo]
+			for {set k 0} {$k < $nv} {incr k} {
+			    set ox1 [expr int($x1)]
+	    		    set ox2 [expr int($x2)]
+	    		    puts $fanno "  NEW $layer $ovh ( $ox1 $ory ) ( $ox2 * ) $via"
+			    set x1 $x2
+			    set x2 [+ $x1 $vs]
+			}
+		    }
+		}
+		if {$tnum < 3} {
+		    # Top metal is just a post.
+		    set layer [lindex $layerlist $tnum]
+
+		    set outvh [expr int($vh)]
+		    set outshigh [expr int($shigh)]
+		    set outslow [expr int($slow)]
+		    set outry [expr int($ry)]
+
+		    puts $fanno "  NEW $layer $outvh ( $outslow $outry ) ( $outshigh $outry )"
+		}
+	    }
+	    # At the end, put top vertical metal stripe from top to bottom
+	    if {$tnum >= 3} {
+		set layer [lindex $layerlist [- $tnum 1]]
+
+		set osmean [expr int($smean)]
+		puts $fanno "  NEW $layer $stripewidth ( $osmean $dieylow ) ( * $dieyhigh )"
+	    }
+	}
+	incr j
+    }
+    puts $fanno " ;"
+
+    set groundname [get_ground $fillmacro]
+
+    set gllx [set ${fillmacro}(${groundname},llx)]
+    set glly [set ${fillmacro}(${groundname},lly)]
+    set gurx [set ${fillmacro}(${groundname},urx)]
+    set gury [set ${fillmacro}(${groundname},ury)]
+    set w [- $gury $glly]
+    set y [/ [+ $glly $gury] 2.0]
+
+    puts $fanno "- ${groundname}"
+    set j 0
+    set first true
+    foreach stripe $stripeinfo {
+	set smean [lindex $stripe 0]
+	set slow  [lindex $stripe 1]
+	set shigh [lindex $stripe 2]
+
+	if {[- $shigh $slow] > 0} {
+	   set smean [/ [+ $shigh $slow] 2.0]
+	}
+	# Make sure smean is on pitch
+	set nw [expr int($smean / $fmin)]
+	set smean [* $nw $fmin]
+
+	set slow [- $smean [/ $stripewidth 2.0]]
+	set shigh [+ $smean [/ $stripewidth 2.0]]
+
+	set pattern [string index $stripepattern $j]
+	if {$pattern == "G"} {
+	    set drows [dict keys $rows]
+	    foreach rowy $drows {
+		set orient [lindex [dict get $rows $rowy] 3]
+		if {$orient == "S" || $orient == "FS"} {
+		    set ay [- $h $y]
+		} else {
+		    set ay $y
+		}
+		for {set i 0} {$i < $topmet} {incr i} {
+		    set ry [+ $rowy $ay]
+		    set layer [lindex $layerlist $i]
+		    set via [lindex $basevias $i]
+		    set viarule [lindex $baseviarules $i]
+		    set vh [lindex $viaheights $i]
+		    set ovh [expr int($vh)]
+
+		    # If post is in an obstruction area, then skip it.
+		    set dopost true
+		    foreach obs $obslist {
+		       set obsllx [lindex $obs 0]
+		       set obslly [lindex $obs 1]
+		       set obsurx [lindex $obs 2]
+		       set obsury [lindex $obs 3]
+		       if {$smean > $obsllx && $smean < $obsurx &&
+				$ry > $obslly && $ry < $obsury} {
+			  set dopost false
+			  break
+		       }
+		    }
+		    if {!$dopost} {continue}
+
+		    if $first {
+		    	puts -nonewline $fanno "+ FIXED "
+			set first false
+		    } else {
+			puts -nonewline $fanno "  NEW "
+		    }
+
+		    if {$viarule != ""} {
+                        # Simply put a single VIARULE via
+			set ory [expr int($ry)]
+			set osmean [expr int($smean)]
+			puts $fanno "$layer $ovh ( $osmean $ory ) ( * * ) ${viarule}_post"
+		    } else {
+			# No VIARULE, so drop down a number of vias
+
+			set vs [lindex $viaspaces $i]
+			set vo [lindex $viaoffsets $i]
+			set nv [lindex $nvias $i]
+			set x1 $slow
+			set oshigh [expr int($shigh)]
+			set ory [expr int($ry)]
+			set ox1 [expr int($x1)]
+
+			puts $fanno "$layer $ovh ( $oshigh $ory ) ( $ox1 * )"
+			set x2 [+ $x1 $vo]
+			for {set k 0} {$k < $nv} {incr k} {
+			    set ox1 [expr int($x1)]
+			    set ox2 [expr int($x2)]
+			    puts $fanno "  NEW $layer $ovh ( $ox1 $ory ) ( $ox2 * ) $via"
+			    set x1 $x2
+			    set x2 [+ $x1 $vs]
+			}
+		    }
+		}
+		if {$tnum < 3} {
+		    # Top metal is just a post.
+		    set layer [lindex $layerlist $tnum]
+		    set ovh [expr int($vh)]
+		    set oshigh [expr int($shigh)]
+		    set oslow [expr int($slow)]
+		    set ory [expr int($ry)]
+		    puts $fanno "  NEW $layer $ovh ( $oslow $ory ) ( $oshigh $ory )"
+		}
+	    }
+	    # At the end, put top vertical metal stripe from top to bottom
+	    if {$tnum >= 3} {
+		set layer [lindex $layerlist [- $tnum 1]]
+		set osmean [expr int($smean)]
+		puts $fanno "  NEW $layer $stripewidth ( $osmean $dieylow ) ( * $dieyhigh )"
+	    }
+	}
+	incr j
+    }
+    puts $fanno " ;"
+}
+
+#-----------------------------------------------------------------
+# Write the VIA sections for the power bus posts.
+#-----------------------------------------------------------------
+
+proc write_viarules {fanno stripewidth} {
+    global viarules
+
+    # First pass over rules:  count valid rules
+    set numvias 0
+    foreach viarule $viarules {
+        set llx 0
+        set lly 0
+        set urx 0
+        set ury 0
+
+        dict for {layername layerspec} $viarule {
+            if {[llength $layerspec] == 6} {
+		# Cut and spacing rule
+                set llx [lindex $layerspec 0]
+                set lly [lindex $layerspec 1]
+                set urx [lindex $layerspec 2]
+                set ury [lindex $layerspec 3]
+	    }
+        }
+
+	# Check on bad entries
+	if {($llx != $urx) && ($lly != $ury)} {incr numvias}
+    }
+    if {$numvias == 0} {return}
+
+    puts -nonewline $fanno "VIAS $numvias"
+
+    set newviarules {}
+    foreach viarule $viarules {
+	set viarulename [dict get $viarule name]
+        # First pass of rule:  Make sure we know the cut size, spacing,
+        # and overhang.
+        set xencl 0
+        set yencl 0
+        set xspace 0
+        set yspace 0
+        set llx 0
+        set lly 0
+        set urx 0
+        set ury 0
+
+        dict for {layername layerspec} $viarule {
+            if {[llength $layerspec] == 2} {
+		# Enclosure rule (use maximum for top and bottom layers)
+		set xencl [expr max([lindex $layerspec 0], $xencl)]
+		set yencl [expr max([lindex $layerspec 1], $yencl)]
+            } elseif {[llength $layerspec] == 6} {
+		# Cut and spacing rule
+                set llx [lindex $layerspec 0]
+                set lly [lindex $layerspec 1]
+                set urx [lindex $layerspec 2]
+                set ury [lindex $layerspec 3]
+                set xspace [lindex $layerspec 4]
+                set yspace [lindex $layerspec 5]
+	    }
+        }
+
+	# Check on bad entries
+	if {($llx == $urx) || ($lly == $ury)} {continue}
+
+        puts -nonewline $fanno " ;\n- ${viarulename}_post"
+
+        # Determine post size, and how many via cuts are going to fit.
+	set posturx [expr int(floor($stripewidth / 2))]
+	set postllx -$posturx
+        set postury [expr int($ury + $yencl)]
+	set postlly [expr int($lly - $yencl)]
+        # Add record for "height" to the viarule
+        dict set viarule height [expr $postury - $postlly]
+	lappend newviarules $viarule
+	set lly [expr int($lly)]
+	set ury [expr int($ury)]
+	set numvias [expr int(floor(($stripewidth - (2 * $xencl) + $xspace) / ($urx - $llx + $xspace)))]
+        # Determine width from first via cut left side to last via cut right side
+        set reqwidth [expr int((($urx - $llx) * $numvias) + ($xspace * ($numvias - 1)))]
+        # Determine the offset from the left side needed to center the vias
+	set xoffset [expr int($postllx + (($stripewidth - $reqwidth) / 2.0))]
+
+        # Second pass of rule:  Write out the via geometry.
+        dict for {layername layerspec} $viarule {
+	    if {$layername == "name"} {continue}
+            if {[llength $layerspec] == 2} {
+		# Enclosure rule, so this is a metal layer.  Write the bounds.
+		puts -nonewline $fanno "\n+ RECT ${layername} ( $postllx $postlly ) ( $posturx $postury )" 
+	    } elseif {[llength $layerspec] == 6} {
+		# Cut and spacing rule, so this is a cut layer.  Write all the cuts
+		for {set i 0} {$i < $numvias} {incr i} {
+                    set xnext [expr int($xoffset + $urx - $llx)]
+		    puts -nonewline $fanno "\n+ RECT ${layername} ( $xoffset $lly ) ( $xnext $ury )"
+                    set xoffset [expr int($xnext + $xspace)]
+		}
+	    }
+        }
+    }
+
+    puts $fanno " ;\nEND VIAS"
+    puts $fanno ""
+    set viarules $newviarules
+}
+
+#-----------------------------------------------------------------
+# Read the DEF file once to get the number of rows and the length
+# of each row
+#-----------------------------------------------------------------
+
+puts stdout "Reading DEF file ${defname}. . ."
+flush stdout
+
+while {[gets $fdef line] >= 0} {
+    if [regexp {[ \t]*#} $line lmatch] {
+	continue
+    } elseif [regexp {[ \t]*COMPONENTS[ \t]+([^ \t]+)[ \t]*;} $line lmatch number] {
+	set rows [dict create]
+	# Parse the "COMPONENTS" statement
+	parse_components $fdef rows
+    } elseif [regexp {[ \t]*NETS[ \t]+([^ \t]+)} $line lmatch netnums] {
+	skip_section $fdef NETS
+    } elseif [regexp {[ \t]*SPECIALNETS[ \t]+([^ \t]+)} $line lmatch netnums] {
+	skip_section $fdef SPECIALNETS
+    } elseif [regexp {[ \t]*PINS[ \t]+([^ \t]+)} $line lmatch pinnum] {
+	skip_section $fdef PINS
+    } elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
+	skip_section $fdef $viarulename
+    } elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)[ \t]*$} $line lmatch vianame] {
+	lappend vias [parse_via $fdef $vianame]
+    } elseif [regexp {[ \t]*END[ \t]+DESIGN[ \t]*$} $line lmatch] {
+	break
+    } elseif [regexp {^[ \t]*#} $line lmatch] {
+	# Comment line, ignore.
+    } elseif ![regexp {^[ \t]*$} $line lmatch] {
+	# Other things we don't care about
+	set matches 0
+	if [regexp {[ \t]*NAMESCASESENSITIVE} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*VERSION} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*BUSBITCHARS} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*DIVIDERCHAR} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*USEMINSPACING} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*CLEARANCEMEASURE} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*MANUFACTURINGGRID} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*DESIGN} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*UNITS} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*DIEAREA} $line lmatch] {
+	    incr matches
+	} elseif [regexp {[ \t]*TRACKS} $line lmatch] {
+	    incr matches
+	} else {
+	    puts stderr "Unexpected input in DEF file:"
+	    puts stdout "Line is: $line"
+	}
+    }
+}
+
+close $flef
+close $fdef
+
+# Sort array of fill cells by width
+
+set fillwidths {}
+foreach macro $fillcells {
+    lappend fillwidths [list $macro [set ${macro}(w)]]
+}
+set fillwidths [lsort -decreasing -index 1 $fillwidths]
+
+# For each row, add the width of the last cell in that row
+# to get the row end X value
+
+dict for {row rowvals} $rows {
+    set xmax [lindex $rowvals 0]
+    set macro [lindex $rowvals 2]
+    set xmax [+ $xmax [set ${macro}(w)]]
+    set rowvals [lreplace $rowvals 0 0 $xmax]
+    dict set rows $row $rowvals
+}
+   
+# Find number of rows and longest row
+set numrows 0
+set rowmax 0
+dict for {row rowvals} $rows {
+    incr numrows
+    set xmax [lindex $rowvals 0]
+    if {$xmax > $rowmax} {set rowmax $xmax}
+}
+puts stdout "Number of rows is $numrows"
+puts stdout "Longest row has width [/ $rowmax [+ $units 0.0]] um"
+
+# Now, for each row, find the difference between the row end and row max,
+# and create a list of how many of each fill macro it takes to fill the
+# row out to the maximum distance
+
+set numfills 0
+dict for {row rowvals} $rows {
+    set xmax [lindex $rowvals 0]
+    set xd [- $rowmax $xmax]
+    set fills {}
+    foreach fillset $fillwidths {
+	set fw [lindex $fillset 1]
+	set fn [floor [/ $xd $fw]]
+	lappend fills [list [lindex $fillset 0] [int $fn]]
+	set xd [- $xd [* $fn $fw]]
+	incr numfills [int $fn]
+    }
+    lappend rowvals $fills
+    dict set rows $row $rowvals
+}
+set numcomps [+ $number $numfills]
+
+# Analyze design for power striping
+
+if {$dostripes} {
+    set stripefills {}
+}
+
+if {$dostripes} {
+
+    # What sizes of fill make up the stripe width, to the nearest unit cell?
+
+    set xtot 0
+    while {1} {
+	set fidx 0
+	set fmax 0
+	set fmin -1
+	set fmidx -1
+	set i 0
+	foreach fillset $fillwidths {
+	    set fw [lindex $fillset 1]
+	    set ftest [+ $fw $xtot]
+	    if {($ftest <= $stripewidth) && ($ftest > $fmax)} {
+		set fmax $fw
+		set fidx $i
+	    }
+	    if {$fmin < 0} {
+		set fmin $fw
+		set fmidx $i
+	    } elseif {$fmin > $fw} {
+		set fmin $fw
+		set fmidx $i
+	    }
+	    incr i
+	}
+	if {$fmax == 0} {
+	    # If xtot is zero, then there were no fill cells narrower than
+	    # the stripe width, so just choose the smallest fill cell.
+	    if {$xtot == 0} {
+		lappend stripefills [lindex [lindex $fillwidths $fmidx] 0]
+		set xtot [+ $xtot $fmin]
+	    }
+	    break
+	}
+	lappend stripefills [lindex [lindex $fillwidths $fidx] 0]
+	set xtot [+ $xtot $fmax]
+	# puts stdout "Added to stripe filler [lindex [lindex $fillwidths $fidx] 0]"
+	# puts stdout "Total stripe width now $xtot"
+    }     
+    # Reduce final stripe width to xtot so that it is equal to the
+    # best compatible fill size and is a multiple of the unit cell
+    # size.
+    set stripewidth $xtot
+
+    # If pitchx was given in the tech LEF file, then use that as the
+    # minimum pitch to snap values to.  If not, use the minimum fill
+    # cell size.
+    if {$pitchx > 0} {set fmin $pitchx}
+
+    # Reduce stripepitch to a multiple of the minimum cell size
+    # (note:  should change this to a multiple of track pitch)
+    set nw [expr int($stripepitch / $fmin)]
+    set stripepitch [* $nw $fmin]
+
+    # How many stripes need to be added?  Allow +/-50% (max) to
+    # accomodate layout widths that are not a multiple of the
+    # stripe pitch.  "numstripes" does not include power stripes
+    # outside of the track area on right and left sides.
+
+    set gunits [+ $units 0.0]
+    if $dostretch {
+	set numstripes [expr int($rowmax / $stripepitch) - 1]
+	while true {
+	    set rowmaxeff [+ $rowmax [* $numstripes $stripewidth]]
+	    set newstripes [expr int(($rowmaxeff + 0.5 * $stripepitch) / $stripepitch) - 1]
+	    if {$newstripes == $numstripes} {break}
+	    set numstripes $newstripes
+	}
+	if {$numstripes < 2} {
+	    # Recalculate to make sure there are at least one stripe each
+	    # for power and ground.
+	    set oldpitch $stripepitch
+	    set oldpattern $stripepattern
+            if {[string range $stripepattern 0 0] == "G"} {
+	        set stripepattern "GP"
+	    } else {
+	        set stripepattern "PG"
+	    }
+	    set stripepitch [expr ($rowmax + 2 * $stripewidth) / 2.5]
+	    set numstripes 2
+	    puts stdout "addspacers:  No room for stripes, pitch reduced from ${oldpitch} to ${stripepitch}."
+	}
+	set stripeoffset [expr $stripepitch - (($stripepitch * ($numstripes + 1)) - $rowmax) / 2]
+	set nw [expr int($stripeoffset / $fmin)]
+	set stripeoffset [* $nw $fmin]
+
+	# Number of components increases by number of fill cells per stripe *
+	# number of stripes * number of rows.
+	set numfills [* [llength $stripefills] $numstripes $numrows]
+	set numcomps [+ $numcomps $numfills]
+	puts stdout "addspacers:  Inserting $numstripes stripes of width [/ $stripewidth $gunits] um ($stripewidthreq um requested)"
+	puts stdout "  Pitch [/ $stripepitch $gunits] um, offset [/ $stripeoffset $gunits] um"
+	puts stdout "stretch:  Number of components is $numcomps"
+    } else {
+	set numstripes [expr int(($rowmax + 0.5 * $stripepitch) / $stripepitch) - 1]
+	if {$numstripes == 0} {
+	    set stripewidth 0
+	    set dostripes false
+	    puts stdout "addspacers:  No room for stripes, none added."
+	} else {
+	    set stripeoffset [expr $stripepitch - (($stripepitch * ($numstripes + 1)) - $rowmax) / 2]
+	    set nw [expr int($stripeoffset / $fmin)]
+	    set stripeoffset [* $nw $fmin]
+	    puts stdout "addspacers:  Inserting $numstripes stripes of width [/ $stripewidth $gunits] um ($stripewidthreq um requested)"
+	    puts stdout "  Pitch [/ $stripepitch $gunits] um, offset [/ $stripeoffset $gunits] um"
+	}
+    }
+
+    # Analyze design for the number of power bus stripes to add
+
+    # Duplicate "stripepattern" to (at least) the length of (numstripes + 2)
+    set pattern ""
+    while {[string length $pattern] < [+ $numstripes 2]} {
+	append pattern $stripepattern
+    }
+    set stripepattern $pattern
+}
+
+# Diagnostic
+puts stdout "Analysis of DEF file:"
+puts stdout "Number of components = $number"
+puts stdout "New number of components = $numcomps"
+puts stdout "Number of rows = [llength [dict keys $rows]]"
+
+set fdef [open $defname r]
+
+if [catch {open $defoutname w} fanno] {
+    puts stderr "Error: can't open file $defoutname for output"
+    return
+}
+
+#-----------------------------------------------------------------
+# Read the DEF file a second time to get the number of rows and the length
+# of each row
+#-----------------------------------------------------------------
+
+# Each stripe has a record of center point and width of free space from
+# cell top to bottom (list over rows)
+set stripeinfo {}
+# Each row has a record of X position of the stripe fill (list over stripes).
+set rowstripeinfo {}
+
+set needspecial $dostripes
+
+if {$dostretch == false} {
+    # If not stretching the area under the power stripes with fill, the
+    # stripeinfo record needs to be filled with the position of each
+    # stripe so that write_special gets this information
+
+    set xpos $stripeoffset
+    set ns 0
+    while {$ns < $numstripes} {
+	set sinfo $xpos
+	lappend sinfo [- $xpos [/ $stripewidth 2.0]]
+	lappend sinfo [+ $xpos [/ $stripewidth 2.0]]
+	lappend stripeinfo $sinfo
+	set xpos [+ $xpos $stripepitch]
+	incr ns
+    }
+}
+
+#-----------------------------------------------------------------
+# If there is a ${topname}.obs file, read it in and adjust the
+# X values to account for the spacers.  This also records the
+# obstruction areas so the script does not place power posts in
+# them.
+#-----------------------------------------------------------------
+
+if {$dostripes && $dostretch} {
+
+    # Cast values back into microns, which are the units used by the .obs file
+    set gunits [+ $units 0.0]
+    set gwidth [/ $stripewidth $gunits]
+    set gpitch [/ $stripepitch $gunits]
+    set goffset [/ $stripeoffset $gunits]
+
+    if [catch {open ${topname}.obs r} infobs] {
+	# No .obs file, no action needed.
+	puts stdout "No file ${topname}.obs, so no adjustment required."
+	return
+    }
+    if [catch {open ${topname}.obsx w} outfobs] {
+	puts stout "Error:  Cannot open file ${topname}.obsx for writing!"
+	return
+    }
+    puts stdout "Adjusting obstructions for power striping"
+    # puts stdout "numstripes = $numstripes"
+    # puts stdout "stripewidth = $gwidth um"
+    # puts stdout "stripepitch = $gpitch um"
+    # puts stdout "stripeoffset = $goffset um"
+    while {[gets $infobs line] >= 0} {
+	if [regexp {[ \t]*obstruction[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*$} $line \
+			lmatch xlow ylow xhigh yhigh layer] {
+            # puts stdout "In: $xlow $ylow $xhigh $yhigh $layer"
+	    if {$xlow > $goffset} {
+		set ns [expr int(($xlow - $goffset + $gpitch) / $gpitch)]
+		if {$ns > $numstripes} {set ns $numstripes}
+		set nw [* $ns $gwidth]
+		set xlow [+ $xlow $nw]
+		# puts stdout "xlow adjust ns = $ns nw = $nw"
+	    } 
+	    if {$xhigh > $goffset} {
+		set ns [expr int(($xhigh - $goffset + $gpitch) / $gpitch)]
+		if {$ns > $numstripes} {set ns $numstripes}
+		set nw [* $ns $gwidth]
+		set xhigh [+ $xhigh $nw]
+		# puts stdout "xhigh adjust ns = $ns nw = $nw"
+	    }
+            # Ensure numerical precision matches DEF file units
+	    set xlow [expr round($xlow * $gunits) / $gunits]
+	    set xhigh [expr round($xhigh * $gunits) / $gunits]
+            # puts stdout "Out: $xlow $ylow $xhigh $yhigh $layer"
+	    puts $outfobs "obstruction $xlow $ylow $xhigh $yhigh $layer"
+	    # obslist shows where to NOT put power posts.  It is layer independent.
+	    lappend obslist [list $xlow $ylow $xhigh $yhigh]
+	} else {
+	    puts $outfobs $outline
+	}
+    }
+    close $outfobs
+    close $infobs
+}
+
+# Convert obslist to DEF units and remove redundant entries
+set newlist {}
+set obslast {}
+foreach obs $obslist {
+    set xlow [lindex $obs 0]
+    set ylow [lindex $obs 1]
+    set xhigh [lindex $obs 2]
+    set yhigh [lindex $obs 3]
+    if {($xlow != [lindex $obslast 0]) || ($ylow != [lindex $obslist 1]) ||
+		($xhigh == [lindex $obslast 2]) || ($yhigh != [lindex $obslist 3])} {
+	set xlow [expr $xlow * $units]
+	set ylow [expr $ylow * $units]
+	set xhigh [expr $xhigh * $units]
+	set yhigh [expr $yhigh * $units]
+	lappend newlist [list $xlow $ylow $xhigh $yhigh]
+        set obslast $obs
+    }
+}
+set obslist $newlist
+
+set newinstlist {}
+
+while {[gets $fdef line] >= 0} {
+    if [regexp {[ \t]*#} $line lmatch] {
+	continue
+    } elseif [regexp {[ \t]*DIEAREA[ \t]*\([ \t]*([^ \t]+)[ \t]+([^ \t]+)[ \t]*\)[ \t]*\([ \t]*([^ \t]+)[ \t]+([^ \t]+)[ \t]*\)[ \t]*;} $line lmatch \
+		diexlow dieylow diexhigh dieyhigh] {
+
+	# Add stripe width to die area total
+	if $dostretch {
+	    set diexhigh [+ $diexhigh [* $stripewidth $numstripes]]
+	    puts $fanno "DIEAREA ( $diexlow $dieylow ) ( $diexhigh $dieyhigh ) ;"
+	} else {
+	    puts $fanno $line
+	}
+
+    } elseif [regexp {[ \t]*TRACKS[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+DO[ \t]+([^ \t]+)[ \t]+STEP[ \t]+([^ \t]+)[ \t]+LAYER[ \t]+([^ \t]+)[ \t]*;} $line lmatch \
+		orient low num step layer] {
+
+	if {$dostretch && ($stripewidth > 0) && ($orient == "X")} {
+	    # Add number of tracks to cover the added area of the stripes
+	    set ntracks [expr int(($stripewidth * $numstripes) / $step)]
+	    set num [+ $num $ntracks]
+	    puts $fanno "TRACKS X $low DO $num STEP $step LAYER $layer ;"
+	} else {
+	    puts $fanno $line
+	}
+
+    } elseif [regexp {[ \t]*PINS[ \t]+([^ \t]+)[ \t]*;} $line lmatch number] {
+
+	# Add space to pins to match the addition of stripes
+	set extrapins false
+	if {$dostripes} {
+
+	    # Note:  This duplicates code in write_special.  Needs to be
+	    # consolidated into one routine.
+
+	    set tnum 0
+	    foreach layer $layers {
+		if {[dict get $layer type] != "ROUTING"} {continue}
+		if {[dict get $layer direction] == "VERTICAL"} {
+		    set lnum [dict get $layer number]
+		    if {$lnum > $tnum} {
+			set tnum $lnum
+			set toplayer [dict get $layer name]
+		    }
+		}
+	    }
+	    if {$tnum >= 3} {set extrapins true}
+	}
+	if {$extrapins} {
+
+	    puts $fanno "PINS [+ $number 2] ;"
+	    set i 0
+	    set donepower false
+	    set doneground false
+	    set fillmacro [lindex $stripefills 0]
+	    foreach stripe ${stripeinfo} {
+
+		set stripetype [string index $stripepattern $i]
+		set smean [lindex $stripe 0]
+		set slow [lindex $stripe 1]
+		set shigh [lindex $stripe 2]
+		if {[- $shigh $slow] > 0} {
+		    set smean [/ [+ $shigh $slow] 2.0]
+		}
+		set nw [expr int($smean / $fmin)]
+		set smean [* $nw $fmin]
+		set hw [/ $stripewidth 2.0]
+		set qw [/ $hw 2.0]
+		set qw [expr int($qw + 0.5)]	;# ensure qw is integer
+		set slow [- $smean $hw]
+		set shigh [+ $smean $hw]
+		set cy [+ $dieylow $qw]
+
+		set ohw [expr int($hw)]
+		set osmean [expr int($smean)]
+
+		if {!$donepower && ($stripetype == "P")} {
+		    set powername [get_power $fillmacro]
+		    puts $fanno "- $powername + NET $powername"
+		    puts $fanno "  + LAYER $toplayer ( -$ohw -$qw ) ( $ohw $qw )"
+		    puts $fanno "  + PLACED ( $osmean $cy ) N ;"
+		    set donepower true
+		} elseif {!$doneground && ($stripetype == "G")} {
+		    set groundname [get_ground $fillmacro]
+		    puts $fanno "- $groundname + NET $groundname"
+		    puts $fanno "  + LAYER $toplayer ( -$ohw -$qw ) ( $ohw $qw )"
+		    puts $fanno "  + PLACED ( $osmean $cy ) N ;"
+		    set doneground true
+		}
+		incr i
+		if {$donepower && $doneground} {break}
+	    }
+	} else {
+	    puts $fanno $line
+	}
+
+	if {$dostripes && $dostretch} {
+	    while {[gets $fdef line] >= 0} {
+		if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+		    puts $fanno $line
+		    break
+		} elseif [regexp {[ \t]*\+[ \t]+PLACED[ \t]+\([ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+\)[ \t]+([^ \t]+)[ \t]+;} $line lmatch \
+			px py orient] {
+
+		    # Check if instance px exceeds xbreak and adjust accordingly
+		    if {$px > $stripepitch} {
+			set ns [expr int($px / $stripepitch)]
+			if {$ns > $numstripes} {set ns $numstripes}
+			set nw [* $ns $stripewidth]
+			set xpos [+ $px $nw]
+			puts $fanno "  + PLACED ( $xpos $py ) $orient ;"
+		    } else {
+			puts $fanno $line
+		    }
+		} else {
+		    puts $fanno $line
+		}
+	    }
+	}
+
+    } elseif [regexp {[ \t]*COMPONENTS[ \t]+([^ \t]+)[ \t]*;} $line lmatch number] {
+
+        # Prior to writing components, check if there are viarules and write VIA
+        # entries for the power bus post contacts.
+        if {$dostripes && ([llength $viarules] > 0)} {
+	    write_viarules $fanno $stripewidth
+        }
+
+	puts $fanno "COMPONENTS $numcomps ;"
+	set r 0
+	set s 0
+	set xadd 0
+	if {$dostripes && $dostretch} {
+	    set xbreak $stripeoffset
+	} else {
+	    set xbreak $rowmax
+	}
+	while {[gets $fdef line] >= 0} {
+	    if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+		puts $fanno $line
+
+		if {$dostripes} {
+		    # Finish computing values of internal stripes
+		    # replace total with mean, and copy the bounds values
+		    set newinfo {}
+		    foreach stripe ${stripeinfo} {
+			set smean [lindex $stripe 0]
+			set slow [lindex $stripe 1]
+			set shigh [lindex $stripe 2]
+			set smean [/ $smean $numrows]
+			lappend newinfo [list $smean $slow $shigh]
+		    }
+		    set stripeinfo $newinfo
+		}
+		break
+
+	    } elseif [regexp {[ \t]*-[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+\+[ \t]+PLACED[ \t]+\([ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+\)[ \t]+([^ \t]+)[ \t]+;} $line lmatch \
+			instance macro px py orient] {
+
+		# Quick check if the right side of instance exceeds xbreak and
+		# if placing the stripe before the instance will put the stripe
+		# closer to the ideal position.
+
+		set pw [set ${macro}(w)]
+		set right [+ $px $pw]
+
+		# Check if instance position px exceeds xbreak and adjust accordingly
+		if {($px >= $xbreak) || ([- $xbreak $px] < [- [+ $px $pw] $xbreak])} {
+
+		    if {[llength $rowstripeinfo] < $numstripes} {
+
+			# Add to row stripe info
+			lappend rowstripeinfo [+ $px $xadd]
+
+			# Add fill in the stripe area
+			set i 0
+			foreach fmacro $stripefills {
+			    set fw [set ${fmacro}(w)]
+			    set xpos [+ $px $xadd]
+			    set newinstname ${fmacro}_${r}_${s}_${i} 
+			    puts $fanno "- ${newinstname} ${fmacro} + PLACED ( $xpos $py ) $orient ;"
+			    set fpin [get_inputpin ${fmacro}]
+			    lappend newinstlist [list $newinstname $fmacro $fpin]
+			    set xadd [+ $xadd $fw]
+			    incr i
+			}
+			if {$s < $numstripes} {
+			    set xbreak [+ $xbreak $stripepitch]
+			    incr s
+			} else {
+			    set xbreak $rowmax
+			}
+		    }
+		}
+		set px [+ $px $xadd] 
+		puts $fanno "- $instance $macro + PLACED ( $px $py ) $orient ;"
+
+		# Check if there is a match to the last instance in the row
+		set rowvals [dict get $rows $py]
+		set rowinst [lindex $rowvals 1]
+		if {[string equal $instance $rowinst]} {
+		    incr r
+		    set xpos [lindex $rowvals 0]
+		    if {$dostripes && $dostretch} {
+			# puts stdout "stripewidth = $stripewidth"
+			# puts stdout "numstripes = $numstripes"
+			# puts stdout "xpos in = $xpos"
+			set xpos [+ $xpos [* $stripewidth $numstripes]]
+			# puts stdout "xpos out = $xpos"
+		    }
+		    set fills [lindex $rowvals 4]
+		    # Get orientation of row (N or S);
+		    # remove "F" if last cell was flipped
+		    set orient [string index [lindex $rowvals 3] end]
+		    foreach fpair $fills {
+			set fmacro [lindex $fpair 0]
+			set fw [set ${fmacro}(w)]
+			set fn [lindex $fpair 1]
+			for {set i 1} {$i <= $fn} {incr i} {
+			    set newinstname ${fmacro}_${r}_${i} 
+			    puts $fanno "- ${newinstname} ${fmacro} + PLACED ( $xpos $py ) $orient ;"
+			    set fpin [get_inputpin ${fmacro}]
+			    lappend newinstlist [list $newinstname $fmacro $fpin]
+			    set xpos [+ $xpos $fw]
+			}
+		    }
+		    # Add rowstripeinfo values to stripeinfo
+		    # Reset xbreak, xadd, and rowstripeinfo
+		    if {$dostretch && ($xadd > 0)} {
+			set xadd 0
+			set xbreak $stripeoffset
+			set i 0
+			set newstripeinfo {}
+			if {[llength $stripeinfo] == 0} {
+			    foreach sx $rowstripeinfo {
+				set slow $sx
+				set shigh [+ $sx $stripewidth]
+				set smean [+ $sx [/ $stripewidth 2.0]]
+				lappend newstripeinfo [list $smean $slow $shigh]
+			    }
+			} else {
+			    foreach sx $rowstripeinfo {
+				if {[catch {set sinfo [lindex $stripeinfo $i]}] || \
+					[llength $sinfo] == 0} {
+				    set slow $sx
+				    set shigh [+ $sx $stripewidth]
+				    set smean [+ $sx [/ $stripewidth 2.0]]
+				} else {
+				    set slow  [max [lindex $sinfo 1] $sx]
+				    set shigh [min [lindex $sinfo 2] [+ $sx $stripewidth]]
+				    set smean [+ [lindex $sinfo 0] [+ $sx [/ $stripewidth 2.0]]]
+				}
+				incr i
+				lappend newstripeinfo [list $smean $slow $shigh]
+			    }
+			}
+			set stripeinfo $newstripeinfo
+			set rowstripeinfo {}
+			set s 0
+		    }
+		}
+ 	    }
+	}
+    } elseif [regexp {[ \t]*END[ \t]+DESIGN} $line lmatch] {
+	if {$needspecial == true} {
+	    puts $fanno "SPECIALNETS 2 ;"
+	    write_special $stripeinfo $stripefills $stripewidth $stripepattern \
+			$rows $dieylow $dieyhigh $fanno
+	    puts $fanno "END SPECIALNETS"
+	}
+	puts $fanno $line
+    } elseif [regexp {[ \t]*SPECIALNETS[ \t]+([^ \t]+)} $line lmatch netnums] {
+	if {$needspecial == true} {
+	    puts $fanno "SPECIALNETS [+ 2 $netnums] ;"
+	    write_special $stripeinfo $stripefills $stripewidth $stripepattern \
+			$rows $dieylow $dieyhigh $fanno
+	    set needspecial false
+	}
+    } else {
+	puts $fanno $line
+    }
+}
+
+close $fanno
+close $fdef
+if {$techlef != ""} {
+    close $ftech
+}
+
+# Output the list of new instances added.  The file will have already
+# been created by the "decongest" script if density reducing fill was
+# added, so open in "append" mode.
+
+if [catch {open fillcells.txt a} ffill] {
+    puts stderr "Error: can't open file fillcells.txt for output (ignoring)"
+    # Not a fatal error, although it will cause issues with LVS if
+    # antenna cells are used.
+} else {
+    # Note that the net name is unused, but must be unique to be parsed
+    # correctly by the annotation script.
+    set ncnet __spacer_nc_
+    set ncnum 0
+    foreach triplet $newinstlist {
+	puts $ffill "Net=$ncnet$ncnum Instance=[lindex $triplet 0] Cell=[lindex $triplet 1] Pin=[lindex $triplet 2]"
+	incr ncnum
+    }
+    close $ffill
+}
+
+puts stdout "Done with addspacers.tcl"

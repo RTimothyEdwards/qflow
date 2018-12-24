@@ -1,0 +1,317 @@
+#!/bin/sh
+
+AC_INIT(VERSION,, eda-dev@opencircuitdesign.com)
+AC_PREREQ(2.60)
+AC_CONFIG_SRCDIR([Makefile.in])
+
+# Determine the host and build type.
+# ===========================================================================
+AC_CANONICAL_HOST
+
+PACKAGE=qflow
+VERSION=`cat ./VERSION | cut -d. -f1-2`
+REVISION=`cat ./VERSION | cut -d. -f3`
+
+AC_SUBST(VERSION)
+AC_SUBST(REVISION)
+AC_ARG_PROGRAM
+
+# Required programs
+# ===========================================================================
+AC_PROG_CC
+AC_PROG_CPP
+AC_ISC_POSIX
+if test "x$U" != "x"; then
+  AC_MSG_ERROR(Compiler not ANSI compliant)
+fi
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_CHECK_PROG(AUTOCONF, autoconf, autoconf, :)
+AC_CHECK_PROG(CP, cp, cp, :)
+AC_CHECK_PROG(RM, rm, rm, :)
+AC_CHECK_PROG(HAVE_PYTHON3, python3, yes, no)
+
+AC_LANG_C
+AC_HEADER_STDC
+AC_CHECK_FUNCS(setenv putenv)
+
+AC_PATH_PROG(ENV_PATH, env, env, $PATH)
+
+# Options
+# =========================================
+
+dnl Path to Tcl/Tk
+
+AC_ARG_WITH(tclsh,
+[  --with-tclsh=DIR		path to tclsh], [
+   if test -d "$withval"; then
+      TCLSH_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/tclsh";  remove it
+      TCLSH_DIR=${withval%/tclsh}
+   else
+      TCLSH_DIR=${PATH}
+   fi
+   AC_PATH_PROG(TCLSH_PATH, tclsh, tclsh, $TCLSH_DIR)
+], [
+   AC_PATH_PROG(TCLSH_PATH, tclsh, tclsh, )])
+AC_DEFINE_UNQUOTED(TCLSH_PATH, "$TCLSH_PATH")
+
+dnl Path to Magic 8.X
+
+AC_ARG_WITH(magic,
+[  --with-magic=DIR		path to magic-8.X], [
+   if test -d "$withval"; then
+      QFLOW_MAGIC_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/magic";  remove it
+      QFLOW_MAGIC_DIR=${withval%/magic}
+   else
+      QFLOW_MAGIC_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_MAGIC_PATH, magic, , $QFLOW_MAGIC_DIR)
+], [
+   AC_PATH_PROG(QFLOW_MAGIC_PATH, magic, , )])
+AC_DEFINE_UNQUOTED(QFLOW_MAGIC_PATH, "$QFLOW_MAGIC_PATH")
+
+dnl Path to Netgen
+
+AC_ARG_WITH(netgen,
+[  --with-netgen=DIR		path to netgen], [
+   if test -d "$withval"; then
+      QFLOW_NETGEN_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/netgen";  remove it
+      QFLOW_NETGEN_DIR=${withval%/netgen}
+   else
+      QFLOW_NETGEN_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_NETGEN_PATH, netgen, , $QFLOW_NETGEN_DIR)
+], [
+   AC_PATH_PROG(QFLOW_NETGEN_PATH, netgen, , )])
+AC_DEFINE_UNQUOTED(QFLOW_NETGEN_PATH, "$QFLOW_NETGEN_PATH")
+
+dnl Path to Qrouter
+
+AC_ARG_WITH(qrouter,
+[  --with-qrouter=DIR		path to qrouter], [
+   if test -d "$withval"; then
+      QFLOW_QROUTER_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/qrouter";  remove it
+      QFLOW_QROUTER_DIR=${withval%/qrouter}
+   else
+      QFLOW_QROUTER_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_QROUTER_PATH, qrouter, , $QFLOW_QROUTER_DIR)
+], [
+   AC_PATH_PROG(QFLOW_QROUTER_PATH, qrouter, , )])
+AC_DEFINE_UNQUOTED(QFLOW_QROUTER_PATH, "$QFLOW_QROUTER_PATH")
+
+dnl Path to GrayWolf
+
+AC_ARG_WITH(graywolf,
+[  --with-graywolf=DIR		path to graywolf], [
+   if test -d "$withval"; then
+      QFLOW_GRAYWOLF_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/graywolf";  remove it
+      QFLOW_GRAYWOLF_DIR=${withval%/graywolf}
+   else
+      QFLOW_GRAYWOLF_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_GRAYWOLF_PATH, graywolf, , $QFLOW_GRAYWOLF_DIR)
+], [
+   AC_PATH_PROG(QFLOW_GRAYWOLF_PATH, graywolf, , )])
+AC_DEFINE_UNQUOTED(QFLOW_GRAYWOLF_PATH, "$QFLOW_GRAYWOLF_PATH")
+
+dnl Path to yosys
+
+AC_ARG_WITH(yosys,
+[  --with-yosys=DIR		path to yosys], [
+   if test -d "$withval"; then
+      QFLOW_YOSYS_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "/yosys";  remove it
+      QFLOW_YOSYS_DIR=${withval%/yosys}
+   else
+      QFLOW_YOSYS_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_YOSYS_PATH, yosys, , $QFLOW_YOSYS_DIR)
+], [
+   AC_PATH_PROG(QFLOW_YOSYS_PATH, yosys, , )])
+AC_DEFINE_UNQUOTED(QFLOW_YOSYS_PATH, "$QFLOW_YOSYS_PATH")
+
+dnl Path to OpenTimer
+
+AC_ARG_WITH(opentimer,
+[  --with-opentimer=DIR		path to ot-shell], [
+   if test -d "$withval"; then
+      QFLOW_OPENTIMER_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "ot-shell";  remove it
+      QFLOW_OPENTIMER_DIR=${withval%/ot-shell}
+   else
+      QFLOW_OPENTIMER_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_OPENTIMER_PATH, ot-shell, , $QFLOW_OPENTIMER_DIR)
+], [
+   AC_PATH_PROG(QFLOW_OPENTIMER_PATH, ot-shell, , )])
+AC_DEFINE_UNQUOTED(QFLOW_OPENTIMER_PATH, "$QFLOW_OPENTIMER_PATH")
+
+AC_ARG_WITH(opensta,
+[  --with-opensta=DIR		path to sta], [
+   if test -d "$withval"; then
+      QFLOW_OPENSTA_DIR=$withval
+   elif test -f "$withval"; then
+      # Path includes "sta";  remove it
+      QFLOW_OPENSTA_DIR=${withval%/sta}
+   else
+      QFLOW_OPENSTA_DIR=${PATH}
+   fi
+   AC_PATH_PROG(QFLOW_OPENSTA_PATH, sta, , $QFLOW_OPENSTA_DIR)
+], [
+   AC_PATH_PROG(QFLOW_OPENSTA_PATH, sta, , )])
+AC_DEFINE_UNQUOTED(QFLOW_OPENSTA_PATH, "$QFLOW_OPENSTA_PATH")
+
+dnl Expand the prefix variable
+if test "x$prefix" = xNONE ; then
+   prefix=$ac_default_prefix
+fi
+
+dnl Target library location
+
+AC_ARG_WITH(libdir,
+[  --with-libdir=DIR			path to qflow runtime files], [
+   QFLOW_LIB_DIR=$withval
+], [
+   QFLOW_LIB_DIR=${prefix}/share/qflow
+])
+
+AC_ARG_WITH(bindir,
+[  --with-bindir=DIR			path to qflow launch script], [
+   QFLOW_BIN_DIR=$withval
+], [
+   QFLOW_BIN_DIR=${prefix}/bin
+])
+
+dnl AC_SUBST(QFLOW_YOSYS_PATH)
+dnl AC_SUBST(QFLOW_GRAYWOLF_PATH)
+dnl AC_SUBST(QFLOW_QROUTER_PATH)
+dnl AC_SUBST(QFLOW_MAGIC_PATH)
+dnl AC_SUBST(QFLOW_NETGEN_PATH)
+dnl AC_SUBST(QFLOW_OPENTIMER_PATH)
+dnl AC_SUBST(QFLOW_OPENSTA_PATH)
+
+AC_SUBST(QFLOW_BIN_DIR)
+AC_SUBST(QFLOW_LIB_DIR)
+
+AC_SUBST(TCLSH_PATH)
+AC_SUBST(HAVE_PYTHON3)
+
+AC_SUBST(CFLAGS)
+AC_SUBST(LDFLAGS)
+AC_SUBST(LD)
+AC_SUBST(STDLIBS)
+
+if test "x${ac_cv_path_QFLOW_YOSYS_PATH}" == "x"; then
+   HAVE_YOSYS=0
+else
+   HAVE_YOSYS=1
+fi
+
+AC_SUBST(HAVE_YOSYS)
+
+if test "x${ac_cv_path_QFLOW_MAGIC_PATH}" == "x"; then
+   HAVE_MAGIC=0
+else
+   HAVE_MAGIC=1
+fi
+
+AC_SUBST(HAVE_MAGIC)
+
+if test "x${ac_cv_path_QFLOW_NETGEN_PATH}" == "x"; then
+   HAVE_NETGEN=0
+else
+   HAVE_NETGEN=1
+fi
+
+AC_SUBST(HAVE_NETGEN)
+
+if test "x${ac_cv_path_QFLOW_OPENTIMER_PATH}" == "x"; then
+   HAVE_OPENTIMER=0
+else
+   HAVE_OPENTIMER=1
+fi
+
+AC_SUBST(HAVE_OPENTIMER)
+
+if test "x${ac_cv_path_QFLOW_OPENSTA_PATH}" == "x"; then
+   HAVE_OPENSTA=0
+else
+   HAVE_OPENSTA=1
+fi
+
+AC_SUBST(HAVE_OPENSTA)
+
+AC_OUTPUT(Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile)
+
+echo ""
+echo "Configuration results:"
+echo "----------------------------------------------------"
+echo ""
+
+if test "x${ac_cv_path_QFLOW_YOSYS_PATH}" == "x"; then
+   echo "ERROR: yosys not found.  Use --with-yosys=<DIR>"
+else
+   echo "Using yosys verilog synthesis tool at: ${ac_cv_path_QFLOW_YOSYS_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_GRAYWOLF_PATH}" == "x"; then
+   echo "ERROR: GrayWolf not found.  Use --with-graywolf=<DIR>"
+else
+   echo "Using graywolf placement tool at: ${ac_cv_path_QFLOW_GRAYWOLF_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_QROUTER_PATH}" == "x"; then
+   echo "ERROR: qrouter not found.  Use --with-qrouter=<DIR>"
+else
+   echo "Using qrouter detail route tool at: ${ac_cv_path_QFLOW_QROUTER_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_MAGIC_PATH}" == "x"; then
+   echo "WARNING: Magic 8.X layout tool not found.  Use --with-magic=<DIR>"
+else
+   echo "Using Magic layout tool at: ${ac_cv_path_QFLOW_MAGIC_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_NETGEN_PATH}" == "x"; then
+   echo "WARNING: Netgen LVS tool not found.  Use --with-netgen=<DIR>"
+else
+   echo "Using Netgen LVS tool at: ${ac_cv_path_QFLOW_NETGEN_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_OPENTIMER_PATH}" == "x"; then
+#  echo "INFO: OpenTimer not found.  Use --with-opentimer=<DIR>"
+   if test "x${ac_cv_path_QFLOW_OPENSTA_PATH}" == "x"; then
+       echo "Using Vesta STA tool (internal)"
+   fi
+else
+   echo "EXPERIMENTAL: Using OpenTimer static timing analysys tool at: ${ac_cv_path_QFLOW_OPENTIMER_PATH}"
+fi
+
+if test "x${ac_cv_path_QFLOW_OPENSTA_PATH}" == "x"; then
+#  echo "INFO: OpenSTA not found.  Use --with-opensta=<DIR>"
+   if test "x${ac_cv_path_QFLOW_OPENTIMER_PATH}" == "x"; then
+      echo "Using Vesta STA tool (internal)"
+   fi
+else
+   echo "EXPERIMENTAL: Using OpenSTA static timing analysys tool at: ${ac_cv_path_QFLOW_OPENSTA_PATH}"
+fi
+
+if test "x${HAVE_PYTHON3}" == "x"; then
+   echo "No python3 on system, will not install qflow GUI or spi2xspice.py"
+fi
+
+echo "----------------------------------------------------"
+

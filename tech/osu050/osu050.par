@@ -1,0 +1,65 @@
+# osu050.par --- Parameter file for GrayWolf
+# NOTE:  all distance units are in centimicrons unless otherwise stated
+
+RULES
+    # Values are resistance in ohms/sq, and capacitance in fF/um^2
+    layer metal1 0.09 0.032 horizontal
+    layer metal2 0.09 0.016 vertical
+    layer metal3 0.05 0.010 horizontal
+
+    via via12 metal1 metal2
+    via via23 metal2 metal3
+
+    width metal1 90
+    width metal2 90
+    width metal3 150
+    width via12 150
+    width via23 150
+
+    # Note:  width + spacing = track pitch, as far as GrayWolf is
+    # concerned.  So adjust spacing to make the correct pitch.
+    # A track pitch < actual track pitch may cause pins to overlap!
+    # Track pitches for the preferred routing direction are:
+    # metal1: 300, metal2: 240, metal3: 300
+
+    spacing metal1 metal1 210
+    spacing metal2 metal2 150
+    spacing metal3 metal3 150
+
+    # Stacked vias allowed
+    spacing via12 via23 0
+
+    overhang via12 metal1 8
+    overhang via12 metal2 6
+
+    overhang via23 metal2 8
+    overhang via23 metal3 6
+
+ENDRULES
+
+*vertical_wire_weight : 1.0
+*vertical_path_weight : 1.0
+*padspacing           : variable
+*rowSep		      : 0.0   0
+*track.pitch	      : 0.0
+*minimum_pad_space    : 360
+*gridX		      : 240
+*gridY		      : 300
+*gridOffsetX	      : 0
+*gridOffsetY	      : 0
+*graphics.wait        : off
+*last_chance.wait     : off
+*random.seed	      : 12345
+
+TWMC*chip.aspect.ratio : 0.75
+
+TWSC*feedThruWidth    : 240 layer 1
+TWSC*do.global.route  : on
+TWSC*ignore_feeds     : true
+TWSC*call_row_evener	: true
+TWSC*even_rows_maximally : true
+# TWSC*no.graphics    : on
+
+GENR*row_to_tile_spacing: 1
+# GENR*numrows		: 6
+GENR*flip_alternate_rows : 1

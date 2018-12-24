@@ -1,0 +1,776 @@
+#!/bin/tcsh -f
+#
+#------------------------------------------------------------------
+# qflow.sh --- main program shell script
+#------------------------------------------------------------------
+
+# Environment variable overrides the tech type in all cases except
+# when the technology is specified on the command line by -T.  If
+# the environment variable is not set, the technology defaults to
+# the technology that is issued with the qflow distribution.
+
+set tech=`printenv QFLOW_TECH`
+set has_tech=0
+if ( $tech == "" ) then
+   # But. . . check if there is already a "qflow_vars.sh".  If so,
+   # parse it for "techname", and use that preferentially over the
+   # default technology.
+   if ( -f qflow_vars.sh ) then
+      set tech=`cat qflow_vars.sh | grep techname | cut -d= -f2`
+      set has_tech=1
+   else
+      set tech=osu035
+      set has_tech=-1
+   endif
+endif
+
+# Environment variable overrides the project root path in all cases
+# except when the project root path is specified on the command line
+# by -p.  If the environment variable does not exist, the project
+# root directory is assumed to be the current working directory.
+
+set project=`printenv QFLOW_PROJECT_ROOT`
+if ( $project == "" ) then
+   set project=`pwd`
+endif
+
+set modulename=""
+set vsource=""
+
+# Don't do anything unless told to on the command line
+set actions=0
+set dogui=0
+set dohelp=0
+set doversion=0
+set dosynth=0
+set doplace=0
+set dosta=0
+set doroute=0
+set dobackanno=0
+set domigrate=0
+set dolvs=0
+set dodrc=0
+set dogdsii=0
+set doclean=0
+set dodisplay=0
+
+while ($#argv > 0)
+   switch($argv[1]:q)
+      case -T:
+      case --tech:
+	 shift
+	 set tech=$argv[1]
+	 set has_tech=0
+	 shift
+	 breaksw
+      case -p:
+      case --project:
+	 shift
+	 set project=$argv[1]
+	 shift
+	 breaksw
+      case -h:
+      case --help:
+	 set dohelp=1
+	 shift
+	 breaksw
+      case -v:
+      case --version:
+	 set doversion=1
+	 shift
+	 breaksw
+      case gui:
+         set dogui=1
+         shift
+         breaksw
+      case synth:
+      case synthesize:
+	 set dosynth=1
+	 set actions=1
+	 shift
+	 breaksw
+      case place:
+      case placement:
+	 set doplace=1
+	 set actions=1
+	 shift
+	 breaksw
+      case sta:
+      case vesta:
+      case opentimer:
+      case opensta:
+	 set dosta=1
+	 set actions=1
+	 shift
+	 breaksw
+      case route:
+      case routing:
+	 set doroute=1
+	 set actions=1
+	 shift
+	 breaksw
+      case backanno:
+      case backannotate:
+	 set dobackanno=1
+	 set actions=1
+	 shift
+	 breaksw
+      case migrate:
+      case migration:
+	 set domigrate=1
+	 set actions=1
+	 shift
+	 breaksw
+      case lvs:
+	 set dolvs=1
+	 set actions=1
+	 shift
+	 breaksw
+      case drc:
+	 set dodrc=1
+	 set actions=1
+	 shift
+	 breaksw
+      case gdsii:
+      case gds:
+	 set dogdsii=1
+	 set actions=1
+	 shift
+	 breaksw
+      case build:
+	 set dosynth=1
+	 set doplace=1
+	 set doroute=1
+	 set dobackanno=1
+	 set actions=1
+	 shift
+	 breaksw
+      case nocheck:
+      case nochecks:
+	 set dosynth=1
+	 set doplace=1
+	 set dosta=1
+	 set doroute=1
+	 set dobackanno=1
+	 set doclean=1
+	 set dodisplay=1
+	 set actions=1
+	 shift
+	 breaksw
+      case all:
+	 set dosynth=1
+	 set doplace=1
+	 set dosta=1
+	 set doroute=1
+	 set dobackanno=1
+	 set domigrate=1
+	 set dolvs=1
+	 set dodrc=1
+	 set dogdsii=1
+	 set doclean=1
+	 set dodisplay=1
+	 set actions=1
+	 shift
+	 breaksw
+      case clean:
+      case cleanup:
+	 set doclean=1
+	 set actions=1
+	 shift
+	 breaksw
+      case display:
+	 set dodisplay=1
+	 set actions=1
+	 shift
+	 breaksw
+      case buffer:
+	 echo "Note:  option buffer is deprecated."
+	 shift
+	 breaksw
+      default:
+	 if ($modulename != "") then
+	    break
+	 else
+	    set modulename=$argv[1]
+	    shift
+	 endif
+	 breaksw
+   endsw
+end
+
+if ($dogui == 1) then
+    # Run interactive GUI interface instead of this script.
+    if ( -f QFLOW_SCRIPT_DIR/qflow_manager.py ) then
+        if ( $has_tech == 0 ) then
+	    exec QFLOW_SCRIPT_DIR/qflow_manager.py $tech $modulename
+	else
+	    exec QFLOW_SCRIPT_DIR/qflow_manager.py None $modulename
+        endif
+	# exec should not return. . .
+	exit 0
+    else
+	echo "GUI manager not installed.  Requires python3"
+	set dohelp = 1
+    endif
+endif
+
+if ($modulename == "") then
+   set dohelp=1
+endif
+
+if ($doversion == 1 || $dohelp == 1) then
+   echo "Qflow version QFLOW_VERSION revision QFLOW_REVISION"
+   echo ""
+
+   if ($doversion == 1) then
+      exit 0
+   endif
+endif
+
+if ($dohelp == 1 || $#argv != 0) then
+   echo "Usage: qflow [processes] [options] <module_name>"
+   echo "Processes:  synthesize		Synthesize verilog source"
+   echo "            place		Run initial placement"
+   echo "            sta			Static timing analysis"
+   echo "            route		Run placement and route"
+   echo "            backanno		Post-route timing analysis"
+   echo "            migrate		Generate database and netlists for DRC and LVS"
+   echo "            drc			Run DRC check"
+   echo "            lvs			Run LVS comparison"
+   echo "            gdsii		Generate GDSII output"
+   echo "            clean		Remove temporary working files"
+   echo ""
+   echo "            display		Display routed result"
+   echo ""
+   echo "            build		Run scripts synthesize to backanno"
+   echo "            nochecks		Run scripts synthesize to backanno and display"
+   echo "            all			Run scripts synthesize to gdsii and display"
+   echo ""
+   echo "            gui			Run the qflow interactive GUI"
+   echo ""
+   echo "Options:    -T, --tech <name>		Use technology <name>"
+   echo "            -p, --project <name>	Project root directory is <name>"
+   if ($dohelp == 1) then
+      exit 0
+   else
+      exit 1
+   endif
+endif
+
+echo ""
+echo "--------------------------------"
+echo "Qflow project setup"
+echo "--------------------------------"
+echo ""
+
+if ($has_tech == 1) then
+   echo "Technology set to $tech from existing qflow_vars.sh file"
+else if ($has_tech == -1) then
+   echo "No technology specified or found;  using default technology $tech"
+else
+   echo "Technology set to $tech"
+endif
+
+source QFLOW_SCRIPT_DIR/checkdirs.sh ${tech} ${project}
+if ($status == 1) then
+   echo "Failure to verify working directories."
+   echo "Check QFLOW_PROJECT_ROOT environment variable."
+   exit 1
+endif
+
+# Use find, not ls, to avoid error output when no match is found.
+set nvsrc = `find ${sourcedir} -name \*.v -print | grep -v _mapped.v | wc -l`
+set nsvsrc = `find ${sourcedir} -name \*.sv -print | wc -l`
+
+# Verilog file root name is the same as the module name, at least until
+# discovered otherwise.  If the module name is not given on the command
+# line, then there must be one source file and the filename root and
+# module name must match.
+
+if ($modulename == "") then
+   if ($nvsrc == 1) then
+      set vsource=`ls ${sourcedir}/*.v | grep -v _mapped.v`
+      set modulename=${vsource:r}
+   else if ($nsvsrc == 1) then
+      set vsource=`ls ${sourcedir}/*.sv`
+      set modulename=${vsource:r}
+   else if ($nvsrc == 0 && $nsvsrc == 0) then
+      echo "Error:  No verilog source files found in directory ${sourcedir}."
+      exit 1
+   else
+      echo "Error:  No verilog source file or module name has been specified"
+      echo "and directory ${sourcedir} contains multiple verilog files."
+      echo "Please specify the source file or module name on the command line."
+      exit 1
+   endif
+endif
+
+if ($vsource == "") then
+   # First look for a file list (extension ".fl") that specifies exactly
+   # which modules to use;  this overrides the automatic search for
+   # modules.
+   if ( -f "${sourcedir}/${modulename}.fl" ) then
+      set source_file_list = "${sourcedir}/${modulename}.fl"
+   endif
+
+   # If there is no file list, then search for modules with this name.
+   if ( ! ($?source_file_list) ) then
+      # Check all .v and .sv files for one with the specified module.
+      foreach file ( `ls ${sourcedir}/*.v ${sourcedir}/*.sv | grep -v _mapped.v` )
+         set mline = `cat $file | grep module | grep ${modulename} | wc -l`
+         if ( $mline > 0 ) then
+	    set vsource = ${file}
+	    break
+         endif
+      end
+
+      if ( ${vsource} == "" ) then
+         echo "Error:  No verilog file in ${sourcedir} contains module ${modulename}."
+         exit 1
+      endif
+   endif
+endif
+
+#------------------------------------------------------------------
+# Source the technology initialization script
+#------------------------------------------------------------------
+
+if ( -f ${techdir}/${tech}.sh ) then
+   source $techdir/${tech}.sh
+else
+   echo "Error:  Cannot find tech init script ${techdir}/${tech}.sh to source"
+   exit 1
+endif
+
+#------------------------------------------------------------------
+# Prepare the script file to run in the project directory.  We
+# specify all steps of the process and comment out those that
+# have not been selected.  Finally, source the script.
+#------------------------------------------------------------------
+
+set varfile=${projectpath}/qflow_vars.sh
+set execfile=${projectpath}/qflow_exec.sh
+set userfile=${projectpath}/project_vars.sh
+
+#------------------------------------------------------------------
+# Check if a variables file exists.  If so, note that we are
+# regenerating the flow, source the file, check if the technology
+# is being changed, and report if so.
+#------------------------------------------------------------------
+
+set newtech = 0
+if ( -f $varfile ) then
+   set techorig=`cat $varfile | grep techname= | cut -d= -f2`
+   if ( "${tech}" != "${techorig}" ) then
+      echo "Warning:  Project technology changed from ${techorig} to ${tech}"
+      set newtech = 1
+   else
+      echo "Regenerating files for existing project ${modulename}"
+   endif
+endif
+
+echo "#\!/bin/tcsh -f" > ${varfile}
+echo "#-------------------------------------------" >> ${varfile}
+echo "# qflow variables for project ${project}" >> ${varfile}
+echo "#-------------------------------------------" >> ${varfile}
+echo "" >> ${varfile}
+
+echo "set projectpath=${projectpath}" >> ${varfile}
+echo "set techdir=${techdir}" >> ${varfile}
+echo "set sourcedir=${sourcedir}" >> ${varfile}
+echo "set synthdir=${synthdir}" >> ${varfile}
+echo "set layoutdir=${layoutdir}" >> ${varfile}
+echo "set techname=${techname}" >> ${varfile}
+echo "set scriptdir=${scriptdir}" >> ${varfile}
+echo "set bindir=${bindir}" >> ${varfile}
+echo "set logdir=${projectpath}/log" >> ${varfile}
+echo "#-------------------------------------------" >> ${varfile}
+echo "" >> ${varfile}
+
+echo "#\!/bin/tcsh -f" > ${execfile}
+echo "#-------------------------------------------" >> ${execfile}
+echo "# qflow exec script for project ${project}" >> ${execfile}
+echo "#-------------------------------------------" >> ${execfile}
+echo "" >> ${execfile}
+
+#-----------------------------------------------------
+# The file "project_vars.sh" will ONLY be written if
+# one does not already exist, and then it will be an
+# empty file with a few pointers to values that can
+# be set by the user.
+#-----------------------------------------------------
+
+if ( ! -f ${userfile} ) then
+   echo "#\!/bin/tcsh -f" > ${userfile}
+   echo "#------------------------------------------------------------" >> ${userfile}
+   echo "# project variables for project ${project}" >> ${userfile}
+   echo "#------------------------------------------------------------" >> ${userfile}
+   echo "" >> ${userfile}
+   echo "# Synthesis command options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
+
+   #------------------------------------------------------------------
+   # Check for any option defaults set by the .sh file for each entry
+   # in the project_vars.sh file.  If they are not defined, then set
+   # them to an empty string or a global default, if there is one.
+   # Note that this does not change the behavior that options set
+   # in the tech .sh file become the defaults and are overridden by
+   # the same variables set in the project variables file.  The
+   # purpose is to show the user what the default is, so that they
+   # are aware what they may be changing.
+   #------------------------------------------------------------------
+
+   if ( ${?hard_macros} ) then
+      echo \# set hard_macros = \"${hard_macros}\" >> ${userfile}
+   else
+      echo \# set hard_macros = >> ${userfile}
+   endif
+
+   if ( ${?yosys_options} ) then
+      echo \# set yosys_options = \"${yosys_options}\" >> ${userfile}
+   else
+      echo \# set yosys_options = >> ${userfile}
+   endif
+
+   if ( ${?yosys_script} ) then
+      echo \# set yosys_script = \"${yosys_script}\" >> ${userfile}
+   else
+      echo \# set yosys_script = >> ${userfile}
+   endif
+
+   if ( ${?yosys_debug} ) then
+      echo \# set yosys_debug = \"${yosys_debug}\" >> ${userfile}
+   else
+      echo \# set yosys_debug = >> ${userfile}
+   endif
+
+   if ( ${?abc_script} ) then
+      echo \# set abc_script = \"${abc_script}\" >> ${userfile}
+   else
+      echo \# set abc_script = >> ${userfile}
+   endif
+
+   if ( ${?nobuffers} ) then
+      echo \# set nobuffers = \"${nobuffers}\" >> ${userfile}
+   else
+      echo \# set nobuffers = >> ${userfile}
+   endif
+
+   if ( ${?inbuffers} ) then
+      echo \# set inbuffers = \"${inbuffers}\" >> ${userfile}
+   else
+      echo \# set inbuffers = >> ${userfile}
+   endif
+
+   if ( ${?postproc_options} ) then
+      echo \# set postproc_options = \"${postproc_options}\" >> ${userfile}
+   else
+      echo \# set postproc_options = >> ${userfile}
+   endif
+
+   if ( ${?fill_ratios} ) then
+      echo \# set fill_ratios = \"${fill_ratios}\" >> ${userfile}
+   else
+      echo \# set fill_ratios = >> ${userfile}
+   endif
+
+   if ( ${?nofanout} ) then
+      echo \# set nofanout = \"${nofanout}\" >> ${userfile}
+   else
+      echo \# set nofanout = >> ${userfile}
+   endif
+
+   if ( ${?fanout_options} ) then
+      echo \# set fanout_options = \"${fanout_options}\" >> ${userfile}
+   else
+      echo \# set fanout_options = >> ${userfile}
+   endif
+
+   if ( ${?source_file_list} ) then
+      echo \# set source_file_list = \"${source_file_list}\" >> ${userfile}
+   else
+      echo \# set source_file_list = >> ${userfile}
+   endif
+
+   if ( ${?is_system_verilog} ) then
+      echo \# set is_system_verilog = \"${is_system_verilog}\" >> ${userfile}
+   else
+      echo \# set is_system_verilog = >> ${userfile}
+   endif
+
+   echo "" >> ${userfile}
+   echo "# Placement command options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
+
+   if ( ${?initial_density} ) then
+      echo \# set initial_density = \"${initial_density}\" >> ${userfile}
+   else
+      echo \# set initial_density = >> ${userfile}
+   endif
+
+   if ( ${?graywolf_options} ) then
+      echo \# set graywolf = \"${graywolf_options}\" >> ${userfile}
+   else
+      echo \# set graywolf_options = >> ${userfile}
+   endif
+
+   if ( ${?addspacers_options} ) then
+      echo \# set addspacers_options = \"${addspacers_options}\" >> ${userfile}
+   else
+      echo \# set addspacers_options = >> ${userfile}
+   endif
+
+   echo "" >> ${userfile}
+   echo "# Router command options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
+
+   if ( ${?route_show} ) then
+      echo \# set route_show = \"${route_show}\" >> ${userfile}
+   else
+      echo \# set route_show = >> ${userfile}
+   endif
+
+   if ( ${?route_layers} ) then
+      echo \# set route_layers = \"${route_layers}\" >> ${userfile}
+   else
+      echo \# set route_layers = >> ${userfile}
+   endif
+
+   if ( ${?via_use} ) then
+      echo \# set via_use = \"${via_use}\" >> ${userfile}
+   else
+      echo \# set via_use = >> ${userfile}
+   endif
+
+   if ( ${?via_stacks} ) then
+      echo \# set via_stacks = \"${via_stacks}\" >> ${userfile}
+   else
+      echo \# set via_stacks = >> ${userfile}
+   endif
+
+   if ( ${?qrouter_options} ) then
+      echo \# set qrouter_options = \"${qrouter_options}\" >> ${userfile}
+   else
+      echo \# set qrouter_options = >> ${userfile}
+   endif
+
+   echo ""
+   echo "" >> ${userfile}
+   echo \# Minimum period of the clock use \"--period value\" \(value in ps\) \
+	>> ${userfile}
+
+   if ( HAVE_OPENSTA ) then
+      if ( ${?opensta_options} ) then
+         echo \# set opensta_options = \"${opensta_options}\" >> ${userfile}
+      else
+         echo \# set opensta_options = >> ${userfile}
+      endif
+      if ( ${?run_opensta} ) then
+	 echo \# set run_opensta = \"${run_opensta}\" >> ${userfile}
+      else
+	 echo \# set run_opensta = 1 >> ${userfile}
+      endif
+   endif
+   if ( HAVE_OPENTIMER ) then
+      if ( ${?opentimer_options} ) then
+         echo \# set opentimer_options = \"${opentimer_options}\" >> ${userfile}
+      else
+         echo \# set opentimer_options = >> ${userfile}
+      endif
+      if ( ${?run_opentimer} ) then
+	 echo \# set run_opentimer = \"${run_opentimer}\" >> ${userfile}
+      else
+         echo \# set run_opentimer = 1 >> ${userfile}
+      endif
+   endif
+   if ( ${?vesta_options} ) then
+      echo \# set vesta_options = \"${vesta_options}\" >> ${userfile}
+   else
+      echo \# set vesta_options = >> ${userfile}
+   endif
+   if ( ${?run_vesta} ) then
+      echo \# set run_vesta = \"${run_vesta}\" >> ${userfile}
+   else
+      echo \# set run_vesta = 0 >> ${userfile}
+   endif
+   if ( ${?migrate_options} ) then
+      echo \# set migrate_options = \"${migrate_options}\" >> ${userfile}
+   else
+      echo \# set migrate_options = >> ${userfile}
+   endif
+   if ( ${?lef_options} ) then
+      echo \# set lef_options = \"${lef_options}\" >> ${userfile}
+   else
+      echo \# set lef_options = >> ${userfile}
+   endif
+
+   echo "" >> ${userfile}
+   echo "#------------------------------------------------------------" >> ${userfile}
+   echo "" >> ${userfile}
+else
+   # project_vars.sh may contain settings that affect how qflow.sh runs, so
+   # source it here.
+   source ${userfile}
+endif
+
+if ($dosynth == 0) then
+   echo -n "# " >> ${execfile}
+endif
+if ( ${vsource} == "" ) then
+   echo "${scriptdir}/synthesize.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+else
+   echo "${scriptdir}/synthesize.sh ${projectpath} ${modulename} ${vsource} || exit 1" >> ${execfile}
+endif
+
+if ($doplace == 0) then
+   echo -n "# " >> ${execfile}
+endif
+# Use -d because the user may decide not to run fanout buffering,
+# and the files generated by place2def.tcl are required for routing.
+echo "${scriptdir}/placement.sh -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+set first=""
+if (HAVE_OPENSTA) then
+    if ($dosta == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opensta} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opensta.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
+if (HAVE_OPENTIMER) then
+    if ($dosta == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opentimer} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opentimer.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
+if ($dosta == 0) then
+    echo -n "# " >> ${execfile}
+else
+    if ( ${?run_opensta} || ${?run_opentimer} ) then
+	if ( ! (${?run_vesta} ) ) then
+	    echo -n "# " >> ${execfile}
+	endif
+    endif
+endif
+echo "${scriptdir}/vesta.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($doroute == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/router.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+set first=""
+if (HAVE_OPENSTA) then
+    if ($dobackanno == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opensta} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opensta.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
+if (HAVE_OPENTIMER) then
+    if ($dobackanno == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opentimer} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opentimer.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
+if ($dobackanno == 0) then
+    echo -n "# " >> ${execfile}
+else
+    if ( ${?run_opensta} || ${?run_opentimer} ) then
+	if ( ! (${?run_vesta} ) ) then
+	    echo -n "# " >> ${execfile}
+	endif
+    endif
+endif
+echo "${scriptdir}/vesta.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($domigrate == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/migrate.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($dodrc == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/drc.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($dolvs == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/lvs.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($dogdsii == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/gdsii.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($doclean == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/cleanup.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($dodisplay == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/display.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ( $actions == 0 ) then
+   echo "No actions specified on command line;"
+   echo "creating qflow script file ${execfile} only."
+   echo "Uncomment lines in this file and source the file to run the flow."
+endif
+
+chmod u+x ${execfile}
+
+# Drop the magic startup file into the layout directory if it does not exist
+# If it exists but the technology directory has a newer file, or if we are
+# changing technologies, then copy the old file to a backup and create a new
+# one.
+
+if (-d ${layoutdir}) then
+   if (!(-f ${layoutdir}/.magicrc)) then
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+   else if ( $newtech == 1 ) then
+      echo "Technology changed:  Old .magicrc file moved to .magicrc.orig"
+      cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+   else if ( -M ${techdir}/${magicrc} > -M ${layoutdir}/.magicrc ) then
+      echo -n "Technology .magicrc file has been updated.  "
+      echo "Old .magicrc file moved to .magicrc.orig"
+      cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+   endif
+endif
+
+# Drop the GrayWolf parameter file into the layout directory if it does not
+# exist.  Like the above, check if the techdir has a newer version, or if we
+# are changing technologies.
+
+if (-d ${layoutdir}) then
+   if (!(-f ${layoutdir}/${modulename}.par)) then
+      cp ${techdir}/${techname}.par ${layoutdir}/${modulename}.par
+   else if ( $newtech == 1 ) then
+      echo "Technology changed:  Old .par file moved to .par.orig"
+      cp ${layoutdir}/${modulename}.par ${layoutdir}/${modulename}.par.orig
+      cp ${techdir}/${techname}.par ${layoutdir}/${modulename}.par
+   else if ( -M ${techdir}/${techname}.par > -M ${layoutdir}/${modulename}.par ) then
+      echo "Technology .par file has been updated.  Old .par file moved to .par.orig"
+      cp ${layoutdir}/${modulename}.par ${layoutdir}/${modulename}.par.orig
+      cp ${techdir}/${techname}.par ${layoutdir}/${modulename}.par
+   endif
+endif
+
+# Execute the script file to run any command that has not been commented out
+exec ${execfile}
+
+exit 0

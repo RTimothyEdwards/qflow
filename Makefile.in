@@ -1,0 +1,34 @@
+#
+# qflow project main Makefile
+#
+
+SHELL	= /bin/sh
+
+EXEEXT	= @EXEEXT@
+
+TARGETS = src scripts tech
+
+all:  $(TARGETS)
+	@for target in $(TARGETS); do\
+	   (cd $$target ; $(MAKE) all) ;\
+	done
+
+install:
+	@for target in $(TARGETS); do\
+	   (cd $$target ; $(MAKE) install) ;\
+	done
+
+clean:
+	@for target in $(TARGETS); do\
+	   (cd $$target ; $(MAKE) clean) ;\
+	done
+
+distclean:
+	@for target in $(TARGETS); do\
+	   (cd $$target ; $(MAKE) distclean) ;\
+	done
+
+uninstall:
+	@for target in $(TARGETS); do\
+	   (cd $$target ; $(MAKE) uninstall) ;\
+	done

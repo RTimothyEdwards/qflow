@@ -1,0 +1,15 @@
+#-----------------------------------------------------
+# .magicrc startup file for gscl45nm project under qflow
+#-----------------------------------------------------
+
+path sys +QFLOW_LIB_DIR/tech/gscl45nm
+tech load gscl45nm -noprompt
+
+set GND gnd
+set VDD vdd
+
+drc euclidean on
+drc off
+
+addpath digital
+

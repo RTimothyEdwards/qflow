@@ -1,0 +1,794 @@
+#!ENV_PATH python3
+#
+#--------------------------------------------------------
+# Pin Position Editor for the qflow manager
+#
+#--------------------------------------------------------
+# Written by Tim Edwards
+# efabless, inc.
+# August 29, 2016
+# Version 0.1
+#--------------------------------------------------------
+
+import os
+import re
+import sys
+import tkinter
+import tksimpledialog
+from tkinter import ttk
+
+# Dialog for entering a group name
+
+class GroupNameDialog(tksimpledialog.Dialog):
+    def body(self, master, warning=None, seed=None):
+        if warning:
+            ttk.Label(master, text=warning).grid(row = 0, columnspan = 2, sticky = 'wns')
+        ttk.Label(master, text="Enter new group name:").grid(row = 1, column = 0, sticky = 'wns')
+        self.nentry = ttk.Entry(master)
+        self.nentry.grid(row = 1, column = 1, sticky = 'ewns')
+        if seed:
+            self.nentry.insert(0, seed)
+        return self.nentry # initial focus
+
+    def apply(self):
+        return self.nentry.get()
+
+# Pin Manager GUI
+
+class PinManager(tkinter.Toplevel):
+    """Qflow Pin Manager."""
+
+    def __init__(self, parent = None, fontsize = 11, *args, **kwargs):
+        '''See the __init__ for Tkinter.Toplevel.'''
+        tkinter.Toplevel.__init__(self, parent, *args, **kwargs)
+
+        s = ttk.Style()
+        s.configure('normal.TButton', font=('Helvetica', fontsize), border = 3, relief = 'raised')
+        s.configure('title.TLabel', font=('Helvetica', fontsize, 'bold italic'),
+                        foreground = 'brown', anchor = 'center')
+        s.configure('blue.TLabel', font=('Helvetica', fontsize), foreground = 'blue')
+        s.configure('normal.TLabel', font=('Helvetica', fontsize))
+        s.configure('normal.TCheckbutton', font=('Helvetica', fontsize))
+        s.configure('normal.TMenubutton', font=('Helvetica', fontsize))
+        s.configure('normal.TEntry', font=('Helvetica', fontsize), background='white')
+        s.configure('pin.TLabel', font=('Helvetica', fontsize), foreground = 'blue', relief = 'flat')
+        s.configure('select.TLabel', font=('Helvetica', fontsize, 'bold'), foreground = 'white',
+			background = 'blue', relief = 'flat')
+ 
+        self.withdraw()
+        self.protocol("WM_DELETE_WINDOW", self.close)
+        self.title('Qflow Pin Manager')
+        self.root = parent.root
+
+        self.rowconfigure(0, weight = 1)
+        self.columnconfigure(0, weight = 1)
+
+        # Scrolled frame using canvas widget
+        self.pframe = tkinter.Frame(self)
+        self.pframe.grid(column = 0, row = 0, sticky = "news")
+
+        # Add column on the left, listing all groups and the pads they belong to.
+        # This starts as just a frame to be filled.  Use a canvas to create a
+        # scrolled frame.
+
+        self.pframe.grid(row = 0, column = 0, sticky = 'news')
+        self.pframe.rowconfigure(0, weight = 1)
+        self.pframe.columnconfigure(0, weight = 1)
+        # The primary frame holds the canvas
+        # self.pframe.canvas = tkinter.Canvas(self.pframe)
+        self.canvas = tkinter.Canvas(self.pframe, background = "white")
+        self.canvas.grid(row = 0, column = 0, sticky = 'news')
+
+        self.padlist = ttk.Frame(self.canvas)
+        # Default placeholder for pin list
+        self.padlist.message = ttk.Label(self.padlist,
+			text="No pin list available", style='title.TLabel')
+        self.padlist.message.pack(side = 'top', padx = 5, pady = 5)
+        self.canvas.create_window((0, 0), window=self.padlist, anchor="nw", tags=["padlist"])
+
+        # Add core view to right of the pad list
+        # (WIP)
+        self.canvas.create_rectangle((100, 100), (200, 200), fill="yellow", tags=["core"])
+
+        # Add Y scrollbar to pin list window
+        xscrollbar = ttk.Scrollbar(self.pframe, orient = 'horizontal')
+        xscrollbar.grid(row = 1, column = 0, sticky = 'news')
+        yscrollbar = ttk.Scrollbar(self.pframe, orient = 'vertical')
+        yscrollbar.grid(row = 0, column = 1, sticky = 'news')
+
+        self.canvas.config(xscrollcommand = xscrollbar.set)
+        xscrollbar.config(command = self.canvas.xview)
+        self.canvas.config(yscrollcommand = yscrollbar.set)
+        yscrollbar.config(command = self.canvas.yview)
+
+        # Enable scrollwheel bindings
+        self.canvas.bind_all("<Button-4>", self.on_mousewheel)
+        self.canvas.bind_all("<Button-5>", self.on_mousewheel)
+
+        # Configure callback
+        self.padlist.bind("<Configure>", self.frame_configure)
+
+        # Add another canvas on the right, showing the grouping and position on pins
+        # (To be completed)
+
+        # Add the bottom bar with Apply, and Close buttons
+        self.bbar = ttk.Frame(self)
+        self.bbar.grid(column = 0, row = 1, sticky = "news")
+        self.bbar.cancel_button = ttk.Button(self.bbar, text='Close',
+		command=self.close, style='normal.TButton')
+        self.bbar.cancel_button.grid(column=0, row=0, padx = 5)
+
+        self.bbar.okay_button = ttk.Button(self.bbar, text='Apply',
+		command=self.apply, style='normal.TButton')
+        self.bbar.okay_button.grid(column=1, row=0, padx = 5)
+
+        self.bbar.new_button = ttk.Button(self.bbar, text='New Group',
+		command=self.prompt_new_group, style='normal.TButton')
+        self.bbar.new_button.grid(column=2, row=0, padx = 5)
+
+        # Menu for the "Delete Group" menubutton
+        self.delgroupmenu = tkinter.Menu(self)
+
+        self.bbar.delete_button = ttk.Menubutton(self.bbar, text='Delete Group',
+		style='normal.TMenubutton', menu=self.delgroupmenu)
+        self.bbar.delete_button.grid(column=3, row=0, padx = 5)
+
+        self.bbar.auto_button = ttk.Button(self.bbar, text='Auto Group',
+		command=self.auto_group, style='normal.TButton')
+        self.bbar.auto_button.grid(column=4, row=0, padx = 5)
+
+        self.padgroups = []
+        self.selected = []
+
+    # Functions for drag-and-drop capability
+
+    def add_draggable(self, widget, subwidget):
+        widget.bind("<ButtonPress-3>", lambda event, arg=widget: self.on_select(event, arg))
+        widget.bind("<ButtonPress-1>", lambda event, arg=widget: self.on_start(event, arg))
+        widget.bind("<B1-Motion>", self.on_drag)
+        widget.bind("<ButtonRelease-1>", lambda event, arg=widget: self.on_drop(event, arg))
+        widget.configure(cursor="hand1")
+
+        subwidget.bind("<ButtonPress-3>", lambda event, arg=widget: self.on_select(event, arg))
+        subwidget.bind("<ButtonPress-1>", lambda event, arg=widget: self.on_start(event, arg))
+        subwidget.bind("<B1-Motion>", self.on_drag)
+        subwidget.bind("<ButtonRelease-1>", lambda event, arg=widget: self.on_drop(event, arg))
+
+    def on_select(self, event, widget):
+        # Find the item on the canvas under the mouse pointer (it must be a pin name)
+        # and mark it as selected.
+        y = event.widget.winfo_pointery()
+
+        wlist = widget.winfo_children()
+        for w in wlist:
+            if w.winfo_class() == 'TLabel':
+                 pinname = w.cget('text')
+                 if pinname not in self.selected:
+                     self.selected.append(pinname)
+                     w.config(state = 'active')
+                 else:
+                     self.selected.remove(pinname)
+                     w.config(state = 'inactive')
+                 break
+
+    def on_start(self, event, widget):
+        # Find the item on the canvas under the mouse pointer (it must be a pin name)
+        # and create a new frame widget on the canvas.
+        y = event.widget.winfo_pointery()
+
+        wlist = widget.winfo_children()
+        for w in wlist:
+            if w.winfo_class() == 'TLabel':
+                 pinname = w.cget('text')
+                 newx = widget.winfo_x()
+                 newy = widget.winfo_y()
+                 break
+
+        if pinname not in self.selected:
+            self.selected.append(pinname)
+
+        allpins = ' '.join(self.selected)
+
+        # Create a new pin widget for dragging
+        self.dragwidget = ttk.Label(self.canvas, text = allpins, style = 'select.TLabel')
+        self.dragy = y
+        self.canvas.create_window((newx, newy), window=self.dragwidget, anchor="nw", tag="dragged")
+
+    def on_drag(self, event):
+        # Move the selected label
+        y = event.widget.winfo_pointery()
+        self.canvas.move("dragged", 0, (y - self.dragy))
+        self.dragy = y
+
+    def on_drop(self, event, widget):
+        # find the widget under the cursor
+        if self.dragwidget:
+            y = self.dragwidget.winfo_rooty()
+        else:
+            y = event.widget.winfo_pointery()
+
+        # srcname = None
+        trgname = None
+        trgtype = None
+
+        wlist = widget.winfo_children()
+        for w in wlist:
+            if w.winfo_class() == 'TLabel':
+                 srcname = w.cget('text')
+                 break
+
+        allnames = self.selected
+        if srcname not in allnames:
+            print('Error:  pin ' + srcname + ' is not in the selected pin list!')
+
+        # find the widget closest to the cursor.
+
+        miny = self.padlist.winfo_height();
+        for twidget in self.padlist.winfo_children():
+            wlist = twidget.winfo_children()
+            for w in wlist:
+                if w.winfo_class() == 'TLabel':
+
+                    # Identify labels that are groups or pins
+                    if w.cget('style') == 'title.TLabel':
+                        targettype = 'group'
+                    elif w.cget('style') == 'pin.TLabel':
+                        targettype = 'pin'
+                    else:
+                        continue
+
+                    # Find the Y position midpoint of the label
+                    ty = w.winfo_rooty() + w.winfo_height() / 2
+
+                    if abs(ty - y) < miny:
+                        trgname = w.cget('text')
+                        trgtype = targettype
+                        miny = abs(ty - y)
+                        if y > ty:
+                            direction = 'below'
+                        else:
+                            direction = 'above'
+
+        # Write GUI values back into the permanent records before they get changed
+        self.writeback_gui()
+
+        for srcname in allnames:
+            if srcname and trgname and (srcname != trgname):
+
+                # Find the group of the source and remove the pin
+                for group in self.padgroups:
+                    if srcname in group['pins']:
+                        srcidx = group['pins'].index(srcname)
+                        savefixed = group['fixed'][srcidx]
+                        group['pins'].pop(srcidx)
+                        group['fixed'].pop(srcidx)
+                        break
+
+                # Find the group of the target and add the pin
+                for group in self.padgroups:
+                    if trgtype == 'pin':
+                        if trgname in group['pins']:
+                            trgidx = group['pins'].index(trgname)
+                            if direction == 'below':
+                               trgidx += 1
+                            group['pins'].insert(trgidx, srcname)
+                            group['fixed'].insert(trgidx, savefixed)
+                            break
+                    elif group['name'] == trgname:
+                        group['pins'].insert(0, srcname)
+                        group['fixed'].insert(0, savefixed)
+                        break
+
+            elif srcname != trgname:
+                print("Error:  Could not find source and target, not moving pin.", file=sys.stderr)
+
+        # Remove the dragged label from the canvas
+        self.canvas.delete("dragged")
+        # and destroy the widget
+        if self.dragwidget:
+            self.dragwidget.destroy()
+            self.dragwidget = None
+
+        self.selected = []
+
+        # Redraw
+        self.populate()
+
+    # Mouse wheel scrolling
+    def on_mousewheel(self, event):
+        if event.num == 5:
+            self.canvas.yview_scroll(1, "units")
+        elif event.num == 4:
+            self.canvas.yview_scroll(-1, "units")
+        try:
+            tmpy = self.dragwidget.winfo_rooty()
+        except:
+            pass
+        else:
+            self.update_idletasks()
+            tmpy -= self.dragwidget.winfo_rooty()
+            # self.dragy -= tmpy
+
+            y = event.widget.winfo_pointery()
+            self.canvas.move("dragged", 0, (y - self.dragy + tmpy))
+            self.dragy = y
+
+    # Critically needed or else frame does not resize to scrollbars!
+    def grid_configure(self, padx, pady):
+        pass
+
+    # Redraw the chip core view in response to changes in the pad list
+    def redraw_core(self):
+        # Get the width of the padlist frame
+        # pwidth = self.canvas.itemcget("padlist", "width")
+        pwidth = self.padlist.winfo_width()
+        self.canvas.coords("core", int(pwidth) + 10, 200, int(pwidth) + 210, 400)
+   
+    # Update the canvas scrollregion to incorporate all the interior windows
+    def frame_configure(self, event):
+        self.update_idletasks()
+        self.redraw_core()
+        self.canvas.configure(scrollregion = self.canvas.bbox("all"))
+
+    # Automatically group buses that are in the "unassigned" group
+    def auto_group(self):
+        try:
+            unassigned = next(item for item in self.padgroups if item['name'] == 'unassigned')
+        except:
+            return
+
+        rootnames = []
+        del1rex = re.compile('([^<]+)[<][0-9]+[>]')
+        del2rex = re.compile('([^\[]+)[\[][0-9]+[\]]')
+        del3rex = re.compile('([^\(]+)[\(][0-9]+[\)]')
+
+        for pin in unassigned['pins']:
+            # Check for delimiters in the form <>, [], or ()
+            dmatch1 = del1rex.match(pin)
+            dmatch2 = del2rex.match(pin)
+            dmatch3 = del3rex.match(pin)
+            if dmatch1:
+                rootname = dmatch1.group(1)
+                if rootname not in rootnames:
+                    rootnames.append(rootname)
+            elif dmatch2:
+                rootname = dmatch2.group(1)
+                if rootname not in rootnames:
+                    rootnames.append(rootname)
+            elif dmatch2:
+                rootname = dmatch3.group(1)
+                if rootname not in rootnames:
+                    rootnames.append(rootname)
+
+        for rootname in rootnames:
+            newgroup = self.new_group(rootname + '_vector')
+
+            del1rex = re.compile(rootname + '[<][0-9]+[>]')
+            del2rex = re.compile(rootname + '[\[][0-9]+[\]]')
+            del3rex = re.compile(rootname + '[\(][0-9]+[\)]')
+
+            for pin in unassigned['pins'][:]:
+                dmatch1 = del1rex.match(pin)
+                dmatch2 = del2rex.match(pin)
+                dmatch3 = del3rex.match(pin)
+                if dmatch1 or dmatch2 or dmatch3:
+                    # Remove from "unassigned" list
+                    srcidx = unassigned['pins'].index(pin)
+                    savefixed = unassigned['fixed'][srcidx]
+                    unassigned['pins'].pop(srcidx)
+                    unassigned['fixed'].pop(srcidx)
+
+                    # Add to "newgroup" group
+                    newgroup['pins'].append(pin)
+                    newgroup['fixed'].append(savefixed)
+
+            # To avoid allocation errors (X11 Pixmap, reason unknown)
+            # and to make things generally, cleaner, if the pin list
+            # is longer than 12, then condense it.
+
+            if len(newgroup['pins']) > 12:
+                newgroup['pins'] = [newgroup['pins'][0] + '...' + newgroup['pins'][-1]]
+                newgroup['fixed'] = [newgroup['fixed'][0]]
+                newgroup['compressed'] = True
+
+            print('newgroup pins = ' + str(len(newgroup['pins'])))
+            print('newgroup fixed = ' + str(len(newgroup['fixed'])))
+        # Redraw
+        self.populate()
+        return
+
+    # Prompt for the name of a new pad group
+    def prompt_new_group(self):
+        groupname = GroupNameDialog(self).result
+        if groupname:
+            self.new_group(groupname)
+            self.populate()
+        return
+
+    # Create a new (empty) pad group
+    def new_group(self, group_name):
+        newgroup = {}
+        newgroup['pins'] = []
+        newgroup['fixed'] = []
+        newgroup['compressed'] = False
+        newgroup['name'] = group_name
+        newgroup['sides'] = 'LRTB'
+        newgroup['start'] = 0
+        newgroup['stop'] = 100
+        newgroup['permute'] = 'permute'
+
+        # Add group to option menus for "Delete Group".
+        self.delgroupmenu.add_command(label=group_name, command=lambda name=group_name: self.remove_group(name))
+
+        # Write GUI values back into the permanent records before they get changed
+        self.writeback_gui()
+
+        # Add group to the pin manager window
+        self.padgroups.append(newgroup)
+        return newgroup
+
+    # Remove a group (if it is empty)
+    def remove_group(self, group_name):
+        # Check if the group is empty.  If not, issue warning and return unchanged.
+        try:
+            group = next(item for item in self.padgroups if item['name'] == group_name)
+        except:
+            print("There is no group named " + group_name, file=sys.stderr)
+            return
+
+        if 'pins' in group:
+            if len(group['pins']) > 0:
+                print("Group is not empty:  Move all pins to other groups before deleting.", file=sys.stderr)
+                return
+
+        # Remove group from option menus for "Delete Group".
+        lindex = self.delgroupmenu.index(group_name)
+        self.delgroupmenu.delete(lindex)
+
+        # Write GUI values back into the permanent records before they get changed
+        self.writeback_gui()
+
+        # Remove the group from the group list and redisplay
+        self.padgroups.remove(group)
+        self.populate()
+
+    # Fill the GUI entries with resident data
+    def populate(self):
+
+        # Remove all entries from the left side frame
+        for widget in self.padlist.winfo_children():
+            widget.destroy()
+
+        for group in self.padgroups:
+
+            # Add group title
+            grouptframe = ttk.Frame(self.padlist)
+            grouptframe.pack(side = 'top', pady = 3, fill = 'x')
+
+            grouptitle = ttk.Label(grouptframe, text = group['name'], style='title.TLabel')
+            grouptitle.pack(side = 'left', padx = 2, pady = 3)
+
+            if group['name'] != 'unassigned':
+                # Set checkbox properties
+                group['Tset'] = tkinter.BooleanVar(grouptframe)
+                group['Tset'].set('T' in group['sides'])
+                group['Rset'] = tkinter.BooleanVar(grouptframe)
+                group['Rset'].set('R' in group['sides'])
+                group['Bset'] = tkinter.BooleanVar(grouptframe)
+                group['Bset'].set('B' in group['sides'])
+                group['Lset'] = tkinter.BooleanVar(grouptframe)
+                group['Lset'].set('L' in group['sides'])
+                group['Pset'] = tkinter.BooleanVar(grouptframe)
+                group['Pset'].set(group['permute'] == 'permute')
+
+                group['Sset'] = tkinter.StringVar(grouptframe)
+                group['Sset'].set(str(group['start']))
+                group['Eset'] = tkinter.StringVar(grouptframe)
+                group['Eset'].set(str(group['stop']))
+
+                group['Fset'] = []
+
+                # Add group properties
+                groupTlab = ttk.Label(grouptframe, text='Top:', style='normal.TLabel')
+                groupTlab.pack(side = 'left', padx = 2)
+                groupT = ttk.Checkbutton(grouptframe, style='normal.TCheckbutton', variable=group['Tset'])
+                groupT.pack(side = 'left', padx = 2)
+                groupRlab = ttk.Label(grouptframe, text='Right:', style='normal.TLabel')
+                groupRlab.pack(side = 'left', padx = 2)
+                groupR = ttk.Checkbutton(grouptframe, style='normal.TCheckbutton', variable=group['Rset'])
+                groupR.pack(side = 'left', padx = 2)
+                groupBlab = ttk.Label(grouptframe, text='Bottom:', style='normal.TLabel')
+                groupBlab.pack(side = 'left', padx = 2)
+                groupB = ttk.Checkbutton(grouptframe, style='normal.TCheckbutton', variable=group['Bset'])
+                groupB.pack(side = 'left', padx = 2)
+                groupLlab = ttk.Label(grouptframe, text='Left:', style='normal.TLabel')
+                groupLlab.pack(side = 'left', padx = 2)
+                groupL = ttk.Checkbutton(grouptframe, style='normal.TCheckbutton', variable=group['Lset'])
+                groupL.pack(side = 'left', padx = 2)
+
+                # Add permute/nopermute selection
+                grouppermlab = ttk.Label(grouptframe, text='Permute:', style='normal.TLabel')
+                grouppermlab.pack(side = 'left', padx = 2)
+                groupperm = ttk.Checkbutton(grouptframe, style='normal.TCheckbutton', variable=group['Pset'])
+                groupperm.pack(side = 'left', padx = 2)
+
+                # Add start/stop selection
+                groupstarttitle = ttk.Label(grouptframe, text='Start %:', style='normal.TLabel')
+                groupstarttitle.pack(side = 'left', padx = 2)
+                groupstart = ttk.Entry(grouptframe, style='normal.TEntry', width = 3, textvariable=group['Sset'])
+                groupstart.delete(0, 'end')
+                groupstart.insert(0, str(group['start']))
+                groupstart.pack(side = 'left', padx = 2)
+                groupstoptitle = ttk.Label(grouptframe, text='Stop %:', style='normal.TLabel')
+                groupstoptitle.pack(side = 'left', padx = 2)
+                groupstop = ttk.Entry(grouptframe, style='normal.TEntry', width = 3, textvariable=group['Eset'])
+                groupstop.delete(0, 'end')
+                groupstop.insert(0, str(group['stop']))
+                groupstop.pack(side = 'left', padx = 2)
+
+            # Add list of pins
+            for pin, fixed in zip(group['pins'], group['fixed']):
+
+                pinframe = ttk.Frame(self.padlist)
+                pinframe.pack(side = 'top', ipadx= 5, padx = 2, pady = 3, fill = 'x')
+
+                # Add pin name
+                pinname = ttk.Label(pinframe, text = pin, style='pin.TLabel')
+                pinname.pack(side = 'left', padx = 2)
+
+                if group['name'] != 'unassigned':
+                    pinFixed = tkinter.BooleanVar(pinframe)
+                    pinFixed.set(fixed == 'fixed')
+                    group['Fset'].append(pinFixed)
+
+                    # Add fixed/nonfixed selection
+                    pinfix = ttk.Checkbutton(pinframe, text='Fixed', style='normal.TCheckbutton',
+				variable = pinFixed)
+                    pinfix.pack(side = 'left', padx = 2)
+
+                # Make the pin draggable
+                self.add_draggable(pinframe, pinname)
+
+    # Read a file of pads.  Either cel2file or bliffile may be specified as the source.
+    # If both are specified, then cel2file takes precedence if both files exist.
+
+    def readpads(self, cel2file, bliffile):
+        # Save these references
+        self.cel2file = cel2file
+        self.bliffile = bliffile
+
+        self.padgroups = []
+
+        iorex = re.compile('^[ \t]*\.(?:inputs|outputs)[ \t]+(.+)$')
+        grprex = re.compile('^[ \t]*padgroup[ \t]+([^ \t]+)[ \t]+([permute|nopermute]+)')
+        pinrex = re.compile('^[ \t]*twpin_([^ \t]+)[ \t]+([fixed|nonfixed]+)')
+        sidrex = re.compile('^[ \t]*restrict[ \t]+side[ \t]+([^ \t]+)')
+        spcrex = re.compile('^[ \t]*sidespace[ \t]+([^ \t]+)[ \t]+([^ \t]+)')
+
+        # Always read the .blif file to get the full set of pins
+        fullpinlist = []
+        if bliffile != None:
+            if os.path.exists(bliffile):
+                with open(bliffile, 'r') as ifile:
+                    for line in ifile:
+                        iomatch = iorex.match(line)
+                        if iomatch:
+                            iopins = iomatch.group(1).split()
+                            fullpinlist.extend(iopins)
+        else:
+            print('Missing BLIF file name, cannot check for unassigned pins.', file=sys.stderr)
+
+        loaded = False
+        if cel2file != None:
+            if os.path.exists(cel2file):
+                with open(cel2file, 'r') as ifile:
+                    newgroup = None
+                    for line in ifile:
+                        gmatch = grprex.match(line)
+                        pmatch = pinrex.match(line)
+                        rmatch = sidrex.match(line)
+                        smatch = spcrex.match(line)
+                        if gmatch:
+                            groupname = gmatch.group(1)
+                            permutetype = gmatch.group(2)
+                            if groupname in self.padgroups:
+                                newgroup = self.padgroups['groupname']
+                            else:
+                                newgroup = self.new_group(groupname)
+                                newgroup['permute'] = permutetype
+                        if pmatch:
+                            pinname = pmatch.group(1)
+                            fixedtype = pmatch.group(2)
+                            if not newgroup:
+                                print('Error:  Pin ' + pinname + ' is defined outside of a padgroup!',
+					file=sys.stderr)
+                            else:
+                                newgroup['pins'].append(pinname)
+                                newgroup['fixed'].append(fixedtype)
+                                fullpinlist.remove(pinname)
+                        if rmatch:
+                            restrictside = rmatch.group(1)
+                            if not newgroup:
+                                print('Error:  "restrict" used outside of a padgroup!', file=sys.stderr)
+                            else:
+                                newgroup['sides'] = restrictside
+                        if smatch:
+                            sidestart = smatch.group(1)
+                            sidestop = smatch.group(2)
+                            if not newgroup:
+                                print('Error:  "sidespace" used outside of a padgroup!', file=sys.stderr)
+                            else:
+                                newgroup['start'] = int(100 * float(sidestart))
+                                newgroup['stop'] = int(100 * float(sidestop))
+                        
+                loaded = True
+
+                # Compress long groups, mostly to avoid tkinter pixmap allocation
+                # error.
+                for group in self.padgroups:
+                    if len(group['pins']) > 12:
+                        group['pins'] = [group['pins'][0] + '...' + group['pins'][-1]]
+                        group['fixed'] = [group['fixed'][0]]
+                        group['compressed'] = True
+
+        if not loaded:
+            if bliffile == None:
+                print("No BLIF or .cel2 file, cannot continue with pin assignment!", file=sys.stderr)
+                return
+
+        # Convert any pins in the full pin list that were not in the .cel2 file
+        # into a group called "unassigned".  If there was no .cel2 file, convert
+        # the full pin list into "unassigned"
+        unassigned = self.new_group('unassigned')
+        unassigned['pins'] = fullpinlist
+        numentries = len(unassigned['pins'])
+        unassigned['fixed'] = ['nonfixed'] * numentries
+        unassigned['sides'] = ''
+        loaded = True
+        self.populate()
+
+    # Update records from the GUI settings.  This is required largely due to the
+    # use of special variables in tkinter that can only be read and written with
+    # get() and set() methods.
+    def writeback_gui(self):
+        for group in self.padgroups:
+            if group['name'] == 'unassigned':
+                continue
+
+            # When reading in pins for the first time, this routine may be called
+            # before populate();  there is no established GUI, so there is nothing
+            # to write back.
+            if not 'Tset' in group:
+                continue
+
+            group['sides'] = ''
+            if group['Tset'].get() == 1:
+                group['sides'] += 'T'
+            if group['Bset'].get() == 1:
+                group['sides'] += 'B'
+            if group['Lset'].get() == 1:
+                group['sides'] += 'L'
+            if group['Rset'].get() == 1:
+                group['sides'] += 'R'
+            group['start'] = int(group['Sset'].get())
+            group['stop'] = int(group['Eset'].get())
+
+            if group['Pset'].get() == 1:
+                group['permute'] = 'permute'
+            else:
+                group['permute'] = 'nopermute'
+
+            group['fixed'] = []
+            for pin, fset in zip(group['pins'], group['Fset']):
+                if fset.get() == 1:
+                    group['fixed'].append('fixed')
+                else:
+                    group['fixed'].append('nonfixed')
+
+
+    # Write out the .cel2 file
+    def writepads(self, cel2file=None):
+
+        if not cel2file:
+            cel2file = self.cel2file
+
+        if len(self.padgroups) == 0:
+            print('No pin arrangement has been specified.')
+            print('Pins will be assigned positions to optimize routing.')
+            return
+
+        self.writeback_gui()
+
+        # Check if any .cel2 file needs to be written at all
+        numgroups = 0;
+        for group in self.padgroups:
+            if group['name'] != 'unassigned':
+                if len(group['pins']) > 0:
+                    numgroups += 1
+
+        if numgroups > 0:
+
+            print('Writing ' + str(numgroups) + ' pad groups to pin hints file ' + cel2file)
+
+            # write back the .cel2 file from the resident pad data
+            with open(cel2file, 'w') as ofile:
+                for group in self.padgroups:
+                    if group['name'] == 'unassigned':
+                        continue
+
+                    print('Writing group ' + group['name'])
+                    # while writing output, ignore empty groups
+                    if group['compressed'] == True:
+                        del1rex = re.compile('([^<]+)[<]([0-9]+)[>]\.\.\.[^<]+[<]([0-9]+)[>]')
+                        del2rex = re.compile('([^\[]+)[\[]([0-9]+)[\]]\.\.\.[^\[]+[\[]([0-9]+)[\]]')
+                        del3rex = re.compile('([^\(]+)[\(]([0-9]+)[\)]\.\.\.[^\(]+[\(]([0-9]+)[\)]')
+                        pin = group['pins'][0]
+                        fixed = group['fixed'][0]
+                        dmatch1 = del1rex.match(pin)
+                        dmatch2 = del2rex.match(pin)
+                        dmatch3 = del3rex.match(pin)
+                        if dmatch1:
+                            rootname = dmatch1.group(1)
+                            startval = int(dmatch1.group(2))
+                            endval = int(dmatch1.group(3))
+                            ds = '<'
+                            de = '>'
+                        elif dmatch2:
+                            rootname = dmatch2.group(1)
+                            startval = int(dmatch2.group(2))
+                            endval = int(dmatch2.group(3))
+                            ds = '['
+                            de = ']'
+                        elif dmatch3:
+                            rootname = dmatch3.group(1)
+                            startval = int(dmatch3.group(2))
+                            endval = int(dmatch3.group(3))
+                            ds = '('
+                            de = ')'
+                        else:
+                            continue
+
+                        print('padgroup ' + group['name'] + ' ' + group['permute'], file=ofile)
+                        if startval < endval:
+                            for j in range(startval,endval + 1):
+                                pin = rootname + ds + str(j) + de
+                                print('twpin_' + pin + '  ' + fixed, file=ofile)
+                        else:
+                            for j in range(startval,endval - 1, -1):
+                                pin = rootname + ds + str(j) + de
+                                print('twpin_' + pin + '  ' + fixed, file=ofile)
+                        if group['sides'] != '':
+                            print('restrict side ' + group['sides'], file=ofile)
+                        if group['start'] != 0 or group['stop'] != 100:
+                            fstart = str(group['start'] / 100.0)
+                            fstop = str(group['stop'] / 100.0)
+                            print('sidespace ' + fstart + ' ' + fstop, file=ofile)
+                        print('', file=ofile)
+
+                    elif len(group['pins']) > 0:
+                        print('padgroup ' + group['name'] + ' ' + group['permute'], file=ofile)
+                        for pin, fixed in zip(group['pins'], group['fixed']):
+                            print('twpin_' + pin + '  ' + fixed, file=ofile)
+                        if group['sides'] != '':
+                            print('restrict side ' + group['sides'], file=ofile)
+                        if group['start'] != 0 or group['stop'] != 100:
+                            fstart = str(group['start'] / 100.0)
+                            fstop = str(group['stop'] / 100.0)
+                            print('sidespace ' + fstart + ' ' + fstop, file=ofile)
+                        print('', file=ofile)
+
+    def apply(self):
+        # return the new pin list.
+        self.writepads()
+        self.withdraw()
+
+    def close(self):
+        # remove pin manager window
+        self.withdraw()
+
+    def open(self):
+        # pop up pin manager window
+        self.deiconify()
+        self.lift()
+        self.focus()
+        

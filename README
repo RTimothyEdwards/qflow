@@ -1,0 +1,72 @@
+qflow v.1.4
+---------------------------------------------------------------
+Tim Edwards
+Open Circuit Design
+v1.0 April    2013
+v1.1 May      2015
+v1.2 May      2018
+v1.3 December 2018
+v1.4 December 2018
+---------------------------------------------------------------
+GPL Copyright (c) 2018
+---------------------------------------------------------------
+Default technology uses OSU open source digital cell libraries
+See http://vlsiarch.ecen.okstate.edu/flows/
+---------------------------------------------------------------
+
+To compile and install:
+
+	./configure
+	make
+	make install
+
+See full instructions on http://opencircuitdesign.com/qflow/
+
+The ./configure needs arguments for each tool of the tool
+chain that is not in the standard search path.  Qflow will
+need to be able to find the following tools:
+
+	yosys
+	graywolf
+	qrouter
+	magic
+	netgen
+
+All of these tools typically install in a standard location
+that is in the normal user path, such as /usr/local/bin/.
+
+--------------------------------------------------------------
+"qflow" is the original verilog digital flow from
+opencircuitdesign, reorganized for the following reasons:
+
+(1) All the technology-independent scripts and programs can
+    be organized in one place, and not be copied for every
+    project.
+
+(2) All the technology-dependent files can be organized
+    under a single tech directory, with the technology
+    specified on the command-line, or even pulled from a
+    file in the layout directory.
+
+(3) Various working directories can be reassigned by
+    setting environment variables
+
+(4) The C source code files can be compiled under a standard
+    "make" process
+
+(5) The compile and install process can be put under gnu
+    automake/autoconf.
+
+(6) The location of external programs (e.g., qrouter and graywolf)
+    can be searched for by autoconf, or passed as arguments
+    to the configure script
+
+(7) Try to convert and handle all files in standard formats:
+    mainly RTL verilog, LEF, and DEF.
+   
+(8) Consolidate all configuration information into a single
+    config file that can call out each tool or tools for
+    which the configuration information applies, much like
+    graywolf does, except extended to include the other
+    tools in qflow.
+--------------------------------------------------------------

@@ -1,0 +1,15 @@
+#-----------------------------------------------------
+# .magicrc startup file for OSU050 project under qflow
+#-----------------------------------------------------
+
+path sys +QFLOW_LIB_DIR/tech/osu050
+tech load SCN3ME_SUBM.30 -noprompt
+scalegrid 1 4
+set GND gnd
+set VDD vdd
+
+drc euclidean on
+drc off
+
+addpath digital
+

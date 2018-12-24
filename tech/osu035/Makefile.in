@@ -1,0 +1,44 @@
+#
+# qflow project included technology osu035 files
+#
+
+# Main compiler arguments
+CFLAGS = @CFLAGS@
+DEFS = @DEFS@
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
+INSTALL = @INSTALL@
+
+QFLOW_LIB_DIR = @QFLOW_LIB_DIR@
+
+TECH_FILES = osu035.par osu035_stdcells.lef osu035.sh
+TECH_FILES += osu035_stdcells.sp osu035.magicrc osu035.prm
+TECH_FILES += SCN4M_SUBM.20.tech osu035_stdcells.lib
+TECH_FILES += osu035_stdcells.v osu035_setup.tcl osu035_stdcells.gds2
+
+TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+
+# Substitute the target qflow tech directory name in .magicrc so that magic
+# can find the OSU035 techfile
+
+all: osu035.magicrc.in
+	$(RM) -f osu035.magicrc
+	cat osu035.magicrc.in | sed -e \
+		'/QFLOW_LIB_DIR/s#QFLOW_LIB_DIR#$(QFLOW_LIB_DIR)#' \
+		> osu035.magicrc
+
+install: ${TECH_FILES}
+	@echo "Installing osu035 tech files"
+	$(INSTALL) -d $(DESTDIR)$(TECHINSTALL)/osu035
+	for target in $(TECH_FILES); do \
+	   $(INSTALL) $$target $(DESTDIR)$(TECHINSTALL)/osu035 ;\
+	done
+
+clean:
+	$(RM) -f osu035.magicrc
+
+distclean:
+	$(RM) -f osu035.magicrc
+
+uninstall:
+

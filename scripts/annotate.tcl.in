@@ -1,0 +1,148 @@
+#!TCLSH_PATH
+#---------------------------------------------------------------------------
+# annotate.tcl ---
+#
+# Read a file "antenna.out" produced by qrouter, and use this to
+# back-annotate the <project>.v verilog structural netlist for input
+# to static timing analysis.
+#
+# The "antenna.out" file contains connections made by the router to
+# antenna anchoring cells.  It is solely a product of the routing and
+# should not permanently affect any netlist that becomes input to any
+# stage prior to routing (e.g., the .blif or .cel files used for
+# placement).
+#
+# The output is written to the filename specified.  Input and output
+# files are opened at the same time, so do not specify the same file to
+# be overwritten.
+#
+# 5/18/2018:  A file "fillcells.txt" containing all the fill cells added
+# to the design may be appended to the "antenna.out" file.  Add these to
+# the netlist as well.  However, antenna entries in "antenna.out" also
+# appear in "fillcells.txt", so ignore redundant entries.
+#---------------------------------------------------------------------------
+
+namespace path {::tcl::mathop ::tcl::mathfunc}
+
+if {$argc != 3 && $argc != 4} {
+   puts stdout "Usage:  annotate.tcl <antenna_file> <verilog_file> <verilog_out> [<pwrgnd_file>]"
+   exit 0
+}
+
+puts stdout "Running annotate.tcl"
+
+set antennaname [lindex $argv 0]
+set vlogname [lindex $argv 1]
+set vlogoutname [lindex $argv 2]
+
+# If an additional file name is given, it should point to the file
+# that sets vddnet and gndnet in the design (picked up from the LEF
+# files, so no need to re-parse them.
+
+if {$argc == 4} {
+   set pwrgndfile [lindex $argv 3]
+
+   if [catch {open $pwrgndfile r} fpwr] {
+      puts stderr "Can't open file $pwrgndfile for input, assuming standard names."
+      set vddnet false
+      set gndnet false
+   } else {
+
+      # Read file and evaluate the same way the other shell script files are
+      # in other of the qflow Tcl scripts (e.g., ypostproc.tcl).
+
+      while {[gets $fpwr line] >= 0} {
+         set tcmd [string map {= \ } $line]
+         eval $tcmd
+      }
+      close $fpwr
+   }
+} else {
+   set vddnet false
+   set gndnet false
+}
+
+set debug false
+
+#-----------------------------------------------------------------
+# Open antenna file for reading
+#-----------------------------------------------------------------
+
+if [catch {open $antennaname r} fant] {
+   puts stderr "Error: can't open file $antennaname for input"
+   exit 1
+}
+
+#-----------------------------------------------------------------
+# Read the antenna update file.
+#-----------------------------------------------------------------
+
+set added 0
+set changelist [dict create]
+set instlist [dict create]
+
+# NOTE:  Lines in section "Unfixed antenna errors" are not nets to be
+# annotated, but a list of nets that are creating DRC antenna errors.
+# These nets are ignored.
+
+set in_unfix false
+while {[gets $fant line] >= 0} {
+   if {$in_unfix == false} {
+      if [regexp {[ \t]*Net=([^ \t]+)[ \t]+Instance=([^ \t]+)[ \t]+Cell=([^ \t]+)[ \t]+Pin=([^ \t]+)} $line lmatch netname instname cellname pinname] {
+         # Keep instances seen in a dictionary and ignore redundant entries
+         if [catch {dict get $instlist $instname}] {
+            incr added
+            dict set changelist $instname [list $netname $cellname $pinname]
+	    dict set instlist $instname true
+         }
+      }
+   }
+   if [regexp {[ \t]*Unfixed antenna errors:} $line lmatch] {
+      set in_unfix true
+   } elseif [regexp {[ \t]*# Fill cell instances} $line lmatch] {
+      set in_unfix false
+   }
+}
+if {$added == 0} {
+   puts stdout "No nets needed annotating."
+   exit 0
+}
+
+close $fant	;# Done with antenna input file
+
+#-----------------------------------------------------------------
+# Open verilog files for reading and writing
+#-----------------------------------------------------------------
+
+if [catch {open $vlogname r} fvlog] {
+   puts stderr "Error: can't open file $vlogname for input"
+   exit 1
+}
+
+if [catch {open $vlogoutname w} fvout] {
+   puts stderr "Error: can't open file $vlogoutname for output"
+   exit 1
+}
+
+while {[gets $fvlog line] >= 0} {
+   if [regexp {[ \t]*endmodule} $line lmatch] {
+      # Insert the list here
+      dict for {instname netchange} $changelist {
+	 set netname [lindex $netchange 0]
+	 set cellname [lindex $netchange 1]
+	 set pinname [lindex $netchange 2]
+	 if {${pinname} != "-" && ${pinname} != ""} {
+	    puts $fvout "${cellname} ${instname} ( .${pinname}(${netname}) );"
+	 } else {
+	    puts $fvout "${cellname} ${instname} ( );"
+	 }
+      }
+   }
+   puts $fvout $line
+}
+
+close $fvlog
+close $fvout
+
+puts stdout "Done with annotate.tcl"
+exit 0
