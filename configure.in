@@ -189,14 +189,20 @@ AC_ARG_WITH(replace,
       QFLOW_REPLACE_DIR=${PATH}
    fi
    AC_PATH_PROG(QFLOW_REPLACE_PATH, RePlAce, , $QFLOW_REPLACE_DIR)
+   AC_PATH_PROG(QFLOW_NTUPLACE3_PATH, ntuplace3, , ${QFLOW_REPLACE_DIR}/../ntuplace)
+   AC_PATH_PROG(QFLOW_NTUPLACE4_PATH, ntuplace4h, , ${QFLOW_REPLACE_DIR}/../ntuplace)
 ], [
-   AC_PATH_PROG(QFLOW_REPLACE_PATH, RePlAce, , )])
+   AC_PATH_PROG(QFLOW_REPLACE_PATH, RePlAce, , )
+   AC_PATH_PROG(QFLOW_NTUPLACE3_PATH, ntuplace3, , )
+   AC_PATH_PROG(QFLOW_NTUPLACE4_PATH, ntuplace4h, , )
+])
 AC_DEFINE_UNQUOTED(QFLOW_REPLACE_PATH, "$QFLOW_REPLACE_PATH")
 dnl NOTE:  The following is based on the current source distribution of RePlAce and
 dnl is likely to change.  QFLOW_NTUPLACE_PATH is set to the common prefix "ntuplace"
 dnl of the actual tools, currently "ntuplace3" and "ntuplace4h".  Probably better to
 dnl write a custom autoconf script for this.
-AC_DEFINE_UNQUOTED(QFLOW_NTUPLACE_PATH, "$QFLOW_REPLACE_PATH/../ntuplace/ntuplace")
+AC_DEFINE_UNQUOTED(QFLOW_NTUPLACE3_PATH, "$QFLOW_NTUPLACE3_PATH")
+AC_DEFINE_UNQUOTED(QFLOW_NTUPLACE4_PATH, "$QFLOW_NTUPLACE4_PATH")
 
 dnl Expand the prefix variable
 if test "x$prefix" = xNONE ; then
@@ -221,6 +227,9 @@ AC_ARG_WITH(bindir,
 
 dnl AC_SUBST(QFLOW_YOSYS_PATH)
 dnl AC_SUBST(QFLOW_GRAYWOLF_PATH)
+dnl AC_SUBST(QFLOW_REPLACE_PATH)
+dnl AC_SUBST(QFLOW_NTUPLACE3_PATH)
+dnl AC_SUBST(QFLOW_NTUPLACE4_PATH)
 dnl AC_SUBST(QFLOW_QROUTER_PATH)
 dnl AC_SUBST(QFLOW_MAGIC_PATH)
 dnl AC_SUBST(QFLOW_NETGEN_PATH)

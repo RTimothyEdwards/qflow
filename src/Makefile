@@ -8,13 +8,14 @@ LIBS =
 LDFLAGS = 
 INSTALL = /bin/install -c
 
-DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"/home/tim/src/RePlAce/src/RePlAce\" -DQFLOW_NTUPLACE_PATH=\"/home/tim/src/RePlAce/src/RePlAce/../ntuplace/ntuplace\" -DQFLOW_VERSION=\"1.4\" -DQFLOW_REVISION=\"0\"
+DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"/home/tim/src/RePlAce/src/RePlAce\" -DQFLOW_NTUPLACE3_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace3\" -DQFLOW_NTUPLACE4_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace4h\" -DQFLOW_VERSION=\"1.4\" -DQFLOW_REVISION=\"1\"
 
 QFLOW_LIB_DIR = /usr/local/share/qflow
 
 QFLOW_GRAYWOLF_PATH = /usr/local/bin/graywolf
 QFLOW_REPLACE_PATH = /home/tim/src/RePlAce/src/RePlAce
-QFLOW_NTUPLACE_PATH = @QFLOW_NTUPLACE_PATH@
+QFLOW_NTUPLACE3_PATH = /home/tim/src/RePlAce/src/../ntuplace/ntuplace3
+QFLOW_NTUPLACE4_PATH = /home/tim/src/RePlAce/src/../ntuplace/ntuplace4h
 QFLOW_QROUTER_PATH = /usr/local/bin/qrouter
 QFLOW_MAGIC_PATH = /usr/local/bin/magic
 QFLOW_NETGEN_PATH = /usr/local/bin/netgen
@@ -102,8 +103,8 @@ install: $(TARGETS)
 	fi
 	@if test "${HAVE_REPLACE}" = "1"; then \
 	(cd $(DESTDIR)${BININSTALL};  $(RM) -f RePlAce;  ln -s $(QFLOW_REPLACE_PATH) RePlAce) ;\
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE_PATH)3 ntuplace3) ;\
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE_PATH)4h ntuplace4h) ;\
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE3_PATH) ntuplace3) ;\
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace4h;  ln -s $(QFLOW_NTUPLACE4_PATH) ntuplace4h) ;\
 	fi
 	@if test "${HAVE_QROUTER}" = "1"; then \
 	(cd $(DESTDIR)${BININSTALL};  $(RM) -f qrouter;  ln -s $(QFLOW_QROUTER_PATH) qrouter) ;\

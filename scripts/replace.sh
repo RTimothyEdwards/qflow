@@ -335,7 +335,7 @@ if ( !( ${?replace_options} )) then
    set replace_options = "${replace_options} -def ${layoutdir}/${rootname}_preplace.def"
    set replace_options = "${replace_options} -output outputs"
    set replace_options = "${replace_options} -dpflag NTU4"
-   set replace_options = "${replace_options} -dploc outputs"
+   set replace_options = "${replace_options} -dploc ${bindir}/ntuplace4h"
 endif
 
 #----------------------------------------------------------------------------

@@ -119,7 +119,6 @@ if [catch {open $obsname a} fobs] {
 #-----------------------------------------------------------------
 
 puts $fdef "VERSION 5.6 ;"
-puts $fdef "NAMESCASESENSITIVE ON ;"
 puts $fdef "DIVIDERCHAR \"/\" ;"
 puts $fdef "BUSBITCHARS \"<>\" ;"
 puts $fdef "DESIGN $topname ;"
