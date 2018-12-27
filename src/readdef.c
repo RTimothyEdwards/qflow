@@ -41,7 +41,7 @@ char *DEFDesignName;
 
 DSEG UserObs = NULL;
 int Xlowerbound = 0, Xupperbound = 0, Ylowerbound = 0, Yupperbound = 0;
-int PitchX = 0, PitchY = 0;
+int PitchX = 100, PitchY = 100;
 int Numnets = 0;
 NET *Nlnets = NULL;
 GATE Nlgates = NULL;

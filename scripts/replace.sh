@@ -334,8 +334,8 @@ if ( !( ${?replace_options} )) then
    set replace_options = "${replace_options} -lef ${lefpath}"
    set replace_options = "${replace_options} -def ${layoutdir}/${rootname}_preplace.def"
    set replace_options = "${replace_options} -output outputs"
-   set replace_options = "${replace_options} -dpflag NTU4"
-   set replace_options = "${replace_options} -dploc ${bindir}/ntuplace4h"
+   set replace_options = "${replace_options} -dpflag NTU3"
+   set replace_options = "${replace_options} -dploc ${bindir}/ntuplace3"
 endif
 
 #----------------------------------------------------------------------------
@@ -358,15 +358,29 @@ if ( ${errcond} != 0 ) then
 endif
 
 #---------------------------------------------------------------------
-# Spot check:  Did RePlAce produce file ${rootname}.def?
+# Spot check:  Did RePlAce produce file ${rootname}_preplace_final.def?
 #---------------------------------------------------------------------
 
-if ( !( -f ${rootname}.def || \
-	( -f ${rootname}.def && -M ${rootname}.def < -M ${rootname}_preplace.def ))) then
-   echo "RePlAce failure:  No file ${rootname}.def." |& tee -a ${synthlog}
+set outfile=outputs/ispd/${rootname}_preplace/experiment000/${rootname}_preplace_final.def
+
+if ( !( -f ${outfile} || \
+	( -f ${outfile} && -M ${outfile} < -M ${rootname}_preplace.def ))) then
+   echo "RePlAce failure:  No file ${rootname}_preplace_final.def." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
    exit 1
+endif
+
+echo "Copying RePlAce result up to layout directory:" |& tee -a ${synthlog}
+echo "cp ${outfile} ${rootname}.def" |& tee -a ${synthlog}
+cp ${outfile} ${rootname}.def
+
+#---------------------------------------------------
+# Remove RePlAce working files
+#---------------------------------------------------
+
+if ($keep == 0) then
+   rm -rf outputs
 endif
 
 #---------------------------------------------------------------
@@ -380,10 +394,22 @@ endif
 
 if ($makedef == 1) then
 
+   echo "Running getantennacell to determine cell to use for antenna anchors." \
+	|& tee -a ${synthlog}
+   echo "getantennacell.tcl $rootname ${lefpath} $antennacell" |& tee -a ${synthlog}
+   set useantennacell=`${scriptdir}/getantennacell.tcl $rootname \
+	${lefpath} $antennacell  | grep antenna= | cut -d= -f2 | cut -d/ -f1`
+
+   if ( "${useantennacell}" != "" ) then
+      echo "Using cell ${useantennacell} for antenna anchors" |& tee -a ${synthlog}
+   endif
+
    #---------------------------------------------------------------------
    # Add spacer cells to create a straight border on the right side
    #---------------------------------------------------------------------
 
+# To be reinstated. . .
+if 0 then
    if ( !(${?nospacers}) && (-f ${scriptdir}/addspacers.tcl) ) then
 
       # Fill will use just the fillcell for padding under power buses
@@ -421,6 +447,7 @@ if ($makedef == 1) then
 	 mv ${rootname}.obsx ${rootname}.obs
       endif
    endif
+endif
 
    # Copy the .def file to a backup called "unroute"
    cp ${rootname}.def ${rootname}_unroute.def
@@ -689,14 +716,6 @@ if ($makedef == 1) then
       cd ${layoutdir}
 
     endif
-endif
-
-#---------------------------------------------------
-# 4) Remove RePlAce working files
-#---------------------------------------------------
-
-if ($keep == 0) then
-   rm -rf output
 endif
 
 #------------------------------------------------------------

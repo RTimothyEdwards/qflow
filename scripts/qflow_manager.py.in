@@ -2409,100 +2409,82 @@ class QflowManager(ttk.Frame):
 
                 tmatch = tsynthrex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set synthesis_tool = ' + tmatch.group(1)
-                    elif self.run_synthesis.get():
+                    if self.run_synthesis.get():
                         linesub = 'set synthesis_tool = ' + self.run_synthesis.get()
                     elif tmatch.group(1):
-                        linesub = '# set synthesis_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set synthesis_tool = '
 
                 tmatch = tplacerex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set placement_tool = ' + tmatch.group(1)
-                    elif self.run_placement.get():
+                    if self.run_placement.get():
                         linesub = 'set placement_tool = ' + self.run_placement.get()
                     elif tmatch.group(1):
-                        linesub = '# set placement_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set placement_tool = '
 
                 tmatch = tstarex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set sta_tool = ' + tmatch.group(1)
-                    elif self.run_sta.get():
+                    if self.run_sta.get():
                         linesub = 'set sta_tool = ' + self.run_sta.get()
                     elif tmatch.group(1):
-                        linesub = '# set sta_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set sta_tool = '
 
                 tmatch = trouterex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set router_tool = ' + tmatch.group(1)
-                    elif self.run_router.get():
+                    if self.run_router.get():
                         linesub = 'set router_tool = ' + self.run_router.get()
                     elif tmatch.group(1):
-                        linesub = '# set router_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set router_tool = '
 
                 tmatch = tmigraterex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set migrate_tool = ' + tmatch.group(1)
-                    elif self.run_migrate.get():
+                    if self.run_migrate.get():
                         linesub = 'set migrate_tool = ' + self.run_migrate.get()
                     elif tmatch.group(1):
-                        linesub = '# set migrate_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set migrate_tool = '
 
                 tmatch = tdrcrex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set drc_tool = ' + tmatch.group(1)
-                    elif self.run_drc.get():
+                    if self.run_drc.get():
                         linesub = 'set drc_tool = ' + self.run_drc.get()
                     elif tmatch.group(1):
-                        linesub = '# set drc_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set drc_tool = '
 
                 tmatch = tlvsrex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set lvs_tool = ' + tmatch.group(1)
-                    elif self.run_lvs.get():
+                    if self.run_lvs.get():
                         linesub = 'set lvs_tool = ' + self.run_lvs.get()
                     elif tmatch.group(1):
-                        linesub = '# set lvs_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set lvs_tool = '
 
                 tmatch = tgdsrex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set gds_tool = ' + tmatch.group(1)
-                    elif self.run_gds.get():
+                    if self.run_gds.get():
                         linesub = 'set gds_tool = ' + self.run_gds.get()
                     elif tmatch.group(1):
-                        linesub = '# set gds_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set gds_tool = '
 
                 tmatch = tdisprex.match(line)
                 if tmatch:
-                    if not is_comment:
-                        linesub = 'set display_tool = ' + tmatch.group(1)
-                    elif self.run_display.get():
+                    if self.run_display.get():
                         linesub = 'set display_tool = ' + self.run_display.get()
                     elif tmatch.group(1):
-                        linesub = '# set display_tool = ' + tmatch.group(1)
+                        linesub = line
                     else:
                         linesub = '# set display_tool = '
 
@@ -3909,12 +3891,20 @@ class QflowManager(ttk.Frame):
             os.chdir(rootpath)
         else:
             rootpath = os.getcwd()
-       
+
         # If rootpath is a verilog filename, then the project path
         # is the current working directory by definition.
 
         rootname = os.path.split(rootpath)[1]
         project = None
+
+        # Check for the rather common case (for me, at least) of having
+        # started the qflow GUI in one of the project subdirectories.
+        if rootname == 'layout' or rootname == 'synthesis' or rootname == 'source':
+            if os.path.isdir(rootpath + '/../synthesis'):
+                os.chdir('..')
+                rootpath = os.getcwd()
+                rootname = os.path.split(rootpath)[1]
 
         if project_name:
             project = project_name

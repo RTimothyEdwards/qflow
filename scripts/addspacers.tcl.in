@@ -117,12 +117,12 @@ set dieyhigh 0
 
 if [catch {open $lefname r} flef] {
     puts stderr "Error: can't open LEF file $lefname for input"
-    return
+    exit 1
 }
 
 if [catch {open $defname r} fdef] {
     puts stderr "Error: can't open DEF file $defname for input"
-    return
+    exit 1
 }
 
 if {$techlef != ""} {
@@ -1363,6 +1363,8 @@ while {[gets $fdef line] >= 0} {
 	    incr matches
 	} elseif [regexp {[ \t]*TRACKS} $line lmatch] {
 	    incr matches
+	} elseif [regexp {[ \t]*ROW} $line lmatch] {
+	    incr matches
 	} else {
 	    puts stderr "Unexpected input in DEF file:"
 	    puts stdout "Line is: $line"
@@ -1560,7 +1562,7 @@ set fdef [open $defname r]
 
 if [catch {open $defoutname w} fanno] {
     puts stderr "Error: can't open file $defoutname for output"
-    return
+    exit 1
 }
 
 #-----------------------------------------------------------------
@@ -1611,11 +1613,11 @@ if {$dostripes && $dostretch} {
     if [catch {open ${topname}.obs r} infobs] {
 	# No .obs file, no action needed.
 	puts stdout "No file ${topname}.obs, so no adjustment required."
-	return
+	exit 0
     }
     if [catch {open ${topname}.obsx w} outfobs] {
 	puts stout "Error:  Cannot open file ${topname}.obsx for writing!"
-	return
+	exit 1
     }
     puts stdout "Adjusting obstructions for power striping"
     # puts stdout "numstripes = $numstripes"
