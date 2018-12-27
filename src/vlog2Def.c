@@ -14,8 +14,8 @@
 #include "readverilog.h"
 #include "readlef.h"
 
-void write_output(struct cellrec *, int hasmacros, float aspect, int units,
-		GATE coresite);
+int write_output(struct cellrec *, int hasmacros, float aspect, int units,
+		GATE coresite, char *outname);
 void helpmessage(FILE *outf);
 
 /* Linked list for nets */
@@ -35,15 +35,16 @@ struct hashtable LEFhash;
 
 int main (int argc, char *argv[])
 {
-    int i, result, hasmacros = FALSE;
+    int i, result = 0, hasmacros = FALSE;
     int units = 100;
     float aspect = 1.0;
     struct cellrec *topcell;
     GATE coresite = NULL;
+    char *defoutname = NULL;
 
     InitializeHashTable(&LEFhash, SMALLHASHSIZE);
 
-    while ((i = getopt(argc, argv, "hHl:a:u:")) != EOF) {
+    while ((i = getopt(argc, argv, "hHl:a:u:o:")) != EOF) {
         switch (i) {
 	    case 'h':
 	    case 'H':
@@ -56,8 +57,11 @@ int main (int argc, char *argv[])
 		    return 1;
 		}
 		break;
+	    case 'o':
+		defoutname = strdup(optarg);
+		break;
 	    case 'a':
-		if (sscanf(optarg, "%f", aspect) != 1) {
+		if (sscanf(optarg, "%f", &aspect) != 1) {
 		    fprintf(stderr, "Could not read aspect value from \"-a %s\"\n",
 				optarg);
 		    helpmessage(stderr);
@@ -65,12 +69,13 @@ int main (int argc, char *argv[])
 		}
 		break;
 	    case 'u':
-		if (sscanf(optarg, "%d", units) != 1) {
+		if (sscanf(optarg, "%d", &units) != 1) {
 		    fprintf(stderr, "Could not read units value from \"-u %s\"\n",
 				optarg);
 		    helpmessage(stderr);
 		    return 1;
 		}
+		break;
 	    default:
 		fprintf(stderr, "Bad option switch \"%c\"\n", (char)i);
 		helpmessage(stderr);
@@ -97,8 +102,8 @@ int main (int argc, char *argv[])
     }
 
     topcell = ReadVerilog(argv[optind]);
-    write_output(topcell, hasmacros, aspect, units, coresite);
-    return 0;
+    result = write_output(topcell, hasmacros, aspect, units, coresite, defoutname);
+    return result;
 }
 
 /*--------------------------------------------------------------*/
@@ -134,11 +139,11 @@ struct nlist *output_nets(struct hashlist *p, void *cptr)
 /* SIDE EFFECTS: 						*/
 /*--------------------------------------------------------------*/
 
-void write_output(struct cellrec *topcell, int hasmacros, float aspect, int units,
-	GATE coresite)
+int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units,
+	GATE coresite, char *outname)
 {
     FILE *outfptr = stdout;
-    int ncomp, npin, nnet, start, end, i;
+    int ncomp, npin, nnet, start, end, i, result = 0;
     int totalwidth, totalheight, rowwidth, rowheight, numrows;
     int sitewidth, siteheight, numsites;
     char portnet[512];
@@ -156,6 +161,15 @@ void write_output(struct cellrec *topcell, int hasmacros, float aspect, int unit
     static char *portdirs[] = {"", "INPUT", "OUTPUT", "INOUT"};
 
     linkedNetPtr nlink, nsrch;
+
+    /* Open the output file (unless name is NULL, in which case use stdout) */
+    if (outname != NULL) {
+	outfptr = fopen(outname, "w");
+	if (outfptr == NULL) {
+	    fprintf(stderr, "Error:  Cannot open file %s for writing.\n", outname);
+	    return 1;
+	}
+    } 
 
     /* Hash the nets */
 
@@ -230,7 +244,7 @@ void write_output(struct cellrec *topcell, int hasmacros, float aspect, int unit
 
     /* Write output DEF header */
     fprintf(outfptr, "VERSION 5.6 ;\n");
-    fprintf(outfptr, "NAMECASESENSITIVE ON  ;\n");
+    /* fprintf(outfptr, "NAMESCASESENSITIVE ON  ;\n"); */
     fprintf(outfptr, "DIVIDERCHAR \"/\" ;\n");
     fprintf(outfptr, "BUSBITCHARS \"[]\" ;\n");
     fprintf(outfptr, "DESIGN %s ;\n", topcell->name);
@@ -334,7 +348,11 @@ void write_output(struct cellrec *topcell, int hasmacros, float aspect, int unit
 
     /* End the design */
     fprintf(outfptr, "END DESIGN\n");
+
+    if (outname != NULL) fclose(outfptr);
+
     fflush(stdout);
+    return result;
 
 } /* write_output */
 
@@ -355,6 +373,7 @@ void helpmessage(FILE *outf)
     fprintf(outf,"options:\n");
     fprintf(outf,"\n");
     fprintf(outf,"   -h          Print this message\n");
+    fprintf(outf,"   -o <path>   Set output filename (otherwise output is on stdout).\n");
     fprintf(outf,"   -l <path>   Read LEF file from <path> (may be called multiple"
 			" times)\n");
     fprintf(outf,"   -a <value>	 Set aspect ratio to <value> (default 1.0)\n");

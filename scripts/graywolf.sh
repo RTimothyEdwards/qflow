@@ -1,10 +1,8 @@
 #!/bin/tcsh -f
 #----------------------------------------------------------
 # Placement script using GrayWolf
+# Prerequisites:  Mapped verilog netlist from synthesis.
 #
-# This script assumes the existence of the pre-GrayWolf
-# ".cel" and ".par" files.  It will run GrayWolf for the
-# placement.
 #----------------------------------------------------------
 # Tim Edwards, 5/16/11, for Open Circuit Design
 # Modified April 2013 for use with qflow
@@ -12,7 +10,7 @@
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  placement.sh <project_path> <source_name>
+   echo Usage:  graywolf.sh <project_path> <source_name>
    exit 1
 endif
 
@@ -25,7 +23,7 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  placement.sh [options] <project_path> <source_name>
+   echo Usage:  graywolf.sh [options] <project_path> <source_name>
    echo   where
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.

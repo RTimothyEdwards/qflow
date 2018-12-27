@@ -11,23 +11,24 @@ INSTALL = @INSTALL@
 DEFS = @DEFS@ -DQFLOW_VERSION=\"@VERSION@\" -DQFLOW_REVISION=\"@REVISION@\"
 
 QFLOW_LIB_DIR = @QFLOW_LIB_DIR@
+
 QFLOW_GRAYWOLF_PATH = @QFLOW_GRAYWOLF_PATH@
+QFLOW_REPLACE_PATH = @QFLOW_REPLACE_PATH@
+QFLOW_NTUPLACE_PATH = @QFLOW_NTUPLACE_PATH@
 QFLOW_QROUTER_PATH = @QFLOW_QROUTER_PATH@
-QFLOW_ABC_PATH = @QFLOW_ABC_PATH@
-QFLOW_ODIN_PATH = @QFLOW_ODIN_PATH@
 QFLOW_MAGIC_PATH = @QFLOW_MAGIC_PATH@
 QFLOW_NETGEN_PATH = @QFLOW_NETGEN_PATH@
 QFLOW_YOSYS_PATH = @QFLOW_YOSYS_PATH@
 QFLOW_OPENTIMER_PATH = @QFLOW_OPENTIMER_PATH@
 QFLOW_OPENSTA_PATH = @QFLOW_OPENSTA_PATH@
 
-HAVE_ABC = @HAVE_ABC@
 HAVE_YOSYS = @HAVE_YOSYS@
-HAVE_ODIN_II = @HAVE_ODIN_II@
 HAVE_MAGIC = @HAVE_MAGIC@
 HAVE_NETGEN = @HAVE_NETGEN@
 HAVE_OPENTIMER = @HAVE_OPENTIMER@
 HAVE_OPENSTA = @HAVE_OPENSTA@
+HAVE_GRAYWOLF = @HAVE_GRAYWOLF@
+HAVE_REPLACE = @HAVE_REPLACE@
 
 OBJECTS = vlog2Spice.o vlog2Verilog.o vlog2Def.o vlog2Cel.o vlogFanout.o
 OBJECTS += DEF2Verilog.o
@@ -90,19 +91,25 @@ rc2dly$(EXEEXT): rc2dly.o $(LIBERTYLIB) $(HASHLIB) $(VERILOGLIB)
 	$(CC) $(LDFLAGS) rc2dly.o $(LIBERTYLIB) $(HASHLIB) $(VERILOGLIB) -o $@ $(LIBS)
 
 install: $(TARGETS)
-	@echo "Installing verilog and BDNET file format handlers"
+	@echo "Installing verilog, SPICE, etc. file format handlers"
 	$(INSTALL) -d $(DESTDIR)${BININSTALL}
 	@for target in $(TARGETS); do \
 	   $(INSTALL) $$target $(DESTDIR)${BININSTALL} ;\
 	done
-	@echo "Installing links to graywolf, qrouter, odin_ii, and abc"
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f graywolf;  ln -s $(QFLOW_GRAYWOLF_PATH) graywolf)
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f qrouter;  ln -s $(QFLOW_QROUTER_PATH) qrouter)
-	@if test "${HAVE_ABC}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f abc;  ln -s $(QFLOW_ABC_PATH) abc); \
+	@echo "Installing links to third-party synthesis flow tool executables"
+	@if test "${HAVE_GRAYWOLF}" = "1"; then \
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f graywolf;  ln -s $(QFLOW_GRAYWOLF_PATH) graywolf) ;\
+	fi
+	@if test "${HAVE_REPLACE}" = "1"; then \
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f RePlAce;  ln -s $(QFLOW_REPLACE_PATH) RePlAce) ;\
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE_PATH)3 ntuplace3) ;\
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE_PATH)4h ntuplace4h) ;\
+	fi
+	@if test "${HAVE_QROUTER}" = "1"; then \
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f qrouter;  ln -s $(QFLOW_QROUTER_PATH) qrouter) ;\
 	fi
 	@if test "${HAVE_MAGIC}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f magic;  ln -s $(QFLOW_MAGIC_PATH) magic); \
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f magic;  ln -s $(QFLOW_MAGIC_PATH) magic) ;\
 	fi
 	@if test "${HAVE_NETGEN}" = "1"; then \
 	(cd $(DESTDIR)${BININSTALL};  $(RM) -f netgen;  ln -s $(QFLOW_NETGEN_PATH) netgen); \

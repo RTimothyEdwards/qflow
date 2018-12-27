@@ -1,9 +1,10 @@
 #!/bin/tcsh -f
 #
-# synthesize.sh:
+# yosys.sh:
 #-------------------------------------------------------------------------
 #
 # This script synthesizes verilog files for qflow using yosys
+# Prerequisites:  Synthesizable verilog source file.
 #
 #-------------------------------------------------------------------------
 # November 2006
@@ -23,7 +24,7 @@ if ($#argv == 2 || $#argv == 3) then
       set sourcename=""
    endif
 else
-   echo Usage:  synthesize.sh <project_path> <module_name> [<source_file>]
+   echo Usage:  yosys.sh <project_path> <module_name> [<source_file>]
    echo
    echo   where
    echo

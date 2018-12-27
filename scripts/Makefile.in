@@ -17,8 +17,16 @@ QFLOW_BIN_DIR = @QFLOW_BIN_DIR@
 TCLSH_PATH = @TCLSH_PATH@
 ENV_PATH = @ENV_PATH@
 HAVE_PYTHON3 = @HAVE_PYTHON3@
+
+# Flow tools (NOTE:  Vesta is part of qflow, so HAVE_VESTA is implicitly true)
+HAVE_YOSYS = @HAVE_YOSYS@
 HAVE_OPENTIMER = @HAVE_OPENTIMER@
 HAVE_OPENSTA = @HAVE_OPENSTA@
+HAVE_GRAYWOLF = @HAVE_GRAYWOLF@
+HAVE_REPLACE = @HAVE_REPLACE@
+HAVE_QROUTER = @HAVE_QROUTER@
+HAVE_MAGIC = @HAVE_MAGIC@
+HAVE_NETGEN = @HAVE_NETGEN@
 
 DEFAULTPARSER = @QFLOW_DEFAULT_PARSER@
 
@@ -30,14 +38,31 @@ TCL_SCRIPTS += powerbus.tcl getpowerground.tcl arrangepins.tcl
 TCL_SCRIPTS += removeblocks.tcl
 PYTHON_SCRIPTS = spi2xspice.py consoletext.py pinmanager.py
 PYTHON_SCRIPTS += tksimpledialog.py helpwindow.py qflow_manager.py
-PYTHON_SCRIPTS += textreport.py tooltip.py count_lvs.py
+PYTHON_SCRIPTS += textreport.py tooltip.py count_lvs.py preproc.py
 HELP_TEXT = qflow_help.txt
 
-SHELL_SCRIPTS = synthesize.sh placement.sh router.sh
+# Master list of synthesis flow scripts to install
+# Synthesis scripts:
+SHELL_SCRIPTS = yosys.sh
+# Placement scripts:
+SHELL_SCRIPTS += graywolf.sh replace.sh
+# Static timing analysys scripts:
 SHELL_SCRIPTS += vesta.sh opentimer.sh opensta.sh
+# Router scripts:
+SHELL_SCRIPTS += qrouter.sh
+# Database migration scripts:
+SHELL_SCRIPTS += magic_db.sh
+# DRC scripts:
+SHELL_SCRIPTS += magic_drc.sh
+# LVS scripts:
+SHELL_SCRIPTS += netgen_lvs.sh
+# GDS scripts:
+SHELL_SCRIPTS += magic_gds.sh
+# Display scripts:
+SHELL_SCRIPTS += magic_view.sh
+
 SHELL_SCRIPTS += qflow.sh checkdirs.sh
-SHELL_SCRIPTS += cleanup.sh display.sh
-SHELL_SCRIPTS += drc.sh lvs.sh gdsii.sh migrate.sh
+SHELL_SCRIPTS += cleanup.sh
 MAIN_SCRIPT = qflow
 
 SCRIPTINSTALL = ${QFLOW_LIB_DIR}/scripts
@@ -63,8 +88,14 @@ qflow.sh:  qflow.sh.in
 	-e '/QFLOW_DEFAULT_PARSER/s#QFLOW_DEFAULT_PARSER#$(DEFAULTPARSER)#' \
 	-e '/QFLOW_REVISION/s#QFLOW_REVISION#$(REVISION)#' \
 	-e '/QFLOW_VERSION/s#QFLOW_VERSION#$(VERSION)#' \
+	-e '/HAVE_YOSYS/s#HAVE_YOSYS#$(HAVE_YOSYS)#' \
+	-e '/HAVE_GRAYWOLF/s#HAVE_GRAYWOLF#$(HAVE_GRAYWOLF)#' \
+	-e '/HAVE_REPLACE/s#HAVE_REPLACE#$(HAVE_REPLACE)#' \
 	-e '/HAVE_OPENTIMER/s#HAVE_OPENTIMER#$(HAVE_OPENTIMER)#' \
 	-e '/HAVE_OPENSTA/s#HAVE_OPENSTA#$(HAVE_OPENSTA)#' \
+	-e '/HAVE_QROUTER/s#HAVE_QROUTER#$(HAVE_QROUTER)#' \
+	-e '/HAVE_MAGIC/s#HAVE_MAGIC#$(HAVE_MAGIC)#' \
+	-e '/HAVE_NETGEN/s#HAVE_NETGEN#$(HAVE_NETGEN)#' \
 	qflow.sh.in > qflow.sh
 
 count_lvs.py: count_lvs.py.in
@@ -85,6 +116,9 @@ tksimpledialog.py: tksimpledialog.py.in
 helpwindow.py: helpwindow.py.in
 	sed -e 's#ENV_PATH#$(ENV_PATH)#' $< > $@
 
+preproc.py: preproc.py.in
+	sed -e 's#ENV_PATH#$(ENV_PATH)#' $< > $@
+
 count_lvs.py: count_lvs.py.in
 	sed -e 's#ENV_PATH#$(ENV_PATH)#' $< > $@
 
@@ -97,6 +131,12 @@ qflow_manager.py: qflow_manager.py.in
 	-e '/SUBST_BIN_DIR/s#SUBST_BIN_DIR#$(QFLOWEXECPATH)#' \
 	-e '/HAVE_OPENTIMER/s#HAVE_OPENTIMER#$(HAVE_OPENTIMER)#' \
 	-e '/HAVE_OPENSTA/s#HAVE_OPENSTA#$(HAVE_OPENSTA)#' \
+	-e '/HAVE_GRAYWOLF/s#HAVE_GRAYWOLF#$(HAVE_GRAYWOLF)#' \
+	-e '/HAVE_REPLACE/s#HAVE_REPLACE#$(HAVE_REPLACE)#' \
+	-e '/HAVE_QROUTER/s#HAVE_QROUTER#$(HAVE_QROUTER)#' \
+	-e '/HAVE_MAGIC/s#HAVE_MAGIC#$(HAVE_MAGIC)#' \
+	-e '/HAVE_NETGEN/s#HAVE_NETGEN#$(HAVE_NETGEN)#' \
+	-e '/HAVE_YOSYS/s#HAVE_YOSYS#$(HAVE_YOSYS)#' \
 	-e '/ENV_PATH/s#ENV_PATH#$(ENV_PATH)#' $< > $@
 
 textreport.py: textreport.py.in

@@ -7,7 +7,7 @@
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  router.sh [options] <project_path> <source_name>
+   echo Usage:  qrouter.sh [options] <project_path> <source_name>
    exit 1
 endif
 
@@ -29,7 +29,7 @@ if ($argc >= 2) then
       endif
    endif
 else
-   echo Usage:  router.sh [options] <project_path> <source_name>
+   echo Usage:  qrouter.sh [options] <project_path> <source_name>
    echo   where
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.

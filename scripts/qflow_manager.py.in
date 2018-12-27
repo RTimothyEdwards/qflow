@@ -12,6 +12,7 @@
 # Version 1.  August 8-17, 2017
 # Version for qflow distribution: April 19-29, 2018
 # Updated to use new migrate, DRC, LVS, and GDS scripts:  August 20, 2018
+# Updated for qflow-1.4:  December 26, 2018
 #-------------------------------------------------------------------------
 
 import io
@@ -330,6 +331,209 @@ class QflowManager(ttk.Frame):
         window.module.entry.insert(0, '(none)')
         window.module.entry.pack(side = 'left')
 
+        # Preparation:  Set up selection for all synthesis flow tools
+        # Find tools available at compile time and present selection for each.
+        # Synthesis:	
+        self.synthesis_tools = []
+        self.run_synthesis = tkinter.StringVar(window)
+        if HAVE_YOSYS:
+            self.synthesis_tools.append('yosys')
+            self.run_synthesis.set('yosys')
+
+        # Placement:
+        self.run_placement = tkinter.StringVar(window)
+        self.placement_tools = []
+        if HAVE_GRAYWOLF:
+            self.placement_tools.append('graywolf')
+            self.run_placement.set('graywolf')
+        if HAVE_REPLACE:
+            self.placement_tools.append('replace')
+            self.run_placement.set('replace')
+
+        # Static timing analysis:
+        self.run_sta = tkinter.StringVar(window)
+        self.sta_tools = []
+        self.run_sta.set('vesta')
+        self.sta_tools.append('vesta')
+        if HAVE_OPENTIMER:
+            self.sta_tools.append('opentimer')
+            self.run_sta.set('opentimer')
+        if HAVE_OPENSTA:
+            self.sta_tools.append('opensta')
+            self.run_sta.set('opensta')
+
+        # Routing:
+        self.router_tools = []
+        self.run_router = tkinter.StringVar(window)
+        if HAVE_QROUTER:
+            self.router_tools.append('qrouter')
+            self.run_router.set('qrouter')
+
+        # Migration:
+        self.migrate_tools = []
+        self.run_migrate = tkinter.StringVar(window)
+        if HAVE_MAGIC:
+            self.migrate_tools.append('magic_db')
+            self.run_migrate.set('magic_db')
+
+        # DRC:
+        self.drc_tools = []
+        self.run_drc = tkinter.StringVar(window)
+        if HAVE_MAGIC:
+            self.drc_tools.append('magic_drc')
+            self.run_drc.set('magic_drc')
+
+        # LVS:
+        self.lvs_tools = []
+        self.run_lvs = tkinter.StringVar(window)
+        if HAVE_NETGEN:
+            self.run_lvs.set('netgen_lvs')
+            self.lvs_tools.append('netgen_lvs')
+
+        # GDS generation:
+        self.gds_tools = []
+        self.run_gds = tkinter.StringVar(window)
+        if HAVE_MAGIC:
+            self.gds_tools.append('magic_gds')
+            self.run_gds.set('magic_gds')
+
+        # Layout display:
+        self.display_tools = []
+        self.run_display = tkinter.StringVar(window)
+        if HAVE_MAGIC:
+            self.display_tools.append('magic_view')
+            self.run_display.set('magic_view')
+
+        # Now present the tool selection checklist
+        window.toolsframe = ttk.Frame(window)
+        window.toolsframe.pack(side = 'top')
+
+        window.toolstitle = ttk.Label(window.toolsframe, style = 'title.TLabel',
+		text = 'Selection of synthesis flow tools:')
+        window.toolstitle.pack(side = 'top')
+
+        if len(self.synthesis_tools) > 1:
+            if 'yosys' in self.synthesis_tools:
+                window.useyosys = ttk.Frame(window)
+                window.useyosys.pack(side = 'top', fill = 'x')
+                window.useyosys.title = ttk.Label(window.useyosys, style = 'normal.TLabel',
+			text = 'Use yosys for synthesis:')
+                window.useyosys.title.pack(side = 'left')
+                window.useyosys.check = ttk.Radiobutton(window.useyosys, variable = self.run_synthesis, value = 'yosys')
+                window.useyosys.check.pack(side = 'left')
+
+        if len(self.placement_tools) > 1:
+            if 'graywolf' in self.placement_tools:
+                window.usegraywolf = ttk.Frame(window)
+                window.usegraywolf.pack(side = 'top', fill = 'x')
+                window.usegraywolf.title = ttk.Label(window.usegraywolf, style = 'normal.TLabel',
+			text = 'Use graywolf for placement:')
+                window.usegraywolf.title.pack(side = 'left')
+                window.usegraywolf.check = ttk.Radiobutton(window.usegraywolf, variable = self.run_placement, value = 'graywolf')
+                window.usegraywolf.check.pack(side = 'left')
+
+            if 'replace' in self.placement_tools:
+                window.usereplace = ttk.Frame(window)
+                window.usereplace.pack(side = 'top', fill = 'x')
+                window.usereplace.title = ttk.Label(window.usereplace, style = 'normal.TLabel',
+			text = 'Use RePlAce for placement:')
+                window.usereplace.title.pack(side = 'left')
+                window.usereplace.check = ttk.Radiobutton(window.usereplace, variable = self.run_placement, value='replace')
+                window.usereplace.check.pack(side = 'left')
+
+        if len(self.sta_tools) > 1:
+            if 'vesta' in self.sta_tools:
+                window.usevesta = ttk.Frame(window)
+                window.usevesta.pack(side = 'top', fill = 'x')
+                window.usevesta.title = ttk.Label(window.usevesta, style = 'normal.TLabel',
+			text = 'Use vesta for STA:')
+                window.usevesta.title.pack(side = 'left')
+                window.usevesta.check = ttk.Radiobutton(window.usevesta, variable = self.run_sta, value='vesta')
+                window.usevesta.check.pack(side = 'left')
+
+            if 'opensta' in self.sta_tools:
+                window.useopensta = ttk.Frame(window)
+                window.useopensta.pack(side = 'top', fill = 'x')
+                window.useopensta.title = ttk.Label(window.useopensta, style = 'normal.TLabel',
+				text = 'Use OpenSTA for STA:')
+                window.useopensta.title.pack(side = 'left')
+                self.run_opensta = tkinter.BooleanVar(window.useopensta)
+                window.useopensta.check = ttk.Radiobutton(window.useopensta, variable = self.run_sta, value='opensta')
+                window.useopensta.check.pack(side = 'left')
+
+            if 'opentimer' in self.sta_tools:
+                window.useopentimer = ttk.Frame(window)
+                window.useopentimer.pack(side = 'top', fill = 'x')
+                window.useopentimer.title = ttk.Label(window.useopentimer, style = 'normal.TLabel',
+				text = 'Use OpenTimer for STA:')
+                window.useopentimer.title.pack(side = 'left')
+                self.run_opentimer = tkinter.BooleanVar(window.useopentimer)
+                window.useopentimer.check = ttk.Radiobutton(window.useopentimer, variable = self.run_sta, value='opentimer')
+                window.useopentimer.check.pack(side = 'left')
+
+        if len(self.router_tools) > 1:
+            if 'qrouter' in router_tools:
+                window.useqrouter = ttk.Frame(window)
+                window.useqrouter.pack(side = 'top', fill = 'x')
+                window.useqrouter.title = ttk.Label(window.usegraywolf, style = 'normal.TLabel',
+			text = 'Use qrouter for routing:')
+                window.useqrouter.title.pack(side = 'left')
+                window.useqrouter.check = ttk.Radiobutton(window.useqrouter, variable = self.run_router, value='qrouter')
+                window.useqrouter.check.pack(side = 'left')
+
+        if len(self.migrate_tools) > 1:
+            if 'magic_db' in migrate_tools:
+                window.usemagicdb = ttk.Frame(window)
+                window.usemagicdb.pack(side = 'top', fill = 'x')
+                window.usemagicdb.title = ttk.Label(window.usemagicdb, style = 'normal.TLabel',
+			text = 'Use magic database for migration:')
+                window.usemagicdb.title.pack(side = 'left')
+                window.usemagicdb.check = ttk.Radiobutton(window.usemagicdb, variable = self.run_migrate, value='magic_db')
+                window.usemagicdb.check.pack(side = 'left')
+
+        if len(self.drc_tools) > 1:
+            if 'magic_drc' in drc_tools:
+                window.usemagicdrc = ttk.Frame(window)
+                window.usemagicdrc.pack(side = 'top', fill = 'x')
+                window.usemagicdrc.title = ttk.Label(window.usemagicdrc, style = 'normal.TLabel',
+			text = 'Use magic for DRC:')
+                window.usemagicdrc.title.pack(side = 'left')
+                window.usemagicdrc.check = ttk.Radiobutton(window.usemagicdrc, variable = self.run_drc, value = 'magic_drc')
+                window.usemagicdrc.check.pack(side = 'left')
+
+        if len(self.lvs_tools) > 1:
+            if 'netgen_lvs' in lvs_tools:
+                window.usenetgenlvs = ttk.Frame(window)
+                window.usenetgenlvs.pack(side = 'top', fill = 'x')
+                window.usenetgenlvs.title = ttk.Label(window.usenetgenlvs, style = 'normal.TLabel',
+			text = 'Use netgen for LVS:')
+                window.usenetgenlvs.title.pack(side = 'left')
+                window.usenetgenlvs.check = ttk.Radiobutton(window.usenetgenlvs, variable = self.run_lvs, value = 'netgen_lvs')
+                window.usenetgenlvs.check.pack(side = 'left')
+
+        if len(self.gds_tools) > 1:
+            if 'magic_gds' in gds_tools:
+                window.usemagicgds = ttk.Frame(window)
+                window.usemagicgds.pack(side = 'top', fill = 'x')
+                window.usemagicgds.title = ttk.Label(window.usemagicgds, style = 'normal.TLabel',
+			text = 'Use magic for GDS:')
+                window.usemagicgds.title.pack(side = 'left')
+                window.usemagicgds.check = ttk.Radiobutton(window.usemagicgds, variable = self.run_gds, value = 'magic_gds')
+                window.usemagicgds.check.pack(side = 'left')
+
+        if len(self.display_tools) > 1:
+            if 'magic_view' in display_tools:
+                window.usemagicview = ttk.Frame(window)
+                window.usemagicview.pack(side = 'top', fill = 'x')
+                window.usemagicview.title = ttk.Label(window.usemagicview, style = 'normal.TLabel',
+			text = 'Use magic for layout viewing:')
+                window.usemagicview.title.pack(side = 'left')
+                window.usemagicview.check = ttk.Radiobutton(window.usemagicview, variable = self.run_display, value = 'magic_view')
+                window.usemagicview.check.pack(side = 'left')
+
+        #---------------------------------------------------
+	# Handle stop behavior between synthesis flow steps
+
         window.stopframe = ttk.Frame(window)
         window.stopframe.pack(side = 'top')
 
@@ -456,50 +660,6 @@ class QflowManager(ttk.Frame):
         window = self.toppane.settings.timing_settings
         window.title = ttk.Label(window, text = 'Static Timing Analysis Settings', style = 'title.TLabel')
         window.title.pack(side = 'top')
-
-        # STA tools available are set at compile time
-        self.sta_tools = []
-        self.sta_tools.append('vesta')
-        if HAVE_OPENSTA:
-            self.sta_tools.append('opensta')
-        if HAVE_OPENTIMER:
-            self.sta_tools.append('opentimer')
-
-        self.run_vesta = tkinter.BooleanVar(window)
-        self.run_opensta = tkinter.BooleanVar(window)
-        self.run_opentimer = tkinter.BooleanVar(window)
-        self.run_vesta.set(1)
-        self.run_opensta.set(0)
-        self.run_opentimer.set(0)
-
-        if len(self.sta_tools) > 1:
-            window.usevesta = ttk.Frame(window)
-            window.usevesta.pack(side = 'top', fill = 'x')
-            window.usevesta.title = ttk.Label(window.usevesta, style = 'normal.TLabel',
-			text = 'Use vesta for STA:')
-            window.usevesta.title.pack(side = 'left')
-            window.usevesta.check = ttk.Checkbutton(window.usevesta, variable = self.run_vesta)
-            window.usevesta.check.pack(side = 'left')
-
-            if 'opensta' in self.sta_tools:
-                window.useopensta = ttk.Frame(window)
-                window.useopensta.pack(side = 'top', fill = 'x')
-                window.useopensta.title = ttk.Label(window.useopensta, style = 'normal.TLabel',
-				text = 'Use OpenSTA for STA:')
-                window.useopensta.title.pack(side = 'left')
-                self.run_opensta = tkinter.BooleanVar(window.useopensta)
-                window.useopensta.check = ttk.Checkbutton(window.useopensta, variable = self.run_opensta)
-                window.useopensta.check.pack(side = 'left')
-
-            if 'opentimer' in self.sta_tools:
-                window.useopentimer = ttk.Frame(window)
-                window.useopentimer.pack(side = 'top', fill = 'x')
-                window.useopentimer.title = ttk.Label(window.useopentimer, style = 'normal.TLabel',
-				text = 'Use OpenTimer for STA:')
-                window.useopentimer.title.pack(side = 'left')
-                self.run_opentimer = tkinter.BooleanVar(window.useopentimer)
-                window.useopentimer.check = ttk.Checkbutton(window.useopentimer, variable = self.run_opentimer)
-                window.useopentimer.check.pack(side = 'left')
 
         window.longformat = ttk.Frame(window)
         window.longformat.pack(side = 'top', fill = 'x')
@@ -1074,6 +1234,8 @@ class QflowManager(ttk.Frame):
         self.textreport.display(fullname)
 
     # Layout edit function (run magic interactively)
+    # NOTE:  This routine needs to call the display script, and the display script
+    # needs to handle all of the options presented here.  FIXME
 
     def edit_layout(self):
 
@@ -2008,9 +2170,16 @@ class QflowManager(ttk.Frame):
         otimerex = re.compile('[ \t]*set opentimer_options =[ \t]*(.*)$')
         showrex = re.compile('[ \t]*set route_show =[ \t]*(.*)$')
         lyerrex = re.compile('[ \t]*set route_layers =[ \t]*(.*)$')
-        runvstarex = re.compile('[ \t]*set run_vesta =[ \t]*(.*)$')
-        runostarex = re.compile('[ \t]*set run_opensta =[ \t]*(.*)$')
-        runotimerex = re.compile('[ \t]*set run_opentimer =[ \t]*(.*)$')
+
+        synthrex = re.compile('[ \t]*set synthesis_tool =[ \t]*(.*)$')
+        placerex = re.compile('[ \t]*set placement_tool =[ \t]*(.*)$')
+        starex = re.compile('[ \t]*set sta_tool =[ \t]*(.*)$')
+        routerex = re.compile('[ \t]*set router_tool =[ \t]*(.*)$')
+        migraterex = re.compile('[ \t]*set migrate_tool =[ \t]*(.*)$')
+        drcrex = re.compile('[ \t]*set drc_tool =[ \t]*(.*)$')
+        lvsrex = re.compile('[ \t]*set lvs_tool =[ \t]*(.*)$')
+        gdsrex = re.compile('[ \t]*set gds_tool =[ \t]*(.*)$')
+        disprex = re.compile('[ \t]*set display_tool =[ \t]*(.*)$')
 
         # Power stripe defaults may be overridden, but we need to
         # grab the defaults from the file instead of setting
@@ -2042,17 +2211,6 @@ class QflowManager(ttk.Frame):
                 if vmatch:
                     if vmatch.group(1) == '"--long"':
                         self.long_format.set(1)
-                # Currently no options handled for OpenSTA or OpenTimer
-                # other than use/don't-use flag
-                rvmatch = runvstarex.match(line)
-                if rvmatch:
-                    self.run_vesta.set(rvmatch.group(1))
-                rosmatch = runostarex.match(line)
-                if rosmatch:
-                    self.run_opensta.set(rosmatch.group(1))
-                rotmatch = runotimerex.match(line)
-                if rotmatch:
-                    self.run_opentimer.set(rotmatch.group(1))
 
                 smatch = showrex.match(line)
                 if smatch:
@@ -2086,6 +2244,36 @@ class QflowManager(ttk.Frame):
                 dmatch = pow2rex.match(line)
                 if dmatch:
                     self.power.set(0)
+
+                # Set of lines indicating which tool to run, when there are options
+                rmatch = synthrex.match(line)
+                if rmatch:
+                    self.run_synthesis.set(rmatch.group(1))
+                rmatch = placerex.match(line)
+                if rmatch:
+                    self.run_placement.set(rmatch.group(1))
+                rmatch = starex.match(line)
+                if rmatch:
+                    self.run_sta.set(rmatch.group(1))
+                rmatch = routerex.match(line)
+                if rmatch:
+                    self.run_router.set(rmatch.group(1))
+                rmatch = migraterex.match(line)
+                if rmatch:
+                    self.run_migrate.set(rmatch.group(1))
+                rmatch = drcrex.match(line)
+                if rmatch:
+                    self.run_drc.set(rmatch.group(1))
+                rmatch = lvsrex.match(line)
+                if rmatch:
+                    self.run_lvs.set(rmatch.group(1))
+                rmatch = gdsrex.match(line)
+                if rmatch:
+                    self.run_gds.set(rmatch.group(1))
+                rmatch = disprex.match(line)
+                if rmatch:
+                    self.run_display.set(rmatch.group(1))
+
         if remove:
             os.remove(varsfile)
         return True
@@ -2139,15 +2327,7 @@ class QflowManager(ttk.Frame):
             except ValueError:
                 do_layers = False
 
-        run_vesta = False
-        if (self.run_vesta.get() == 1):
-            run_vesta = True
-        run_opensta = False
-        if (self.run_opensta.get() == 1):
-            run_opensta = True
-        run_opentimer = False
-        if (self.run_opentimer.get() == 1):
-            run_opentimer = True
+        run_sta = self.run_sta.get()
 
         commentrex = re.compile('^[ \t]*#')
         densrex = re.compile('#?[ \t]*set initial_density =')
@@ -2157,9 +2337,16 @@ class QflowManager(ttk.Frame):
         otimerex = re.compile('#?[ \t]*set opentimer_options =')
         showrex = re.compile('#?[ \t]*set route_show =')
         lyerrex = re.compile('#?[ \t]*set route_layers =')
-        rvstarex = re.compile('#?[ \t]*set run_vesta =')
-        rostarex = re.compile('#?[ \t]*set run_opensta =')
-        rotimerex = re.compile('#?[ \t]*set run_opentimer =')
+
+        tsynthrex = re.compile('#?[ \t]*set synthesis_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tplacerex = re.compile('#?[ \t]*set placement_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tstarex = re.compile('#?[ \t]*set sta_tool[ \t]* =[ \t]*([^ \t]*)$')
+        trouterex = re.compile('#?[ \t]*set router_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tmigraterex = re.compile('#?[ \t]*set migrate_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tdrcrex = re.compile('#?[ \t]*set drc_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tlvsrex = re.compile('#?[ \t]*set lvs_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tgdsrex = re.compile('#?[ \t]*set gds_tool[ \t]*=[ \t]*([^ \t]*)$')
+        tdisprex = re.compile('#?[ \t]*set display_tool[ \t]*=[ \t]*([^ \t]*)$')
 
         with open(pvars, 'r') as ifile:
             vartext = ifile.read()
@@ -2206,24 +2393,6 @@ class QflowManager(ttk.Frame):
                     if not is_comment:
                         linesub = '# set opentimer_options = '
 
-                if rvstarex.match(line):
-                    if run_vesta:
-                        linesub = '# set run_vesta = 1'
-                    elif not is_comment:
-                        linesub = 'set run_vesta = 0'
-
-                if rostarex.match(line):
-                    if run_opensta:
-                        linesub = 'set run_opensta = 1'
-                    elif not is_comment:
-                        linesub = '# set run_opensta ='
-
-                if rotimerex.match(line):
-                    if run_opentimer:
-                        linesub = 'set run_opentimer = 1'
-                    elif not is_comment:
-                        linesub = '# set run_opentimer ='
-
                 if showrex.match(line):
                     if do_graph:
                         linesub = 'set route_show = 1'
@@ -2235,6 +2404,107 @@ class QflowManager(ttk.Frame):
                         linesub = 'set route_layers = ' + str(route_layers)
                     elif not is_comment:
                         linesub = '# set route_layers ='
+
+                # Force the setting of the flow tools to use
+
+                tmatch = tsynthrex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set synthesis_tool = ' + tmatch.group(1)
+                    elif self.run_synthesis.get():
+                        linesub = 'set synthesis_tool = ' + self.run_synthesis.get()
+                    elif tmatch.group(1):
+                        linesub = '# set synthesis_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set synthesis_tool = '
+
+                tmatch = tplacerex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set placement_tool = ' + tmatch.group(1)
+                    elif self.run_placement.get():
+                        linesub = 'set placement_tool = ' + self.run_placement.get()
+                    elif tmatch.group(1):
+                        linesub = '# set placement_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set placement_tool = '
+
+                tmatch = tstarex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set sta_tool = ' + tmatch.group(1)
+                    elif self.run_sta.get():
+                        linesub = 'set sta_tool = ' + self.run_sta.get()
+                    elif tmatch.group(1):
+                        linesub = '# set sta_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set sta_tool = '
+
+                tmatch = trouterex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set router_tool = ' + tmatch.group(1)
+                    elif self.run_router.get():
+                        linesub = 'set router_tool = ' + self.run_router.get()
+                    elif tmatch.group(1):
+                        linesub = '# set router_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set router_tool = '
+
+                tmatch = tmigraterex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set migrate_tool = ' + tmatch.group(1)
+                    elif self.run_migrate.get():
+                        linesub = 'set migrate_tool = ' + self.run_migrate.get()
+                    elif tmatch.group(1):
+                        linesub = '# set migrate_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set migrate_tool = '
+
+                tmatch = tdrcrex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set drc_tool = ' + tmatch.group(1)
+                    elif self.run_drc.get():
+                        linesub = 'set drc_tool = ' + self.run_drc.get()
+                    elif tmatch.group(1):
+                        linesub = '# set drc_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set drc_tool = '
+
+                tmatch = tlvsrex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set lvs_tool = ' + tmatch.group(1)
+                    elif self.run_lvs.get():
+                        linesub = 'set lvs_tool = ' + self.run_lvs.get()
+                    elif tmatch.group(1):
+                        linesub = '# set lvs_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set lvs_tool = '
+
+                tmatch = tgdsrex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set gds_tool = ' + tmatch.group(1)
+                    elif self.run_gds.get():
+                        linesub = 'set gds_tool = ' + self.run_gds.get()
+                    elif tmatch.group(1):
+                        linesub = '# set gds_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set gds_tool = '
+
+                tmatch = tdisprex.match(line)
+                if tmatch:
+                    if not is_comment:
+                        linesub = 'set display_tool = ' + tmatch.group(1)
+                    elif self.run_display.get():
+                        linesub = 'set display_tool = ' + self.run_display.get()
+                    elif tmatch.group(1):
+                        linesub = '# set display_tool = ' + tmatch.group(1)
+                    else:
+                        linesub = '# set display_tool = '
 
                 newlines.append(linesub)
 
@@ -3208,8 +3478,8 @@ class QflowManager(ttk.Frame):
         # Check if placement errors stopped the synthesis flow.
         logfile = self.logdir + '/place.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
-                for line in ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
+                for line in ifile.read().splitlines():
                     if 'Synthesis flow stopped' in line:
                         self.print("Place script failed with error condition (see log file).")
                         failed = True
