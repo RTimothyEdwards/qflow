@@ -477,6 +477,9 @@ def read_spice(filein, fileout, celldefs, debug, modelfile):
                     if debug:
                         print("Instance = " + instname + "; inputs = " + intext + "; outputs = " + outtext)
 
+                    # Note:  Cells with output but no input are tie-high or tie-low,
+                    # and do not map to LUTs.  Cells with no output are non-functional
+                    # (e.g., antenna tie-downs).
                     if len(inlist) == 0:
                         if cellrec['function'][0] == '1':
                             print('A' + instname + ' ' + outtext + ' done', file=ofile)
@@ -486,7 +489,7 @@ def read_spice(filein, fileout, celldefs, debug, modelfile):
                             print("Cell " + cellname + " has no inputs and no constant function.")
                     elif len(outlist) == 1:
                         print('A' + instname + ' [' + intext + '] ' + outtext + ' d_lut_' + cellname, file=ofile)
-                    else:
+                    elif len(outlist) != 0:
                         print('A' + instname + ' [' + intext + '] [' + outtext + '] d_genlut_' + cellname, file=ofile)
 
                 continue
