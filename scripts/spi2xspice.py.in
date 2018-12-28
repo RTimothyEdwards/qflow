@@ -240,8 +240,8 @@ def read_spice(filein, fileout, celldefs, debug, modelfile):
         for line in spilines:
             lineno += 1
 
-            # Substitute for all characters "<" and ">"
-            line = line.replace('<', '_').replace('>', '_')
+            # Substitute for all characters "[" and "]", to avoid nesting brackets.
+            line = line.replace('[', '_').replace(']', '_')
 
             # All comment lines go to the output
             cmatch = comrex.match(line)
