@@ -115,7 +115,7 @@ if [catch {open $cfgname w} fcfg] {
 
 puts $fdef "VERSION 5.6 ;"
 puts $fdef "DIVIDERCHAR \"/\" ;"
-puts $fdef "BUSBITCHARS \"<>\" ;"
+puts $fdef "BUSBITCHARS \"\[\]\" ;"
 puts $fdef "DESIGN $topname ;"
 puts $fdef "UNITS DISTANCE MICRONS 100 ;"
 puts $fdef ""

@@ -3815,7 +3815,7 @@ class QflowManager(ttk.Frame):
                     realpdkdir = os.path.realpath(pdkdir)
                 else:
                     realpdkdir = pdkdir
-                if testdir != pdkdir:
+                if testdir != realpdkdir:
                     if self.status != 'begin' and self.status != 'prep':
                         self.print('Error:  Tech directory mismatch for technology ' + pdkrootname + ': ' + pdkdir + ' vs. ' + testdir, file=sys.stderr)
                     self.check_reset(args=None)
