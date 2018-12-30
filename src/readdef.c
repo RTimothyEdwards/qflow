@@ -40,8 +40,8 @@ struct hashtable NetTable;
 char *DEFDesignName;
 
 DSEG UserObs = NULL;
-int Xlowerbound = 0, Xupperbound = 0, Ylowerbound = 0, Yupperbound = 0;
-int PitchX = 100, PitchY = 100;
+double Xlowerbound = 0, Xupperbound = 0, Ylowerbound = 0, Yupperbound = 0;
+double PitchX = 1.0, PitchY = 1.0;
 int Numnets = 0;
 NET *Nlnets = NULL;
 GATE Nlgates = NULL;
@@ -1817,7 +1817,7 @@ DefRead(char *inName, float *retscale)
 		}
 		if (corient == 'x') {
 		    locpitch = step / oscale;
-		    if ((PitchX == 0.0) || (locpitch < PitchX))
+		    if ((PitchX == 0.0) || ((locpitch < PitchX) && (locpitch != 0)))
 			PitchX = locpitch;
 		    llx = start;
 		    urx = start + step * channels;
@@ -1828,7 +1828,7 @@ DefRead(char *inName, float *retscale)
 		}
 		else {
 		    locpitch = step / oscale;
-		    if ((PitchY == 0.0) || (locpitch < PitchY))
+		    if ((PitchY == 0.0) || ((locpitch < PitchY) && (locpitch != 0)))
 			PitchY = locpitch;
 		    lly = start;
 		    ury = start + step * channels;

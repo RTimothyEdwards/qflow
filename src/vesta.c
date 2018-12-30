@@ -3146,6 +3146,7 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
     char c[128];
     char d[128];
     char *token;
+    char *result;
 
     netptr newnet, testnet;
     connptr testconn;
@@ -3161,6 +3162,7 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
     /* net names.							*/
     
     token = advancetoken(fdly, '\n');
+    result = token;
 
     while (token != NULL) {
 
@@ -3204,7 +3206,8 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 	}
 
         // Read driver of interconnect and total interconnect capacitance
-        fgets(c, 128, fdly);
+        result = fgets(c, 128, fdly);
+	if (result == NULL) break;
 
         strtok_r(c, "/", &saveptr);
         if (debug == 1)
@@ -3223,7 +3226,8 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
         testnet->loadr = (strtod(saveptr, NULL)) * 1e3;
         testnet->loadf = testnet->loadr;
 
-        fgets(c, 128, fdly);
+        result = fgets(c, 128, fdly);
+	if (result == NULL) break;
 
         while (c[0] != '\n') {
             if (debug == 1) fprintf(stdout, "\t%s\n", c);
@@ -3264,9 +3268,11 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
                     fprintf(stdout, "\tName: %s\n", c);
             }
 
-            fgets(c, 128, fdly);
+            result = fgets(c, 128, fdly);
+	    if (result == NULL) break;
             numRxers += 1;
         }
+	if (result == NULL) break;
 
         if (numRxers != testnet->fanout) {
 	    if (numRxers != 1 || testnet->fanout > 0 || testnet->type != OUTTERM)
@@ -3277,6 +3283,9 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
         }
 
         token = advancetoken(fdly, '\n');
+    }
+    if (result == NULL) {
+	fprintf(stderr, "ERROR: Unexpected end-of-file while reading delay file.\n");
     }
 }
 
