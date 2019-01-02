@@ -391,10 +391,12 @@ EOF
 # Support for structural verilog---any cell can be called as long as
 # it has a liberty file entry to go along with it.  Standard cells
 # are supported automatically.  All other cells should be put in the
-# "hard_macro" variable.
+# "hard_macro" variable.  Also use the "setundef" command to ensure
+# that unconnected inputs are grounded.
 
 cat >> ${modulename}.ys << EOF
 read_liberty -lib -ignore_miss_dir -setattr blackbox ${libertypath}
+setundef -zero
 EOF
 
 if ( ${?hard_macros} ) then

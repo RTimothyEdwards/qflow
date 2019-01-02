@@ -55,6 +55,7 @@ FILE *infile = NULL;
 
 struct hashtable verilogparams;
 struct hashtable verilogdefs;
+struct hashtable verilogvectors;
 
 /*------------------------------------------------------*/
 /* Stack handling (push and pop)			*/
@@ -1185,12 +1186,21 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 
 	else if (!strcmp(nexttok, "wire")) {	/* wire = node */
 	    struct netrec wb, *nb;
+	    char *eptr, *wirename;
+	    char is_assignment = FALSE;
+
 	    SkipTokNoNewline(VLOG_DELIMITERS);
 	    if (!strcmp(nexttok, "real")) SkipTokNoNewline(VLOG_DELIMITERS);
 	    while (nexttok != NULL) {
-
-		/* Handle bus notation */
-		if (GetBusTok(&wb, &top->nets) == 0) {
+		if (!strcmp(nexttok, "=")) {
+		    is_assignment = TRUE;
+		}
+		else if (is_assignment) {
+		    /* Handle assignments (to be done; ignoring for now) */
+		    is_assignment = FALSE;
+		}
+		else if (GetBusTok(&wb, &top->nets) == 0) {
+		    /* Handle bus notation */
 		    if ((nb = BusHashLookup(nexttok, &top->nets)) == NULL)
 			nb = Net(top, nexttok);
 		    if (nb->start == -1) {
@@ -1307,6 +1317,8 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		char savetok = (char)0;
 		struct portrec *new_port;
 		struct netrec *nb, wb;
+		char in_line = FALSE, *in_line_net = NULL;
+		char *ncomp, *nptr;
 
 		// Read the pin list
 		while (nexttok != NULL) {
@@ -1343,9 +1355,30 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			    new_port->net = strdup(localnet);
 			}
 			else {
-			    new_port->net = strdup(nexttok);
+
+			    if (!strcmp(nexttok, "{")) {
+				char *in_line_net = strdup(nexttok);
+				/* In-line array---Read to "}" */
+				while (nexttok) {
+				    in_line_net = (char *)realloc(in_line_net,
+						strlen(in_line_net) +
+						strlen(nexttok) + 1);
+				    strcat(in_line_net, nexttok);
+				    if (strcmp(nexttok, "}")) break;
+				    SkipTokComments(VLOG_DELIMITERS);
+				}
+				if (!nexttok) {
+				    fprintf(stderr, "Unterminated net in pin %s\n",
+						in_line_net);
+				}
+				new_port->net = in_line_net;
+			    }
+			    else
+				new_port->net = strdup(nexttok);
+
 			    /* Read array information along with name;	*/
 			    /* will be parsed later 			*/
+
 			    SkipTokComments(VLOG_DELIMITERS);
 			    if (!strcmp(nexttok, "[")) {
 				/* Check for space between name and array identifier */
@@ -1369,19 +1402,38 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 
 			/* Register wire if it has not been already, and if it	*/
 			/* has been registered, check if this wire increases	*/
-			/* the net bounds.					*/
+			/* the net bounds.  If the net name is an in-line	*/
+			/* vector, then process each component separately.	*/
 
-			if ((nb = BusHashLookup(new_port->net, &top->nets)) == NULL)
-			    nb = Net(top, new_port->net);
+			ncomp = new_port->net;
+			if (*new_port->net == '{') ncomp++;
+			while (isspace(*ncomp)) ncomp++;
+			while (*ncomp != '\0') {
+			    nptr = ncomp;
+			    while (*nptr != ',' && *nptr != '}' && *nptr != '\0' &&
+					!isspace(*nptr))
+				nptr++;
+			    *nptr = '\0';
 
-			GetBus(new_port->net, &wb, &top->nets);
-			if (nb->start == -1) {
-			    nb->start = wb.start;
-			    nb->end = wb.end;
-			}
-			else {
-			    if (nb->start < wb.start) nb->start = wb.start;
-			    if (nb->end > wb.end) nb->end = wb.end;
+			    /* Parse ncomp as a net or bus */
+			    if ((nb = BusHashLookup(ncomp, &top->nets)) == NULL)
+				nb = Net(top, ncomp);
+
+			    GetBus(ncomp, &wb, &top->nets);
+			    if (nb->start == -1) {
+				nb->start = wb.start;
+				nb->end = wb.end;
+			    }
+			    else {
+				if (nb->start < wb.start) nb->start = wb.start;
+				if (nb->end > wb.end) nb->end = wb.end;
+			    }
+
+			    if (*new_port->net != '{') break;
+			    ncomp = nptr + 1;
+			    while ((*ncomp != '\0') && (isspace(*ncomp) || 
+					*nptr == ',' || *nptr == '}'))
+				ncomp++;
 			}
 		    }
 		}
@@ -1467,6 +1519,7 @@ struct cellrec *ReadVerilogTop(char *fname, int blackbox)
 
     InitializeHashTable(&verilogparams, TINYHASHSIZE);
     InitializeHashTable(&verilogdefs, TINYHASHSIZE);
+    InitializeHashTable(&verilogvectors, TINYHASHSIZE);
 
     ReadVerilogFile(fname, &CellStackPtr, blackbox);
     CloseParseFile();

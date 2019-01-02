@@ -29,7 +29,7 @@
 
 struct portrec {
     char *name;
-    char *net;
+    char *net;			/* May be a {...} list */
     int   direction;
     struct portrec *next;
 };
