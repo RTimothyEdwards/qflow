@@ -135,8 +135,8 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
     /* Pull pitch information from LEF database */
 
     for (i = 0; i <= layers; i++) {
-	pitchx[i] = (int)(LefGetRoutePitchX(i) * (double)units);
-	pitchy[i] = (int)(LefGetRoutePitchY(i) * (double)units);
+	pitchx[i] = (int)(LefGetRoutePitchX(i) * (double)units + 0.5);
+	pitchy[i] = (int)(LefGetRoutePitchY(i) * (double)units + 0.5);
     } 
 
     /* Find first vertical route that is not route 0 */
@@ -172,8 +172,8 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 	    continue;
 	}
 
-	width = (int)(gateginfo->width * (double)units);
-	height = (int)(gateginfo->height * (double)units);
+	width = (int)(gateginfo->width * (double)units + 0.5);
+	height = (int)(gateginfo->height * (double)units + 0.5);
 
 	cllx = -(width >> 1);
 	clly = -(height >> 1);
@@ -217,10 +217,10 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 		char *sigptr;
 		DSEG tap = gateginfo->taps[j];
 
-		llx = (int)(tap->x1 * (double)units);
-		lly = (int)(tap->y1 * (double)units);
-		urx = (int)(tap->x2 * (double)units);
-		ury = (int)(tap->y2 * (double)units);
+		llx = (int)(tap->x1 * (double)units + 0.5);
+		lly = (int)(tap->y1 * (double)units + 0.5);
+		urx = (int)(tap->x2 * (double)units + 0.5);
+		ury = (int)(tap->y2 * (double)units + 0.5);
 		px = cllx + ((llx + urx) / 2);
 		py = clly + ((lly + ury) / 2);
 
