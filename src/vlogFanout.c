@@ -365,11 +365,6 @@ void insert_buffers(struct cellrec *topcell)
 			spos = nodename + slen - 1;
 			if (*spos == ']') {
 			    /* Avoid downstream problems:		*/
-			    /* recast "[X]_bF$bufN" as [X_bF$bufN]"	*/
-			    sprintf(spos, "_bF$buf%d]", nl->curcount);
-			}
-			else if (*spos == ']') {
-			    /* Avoid downstream problems:		*/
 			    /* recast "[X]_bF$bufN" as _X_bF$bufN"	*/
 			    char *dptr = nodename + slen - 1;
 			    while (dptr >= nodename && *dptr != '[') dptr--;
@@ -422,11 +417,6 @@ void insert_buffers(struct cellrec *topcell)
 		slen = strlen(nodename);
 		spos = nodename + slen - 1;
 		if (*spos == ']') {
-		    /* Avoid downstream problems:		*/
-		    /* recast "[X]_bF$bufN" as [X_bF$bufN]"	*/
-		    sprintf(spos, "_bF$buf%d]", i);
-		}
-		else if (*spos == ']') {
 		    /* Avoid downstream problems:		*/
 		    /* recast "[X]_bF$bufN" as _X_bF$bufN"	*/
 		    char *dptr = nodename + slen - 1;

@@ -225,7 +225,8 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 		py = clly + ((lly + ury) / 2);
 
 		if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
-			((sscanf(port->net + 6, "%d", &bufidx)) == 1)) {
+			((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
+			(gateginfo->direction[j] == PORT_CLASS_INPUT)) {
 		    fprintf(outfptr, "pin_group\n");
 		    *sigptr = '\0';
 		    fprintf(outfptr, "pin name %s_bF$pin/%s ",
