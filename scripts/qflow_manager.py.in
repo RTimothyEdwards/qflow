@@ -2937,7 +2937,8 @@ class QflowManager(ttk.Frame):
             shutil.copy(unroute, filename)
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'route'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         try:
             statbuf = os.stat(filename)
         except:
@@ -3016,7 +3017,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'migrate'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.layoutdir + '/' + self.project + '.spice'
         try:
             statbuf = os.stat(filename)
@@ -4025,16 +4027,17 @@ class QflowManager(ttk.Frame):
 
                 sresult = select.select([self.qflowproc.stdout, self.qflowproc.stderr], [], [], 0)[0]
 
+                if not self.qflowproc.stdout in sresult and not self.qflowproc.stderr in sresult:
+                    break
+
                 if self.qflowproc.stdout in sresult:
                     outstring = self.qflowproc.stdout.readline().decode().strip()
                     self.logprint(outstring, doflush=True)
                     self.print(outstring)
-                elif self.qflowproc.stderr in sresult:
+                if self.qflowproc.stderr in sresult:
                     errstring = self.qflowproc.stderr.readline().decode().strip()
                     self.logprint(errstring, doflush = True)
                     self.print(errstring, file=sys.stderr)
-                else:
-                    break
 
         # If filename file is modified, then call the callback function;  otherwise, restart the clock.
         try:

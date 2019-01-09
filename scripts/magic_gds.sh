@@ -145,7 +145,7 @@ load $rootname
 select top cell
 expand
 gds write $rootname
-quit -noprompt
+quit
 EOF
 
 #------------------------------------------------------------------

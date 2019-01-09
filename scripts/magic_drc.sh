@@ -173,7 +173,7 @@ drc check
 drc catchup
 set dcount [drc list count total]
 puts stdout "drc = \$dcount"
-quit -noprompt
+quit
 EOF
 
 #------------------------------------------------------------------

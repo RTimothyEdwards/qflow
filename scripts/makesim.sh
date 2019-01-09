@@ -28,7 +28,7 @@ box 0 0 0 0
 load ${cellname}
 extract all
 ext2sim
-quit -noprompt
+quit
 EOF
 
 exit 0	;# Return normal exit status

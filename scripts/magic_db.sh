@@ -237,7 +237,7 @@ ext2spice blackbox on
 ext2spice subcircuit top auto
 ext2spice global off
 ext2spice
-quit -noprompt
+quit
 EOF
 
 #------------------------------------------------------------------
