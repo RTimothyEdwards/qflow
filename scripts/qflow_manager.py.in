@@ -2798,7 +2798,8 @@ class QflowManager(ttk.Frame):
         failed = False
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'synthesize'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         synthdir = self.synthdir
         filename = synthdir + '/' + self.project + '.spc'
         try:
@@ -2849,7 +2850,8 @@ class QflowManager(ttk.Frame):
 
         # Run the qflow placement script
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'place'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = layoutdir + '/' + self.project + '.def'
         try:
             statbuf = os.stat(filename)
@@ -2888,7 +2890,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'sta'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/sta.log'
         try:
             statbuf = os.stat(filename)
@@ -2938,7 +2941,7 @@ class QflowManager(ttk.Frame):
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'route'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
-		stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         try:
             statbuf = os.stat(filename)
         except:
@@ -2976,7 +2979,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'backanno'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/post_sta.log'
         try:
             statbuf = os.stat(filename)
@@ -3017,8 +3021,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'migrate'],
-		stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-		stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.layoutdir + '/' + self.project + '.spice'
         try:
             statbuf = os.stat(filename)
@@ -3064,7 +3068,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'drc'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/drc.log'
         try:
             statbuf = os.stat(filename)
@@ -3110,7 +3115,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'lvs'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/lvs.log'
         try:
             statbuf = os.stat(filename)
@@ -3156,7 +3162,8 @@ class QflowManager(ttk.Frame):
         self.update_project_vars()
 
         self.qflowproc = subprocess.Popen(['qflow', self.project, 'gdsii'],
-		stdout = subprocess.PIPE, stderr=subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/gdsii.log'
         try:
             statbuf = os.stat(filename)
