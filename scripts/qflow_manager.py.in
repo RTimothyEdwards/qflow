@@ -1328,8 +1328,8 @@ class QflowManager(ttk.Frame):
 
         if not self.magicgtype:
             mproc = subprocess.Popen([qflow_bin_dir + '/magic', '-d', '0', '-noconsole'],
-			stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-			universal_newlines = True)
+			stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+			stderr = subprocess.PIPE, universal_newlines = True)
             magicpair = mproc.communicate(timeout=1)
             if 'graphics' in self.prefs:
                 self.magicgtype = self.prefs['graphics']
@@ -1347,8 +1347,8 @@ class QflowManager(ttk.Frame):
 
         if not self.magicversion:
             mproc = subprocess.Popen([qflow_bin_dir + '/magic', '-dnull', '-noconsole', '--version'],
-			stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-			universal_newlines = True)
+			stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+			stderr = subprocess.PIPE, universal_newlines = True)
             magicpair = mproc.communicate(timeout=1)
             self.magicversion = magicpair[0].splitlines()[0]
             self.print('Magic version is ' + self.magicversion)
