@@ -62,6 +62,60 @@ if (-f ${synthdir}/${rootname}_powerground) then
    source ${synthdir}/${rootname}_powerground
 endif
 
+# Prepend techdir to each leffile unless leffile begins with "/"
+set lefpath=""
+foreach f (${leffile})
+   set abspath=`echo ${f} | cut -c1`
+   if ( "${abspath}" == "/" ) then
+      set p=${leffile}
+   else
+      set p=${techdir}/${leffile}
+   endif
+   set lefpath="${lefpath} $p"
+end
+
+# Prepend techdir to techleffile unless techleffile begins with "/"
+set abspath=`echo ${techleffile} | cut -c1`
+if ( "${abspath}" == "/" ) then
+   set techlefpath=${techleffile}
+else
+   set techlefpath=${techdir}/${techleffile}
+endif
+
+# Prepend techdir to each spicefile unless spicefile begins with "/"
+set spicepath=""
+foreach f (${spicefile})
+   set abspath=`echo ${f} | cut -c1`
+   if ( "${abspath}" == "/" ) then
+      set p=${spicefile}
+   else
+      set p=${techdir}/${spicefile}
+   endif
+   set spicepath="${spicepath} $p"
+end
+
+# Prepare LEF file options to pass to DEF2Verilog (post-route)
+
+if ( "$techleffile" == "" ) then
+    set lefoptions=""
+else
+    set lefoptions="-l ${techlefpath}"
+endif
+set lefoptions="${lefoptions} -l ${lefpath}"
+
+# Pass additional .lef files to DEF2Verilog from the hard macros list
+
+if ( ${?hard_macros} ) then
+    foreach macro_path ( $hard_macros )
+        foreach file ( `ls ${sourcedir}/${macro_path}` )
+            if ( ${file:e} == "lef" ) then
+                set lefoptions="${lefoptions} -l ${sourcedir}/${macro_path}/${file}"
+                set addsoptions="${addsoptions} -hardlef ${sourcedir}/${macro_path}/${file}"
+            endif
+        end
+    end
+endif
+
 # "-nog" (no graphics) has no graphics or console.  "-noc"
 # (no console) has graphics but no console.  Console must
 # always be disabled or else the script cannot capture the
@@ -231,142 +285,142 @@ if ( -f failed.out && ( -M failed.out \
 endif
 
 #---------------------------------------------------------------------
-# If qrouter generated an "antenna.out" file, then use it to
-# annotate the verilog and spice netlists.  If there is a file
-# "fillcells.txt" file, then add those to the netlists as well,
-# while ignoring any that already appeared in the antenna.out file.
+# Back-annotate everything including fill cells and added antenna cell
+# connections by regenerating the structural verilog netlists from the
+# post-layout DEF file.
 #---------------------------------------------------------------------
 
-if (${scripting} == "T") then
-   # If fill cells were documented in "fillcells.txt", append the file to
-   # "antenna.out" before processing.
-   if ( -f fillcells.txt && ( -M fillcells.txt > -M $rootname}.cel )) then
-      if ( -f antenna.out && ( -M antenna.out > -M ${rootname}.cel )) then
-	 cat fillcells.txt >> antenna.out
-      else
-	 cp fillcells.txt antenna.out
-      endif
+echo "DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v -o ${synthdir}/${rootname}_postroute.v" \
+	|& tee -a ${synthlog}
+echo "-p ${vddnet} -g ${gndnet} ${lefoptions} ${rootname}.def" |& tee -a ${synthlog}
+${bindir}/DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v \
+		-o ${synthdir}/${rootname}_postroute.v \
+		-p ${vddnet} -g ${gndnet} \
+		${lefoptions} ${rootname}.def >>& ${synthlog}
+set errcond = $status
+if ( ${errcond} != 0 ) then
+   echo "DEF2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+   exit 1
+endif
+
+#------------------------------------------------------------------
+# Spot check:  Did DEF2Verilog produce an output file?
+#------------------------------------------------------------------
+
+if ( !( -f ${synthdir}/${rootname}_postroute.v )) then
+   echo "DEF2Verilog failure:  No file ${rootname}_postroute.v." \
+		|& tee -a ${synthlog}
+   echo "RTL verilog and SPICE netlists may be invalid if there" \
+		|& tee -a ${synthlog}
+   echo "were antenna connections made by the router." |& tee -a ${synthlog}
+   echo "Synthesis flow continuing, condition not fatal." >> ${synthlog}
+else
+   echo "" >> ${synthlog}
+   echo "Generating RTL verilog and SPICE netlist file in directory" \
+		|& tee -a ${synthlog}
+   echo "   ${synthdir}" |& tee -a ${synthlog}
+
+   cd ${synthdir}
+
+   # Run vlog2Verilog and vlog2Spice on annotated netlist to get annotated
+   # versions of the different verilog styles and the SPICE netlist.
+
+   echo "Running vlog2Verilog." |& tee -a ${synthlog}
+   echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${rootname}.rtl.anno.v ${rootname}_postroute.v" |& tee -a ${synthlog}
+   ${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} \
+		-o ${rootname}.rtl.anno.v ${rootname}_postroute.v >>& ${synthlog}
+
+   set errcond = $status
+   if ( ${errcond} != 0 ) then
+      echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
+      echo "Premature exit." |& tee -a ${synthlog}
+      echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+      exit 1
    endif
 
-   if ( -f antenna.out && ( -M antenna.out > -M ${rootname}_unroute.def )) then
-      echo "Running annotate.tcl antenna.out ${synthdir}/${rootname}.v" \
-		|& tee -a ${synthlog}
-      echo "  ${synthdir}/${rootname}.anno.v" |& tee -a ${synthlog}
-      echo "  ${synthdir}/${rootname}_powerground" |& tee -a ${synthlog}
-      ${scriptdir}/annotate.tcl antenna.out ${synthdir}/${rootname}.v \
-		${synthdir}/${rootname}.anno.v \
-		${synthdir}/${rootname}_powerground |& tee -a ${synthlog}
+   echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlnopwr.anno.v ${rootname}_postroute.v" |& tee -a ${synthlog}
+   ${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} \
+		-o ${rootname}.rtlnopwr.anno.v ${rootname}_postroute.v >>& ${synthlog}
 
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "annotate.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
+   set errcond = $status
+   if ( ${errcond} != 0 ) then
+      echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
+      echo "Premature exit." |& tee -a ${synthlog}
+      echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+      exit 1
+   endif
 
-      cd ${synthdir}
-      # Run vlog2Verilog and vlog2Spice on annotated netlist to get annotated
-      # versions of the different verilog styles and the SPICE netlist.
+   echo "${bindir}/vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlbb.anno.v ${rootname}_postroute.v" |& tee -a ${synthlog}
+   ${bindir}/vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} \
+		-o ${rootname}.rtlbb.anno.v ${rootname}_postroute.v >>& ${synthlog}
 
-      echo "Running vlog2Verilog." |& tee -a ${synthlog}
-      echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${rootname}.rtl.anno.v ${rootname}.anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtl.anno.v ${rootname}.anno.v >>& ${synthlog}
+   set errcond = $status
+   if ( ${errcond} != 0 ) then
+      echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
+      echo "Premature exit." |& tee -a ${synthlog}
+      echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+      exit 1
+   endif
 
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
-
-      echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlnopwr.anno.v ${rootname}.anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtlnopwr.anno.v ${rootname}.anno.v >>& ${synthlog}
-
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
-
-      echo "${bindir}/vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlbb.anno.v ${rootname}.anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtlbb.anno.v ${rootname}.anno.v >>& ${synthlog}
-
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
-
-      echo "Running vlog2Spice." |& tee -a ${synthlog}
-      echo "vlog2Spice -i -l ${spicepath} -o ${rootname}.anno.spc ${rootname}.rtl.anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Spice -i -l ${spicepath} -o ${rootname}.anno.spc \
+   echo "Running vlog2Spice." |& tee -a ${synthlog}
+   echo "vlog2Spice -i -l ${spicepath} -o ${rootname}.anno.spc ${rootname}.rtl.anno.v" |& tee -a ${synthlog}
+   ${bindir}/vlog2Spice -i -l ${spicepath} -o ${rootname}.anno.spc \
 		${rootname}.rtl.anno.v >>& ${synthlog}
 
-      set errcond = ${status}
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Spice failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
+   set errcond = ${status}
+   if ( ${errcond} != 0 ) then
+      echo "vlog2Spice failed with exit status ${errcond}" |& tee -a ${synthlog}
+      echo "Premature exit." |& tee -a ${synthlog}
+      echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+      exit 1
+   endif
 
-      #------------------------------------------------------------------
-      # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
-      #------------------------------------------------------------------
+   #------------------------------------------------------------------
+   # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
+   #------------------------------------------------------------------
 
-      if ( !( -f ${rootname}.rtl.anno.v || ( -f ${rootname}.rtl.anno.v && \
-		-M ${rootname}.rtl.anno.v < -M ${rootname}.anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtl.anno.v created." \
+   if ( !( -f ${rootname}.rtl.anno.v || ( -f ${rootname}.rtl.anno.v && \
+		-M ${rootname}.rtl.anno.v < -M ${rootname}_postroute.v ))) then
+      echo "vlog2Verilog failure:  No file ${rootname}.rtl.anno.v created." \
 		|& tee -a ${synthlog}
-      endif
+   endif
 
-      if ( !( -f ${rootname}.rtlnopwr.anno.v || ( -f ${rootname}.rtlnopwr.anno.v && \
-		-M ${rootname}.rtlnopwr.anno.v < -M ${rootname}.anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.anno.v created." \
+   if ( !( -f ${rootname}.rtlnopwr.anno.v || ( -f ${rootname}.rtlnopwr.anno.v && \
+		-M ${rootname}.rtlnopwr.anno.v < -M ${rootname}_postroute.v ))) then
+      echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.anno.v created." \
 		|& tee -a ${synthlog}
-      endif
+   endif
 
-      if ( !( -f ${rootname}.rtlbb.anno.v || ( -f ${rootname}.rtlbb.anno.v && \
-		-M ${rootname}.rtlbb.anno.v < -M ${rootname}.anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.anno.v created." \
+   if ( !( -f ${rootname}.rtlbb.anno.v || ( -f ${rootname}.rtlbb.anno.v && \
+		-M ${rootname}.rtlbb.anno.v < -M ${rootname}_postroute.v ))) then
+      echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.anno.v created." \
 		|& tee -a ${synthlog}
-      endif
+   endif
 
-      if ( !( -f ${rootname}.anno.spc || ( -f ${rootname}.anno.spc && \
-		-M ${rootname}.anno.spc < -M ${rootname}.anno.v ))) then
-	 echo "vlog2Spice failure:  No file ${rootname}.anno.spc created." \
+   if ( !( -f ${rootname}.anno.spc || ( -f ${rootname}.anno.spc && \
+		-M ${rootname}.anno.spc < -M ${rootname}_postroute.v ))) then
+      echo "vlog2Spice failure:  No file ${rootname}.anno.spc created." \
 		|& tee -a ${synthlog}
-      endif
+   endif
 
-      # Back to the layout directory
-      cd ${layoutdir}
+   # Back to the layout directory
+   cd ${layoutdir}
 
-      # If the antenna.out file contained only unfixed errors, then
-      # the annotated output files may not exist, so check.
-      if ( -f ${synthdir}/${rootname}.rtlnopwr.anno.v ) then
-	 mv ${synthdir}/${rootname}.rtlnopwr.anno.v ${synthdir}/${rootname}.rtlnopwr.v 
-      endif
-      if ( -f ${synthdir}/${rootname}.rtl.anno.v ) then
-	 mv ${synthdir}/${rootname}.rtl.anno.v ${synthdir}/${rootname}.rtl.v 
-      endif
-      if ( -f ${synthdir}/${rootname}.rtlbb.anno.v ) then
-	 mv ${synthdir}/${rootname}.rtlbb.anno.v ${synthdir}/${rootname}.rtlbb.v 
-      endif
-      if ( -f ${synthdir}/${rootname}.anno.spc ) then
-	 mv ${synthdir}/${rootname}.anno.spc ${synthdir}/${rootname}.spc
-      endif
-   else
-      echo "No antenna.out file generated, no need to annotate netlists." \
-		|& tee -a ${synthlog}
+   # If the antenna.out file contained only unfixed errors, then
+   # the annotated output files may not exist, so check.
+   if ( -f ${synthdir}/${rootname}.rtlnopwr.anno.v ) then
+      mv ${synthdir}/${rootname}.rtlnopwr.anno.v ${synthdir}/${rootname}.rtlnopwr.v 
+   endif
+   if ( -f ${synthdir}/${rootname}.rtl.anno.v ) then
+      mv ${synthdir}/${rootname}.rtl.anno.v ${synthdir}/${rootname}.rtl.v 
+   endif
+   if ( -f ${synthdir}/${rootname}.rtlbb.anno.v ) then
+      mv ${synthdir}/${rootname}.rtlbb.anno.v ${synthdir}/${rootname}.rtlbb.v 
+   endif
+   if ( -f ${synthdir}/${rootname}.anno.spc ) then
+      mv ${synthdir}/${rootname}.anno.spc ${synthdir}/${rootname}.spc
    endif
 endif
 
