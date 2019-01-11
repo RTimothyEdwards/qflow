@@ -76,3 +76,4 @@ set fanout_options="-l 100 -c 20"    ;# blifFanout target maximum latency
 set via_stacks="1"
 set vesta_options="--summary reports --long"
 set addspacers_options="-stripe 2.0 50.0 PG"
+set xspice_options="-io_time=1n -time=100p -idelay=10p -odelay=100p -cload=500f"

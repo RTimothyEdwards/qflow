@@ -1184,20 +1184,22 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    }
 	}
 
-	else if (!strcmp(nexttok, "wire")) {	/* wire = node */
+	else if (!strcmp(nexttok, "wire") ||
+		 !strcmp(nexttok, "assign")) {	/* wire = node */
 	    struct netrec wb, *nb;
 	    char *eptr, *wirename;
 	    char is_assignment = FALSE;
+
+	    // Several allowed uses of "assign":
+	    // "assign a = b" joins two nets.
+	    // "assign a = {b, c, ...}" creates a bus from components.
+	    // "assign" using any boolean arithmetic is not structural verilog.
 
 	    SkipTokNoNewline(VLOG_DELIMITERS);
 	    if (!strcmp(nexttok, "real")) SkipTokNoNewline(VLOG_DELIMITERS);
 	    while (nexttok != NULL) {
 		if (!strcmp(nexttok, "=")) {
 		    is_assignment = TRUE;
-		}
-		else if (is_assignment) {
-		    /* Handle assignments (to be done; ignoring for now) */
-		    is_assignment = FALSE;
 		}
 		else if (GetBusTok(&wb, &top->nets) == 0) {
 		    /* Handle bus notation */
@@ -1213,7 +1215,27 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		    }
 		}
 		else {
-		    if (BusHashLookup(nexttok, &top->nets) == NULL)
+		    if (is_assignment) {
+			if (BusHashLookup(nexttok, &top->nets) != NULL) {
+			    /* Join nets */
+			    /* (WIP) */
+			}
+			else if (*nexttok == '1' && *(nexttok + 1) == '\'' &&
+			    (*(nexttok + 3) == '1' || *(nexttok + 3) == '0')) {
+			
+			    // Power/Ground denoted by, e.g., "vdd = 1'b1".
+			    // Only need to record the net, no further action
+			    // needed.
+			}
+			else {
+			    fprintf(stdout, "Assignment is not a net.\n");
+			    fprintf(stdout, "Module '%s' is not structural verilog,"
+					" making black-box.\n", top->name);
+			    goto skip_endmodule;
+			}
+			is_assignment = FALSE;
+		    }
+		    else if (BusHashLookup(nexttok, &top->nets) == NULL)
 			Net(top, nexttok);
 		}
 		do {
@@ -1230,8 +1252,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    // Ignore any other directive starting with a backtick
 	    SkipNewLine(VLOG_DELIMITERS);
 	}
-	else if (!strcmp(nexttok, "reg") || !strcmp(nexttok, "assign")
-			|| !strcmp(nexttok, "always")) {
+	else if (!strcmp(nexttok, "reg") || !strcmp(nexttok, "always")) {
 	    fprintf(stdout, "Module '%s' is not structural verilog, making "
 			"black-box.\n", top->name);
 	    goto skip_endmodule;

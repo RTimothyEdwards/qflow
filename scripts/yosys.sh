@@ -953,10 +953,9 @@ else
    set test=`which python3`
    if ( $status == 0 ) then
        echo "Running spi2xspice.py" |& tee -a ${synthlog}
-       if ("x${spicefile}" == "x") then
-           set spiceopt=""
-       else
-           set spiceopt="-l ${spicepath}"
+
+       if (!( ${?xspice_options} )) then
+	   set xspice_options=""
        endif
 
        # Add paths to liberty files for any hard macros
@@ -971,11 +970,11 @@ else
 	  end
        endif
 
-       echo spi2xspice.py '"'${libertyoption}'"' ${modulename}.spc ${modulename}.xspice |& tee -a ${synthlog}
+       echo spi2xspice.py '"'${libertyoption}'"' ${xspice_options} ${modulename}.spc ${modulename}.xspice |& tee -a ${synthlog}
        echo "" >> ${synthlog}
 
-       ${scriptdir}/spi2xspice.py "${libertyoption}" ${modulename}.spc \
-		${modulename}.xspice
+       ${scriptdir}/spi2xspice.py "${libertyoption}" ${xspice_options} \
+		${modulename}.spc ${modulename}.xspice
 
        if ( !( -f ${modulename}.xspice || \
 		( -M ${modulename}.xspice < -M ${modulename}.spc ))) then

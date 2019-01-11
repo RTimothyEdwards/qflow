@@ -80,4 +80,4 @@ set base_units="1000"		;# Use nanometer base units instead of centimicrons
 set vesta_options="--summary reports --long"
 set num_layers=6		;# Normally restrict routing to 6 layers
 set addspacers_options="-stripe 1.7 50.0 PG"
-
+set xspice_options="-io_time=50p -time=10p -idelay=10p -odelay=30p -cload=50f"

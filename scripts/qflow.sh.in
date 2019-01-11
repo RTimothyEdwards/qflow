@@ -629,6 +629,12 @@ if ( ! -f ${userfile} ) then
       echo \# set postproc_options = >> ${userfile}
    endif
 
+   if ( ${?xspice_options} ) then
+      echo \# set xspice_options = \"${xspice_options}\" >> ${userfile}
+   else
+      echo \# set xspice_options = >> ${userfile}
+   endif
+
    if ( ${?fill_ratios} ) then
       echo \# set fill_ratios = \"${fill_ratios}\" >> ${userfile}
    else
