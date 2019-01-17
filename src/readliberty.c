@@ -1472,6 +1472,7 @@ Pin *
 get_pin_by_name(Cell *curcell, char *pinname)
 {
     Pin *curpin;
+    char *dptr;
 
     for (curpin = curcell->pins; curpin; curpin = curpin->next) {
         if (!strcmp(curpin->name, pinname)) {
@@ -1479,6 +1480,18 @@ get_pin_by_name(Cell *curcell, char *pinname)
             return curpin;
         }
     }
+    /* Check for buses */
+    for (curpin = curcell->pins; curpin; curpin = curpin->next) {
+	dptr = strchr(curpin->name, '[');
+	if (dptr != NULL) {
+	    *dptr = '\0';
+	    if (!strcmp(curpin->name, pinname)) {
+		*dptr = '[';
+		 return curpin;
+	    }
+	    *dptr = '[';
+	}
+    } 
     return NULL;
 }
 

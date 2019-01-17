@@ -26,8 +26,9 @@
 
 /*----------------------------------------------------------------------*/
 /* Most verilog syntax has been captured below.  Still to do:  Handle	*/
-/* vectors that are created on the fly using {...} notation, including	*/
-/* the {n{...}} concatenation method.					*/
+/* wires that are created on the fly using {...} notation, including	*/
+/* the {n{...}} concatenation method.  Currently this syntax is only	*/
+/* handled in nets connected to instance pins.				*/
 /*----------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -531,15 +532,15 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	if (nexttok[0] == '`') {
 	    kl = (char *)HashLookup(nexttok + 1, &verilogdefs);
 	    if (kl == NULL) {
-		fprintf(stdout, "Unknown definition %s found in array notation.\n",
-			nexttok);
+		fprintf(stdout, "Unknown definition %s found in array "
+			"notation (line %d).\n", nexttok, linenum);
 		return 1;
 	    }
 	    else {
 		result = sscanf(kl, "%d", &start);
 		if (result != 1) {
 		    fprintf(stdout, "Cannot parse first digit from parameter "
-				"%s value %s\n", nexttok, kl);
+				"%s value %s (line %d)\n", nexttok, kl, linenum);
 		    return 1;
 		}
 	    }
@@ -550,15 +551,15 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 		// Is name in the parameter list?
 	        kl = (char *)HashLookup(nexttok, &verilogparams);
 		if (kl == NULL) {
-		    fprintf(stdout, "Array value %s is not a number or a parameter.\n",
-				nexttok);
+		    fprintf(stdout, "Array value %s is not a number or a "
+				"parameter (line %d).\n", nexttok, linenum);
 		    return 1;
 		}
 		else {
 		    result = sscanf(kl, "%d", &start);
 		    if (result != 1) {
 		        fprintf(stdout, "Parameter %s has value %s that cannot be parsed"
-				" as an integer.\n", nexttok, kl);
+				" as an integer (line %d).\n", nexttok, kl, linenum);
 			return 1;
 		    }
 		}
@@ -571,7 +572,7 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	}
 	else if (strcmp(nexttok, ":")) {
 	    fprintf(stdout, "Badly formed array notation:  Expected colon, "
-			"found %s\n", nexttok);
+			"found %s (line %d)\n", nexttok, linenum);
 	    return 1;
 	}
 	else {
@@ -581,15 +582,16 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	    if (nexttok[0] == '`') {
 		kl = (char *)HashLookup(nexttok + 1, &verilogdefs);
 		if (kl == NULL) {
-		    fprintf(stdout, "Unknown definition %s found in array notation.\n",
-				nexttok);
+		    fprintf(stdout, "Unknown definition %s found in array "
+				"notation (line %d).\n", nexttok, linenum);
 		    return 1;
 		}
 		else {
 		    result = sscanf(kl, "%d", &end);
 		    if (result != 1) {
 			fprintf(stdout, "Cannot parse second digit from parameter "
-					"%s value %s\n", nexttok, kl);
+					"%s value %s (line %d)\n", nexttok, kl,
+					linenum);
 			return 1;
 		    }
 		}
@@ -601,14 +603,15 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	            kl = (char *)HashLookup(nexttok, &verilogparams);
 		    if (kl == NULL) {
 			fprintf(stdout, "Array value %s is not a number or a "
-					"parameter.\n", nexttok);
+					"parameter (line %d).\n", nexttok, linenum);
 			return 1;
 		    }
 		    else {
 			result = sscanf(kl, "%d", &end);
 			if (result != 1) {
 		            fprintf(stdout, "Parameter %s has value %s that cannot"
-					" be parsed as an integer.\n", nexttok, kl);
+					" be parsed as an integer (line %d).\n",
+					nexttok, kl, linenum);
 			    return 1;
 			}
 		    }
@@ -626,7 +629,8 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	    }
 	    else if (!strcmp(nexttok, ";")) {
 		// Better than reading to end-of-file, give up on end-of-statement
-		fprintf(stdout, "End of statement reached while reading array bounds.\n");
+		fprintf(stdout, "End of statement reached while reading "
+				"array bounds (line %d).\n", linenum);
 		return 1;
 	    }
 	}
@@ -665,7 +669,8 @@ int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
     if (brackstart != NULL) {
 	brackend = strchr(astr, ']');
 	if (brackend == NULL) {
-	    fprintf(stdout, "Badly formed array notation \"%s\"\n", astr);
+	    fprintf(stdout, "Badly formed array notation \"%s\" (line %d)\n", astr,
+			linenum);
 	    return 1;
 	}
 	*brackend = '\0';
@@ -674,7 +679,8 @@ int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
 	result = sscanf(brackstart + 1, "%d", &start);
 	if (colonptr) *colonptr = ':';
 	if (result != 1) {
-	    fprintf(stdout, "Badly formed array notation \"%s\"\n", astr);
+	    fprintf(stdout, "Badly formed array notation \"%s\" (line %d)\n", astr,
+			linenum);
 	    *brackend = ']';
 	    return 1;
 	}
@@ -686,7 +692,8 @@ int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
 	}
 	*brackend = ']';
 	if (result != 1) {
-	    fprintf(stdout, "Badly formed array notation \"%s\"\n", astr);
+	    fprintf(stdout, "Badly formed array notation \"%s\" (line %d)\n", astr,
+			linenum);
 	    return 1;
 	}
 	wb->start = start;
@@ -905,12 +912,13 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 
 	    SkipTokNoNewline(VLOG_DELIMITERS);
 	    if (nexttok == NULL) {
-		fprintf(stderr, "Badly formed \"module\" line\n");
+		fprintf(stderr, "Badly formed \"module\" line (line %d)\n", linenum);
 		goto skip_endmodule;
 	    }
 
 	    if (in_module == (char)1) {
-		fprintf(stderr, "Missing \"endmodule\" statement on subcircuit.\n");
+		fprintf(stderr, "Missing \"endmodule\" statement on "
+				"subcircuit (line %d).\n", linenum);
 		InputParseError(stderr);
 	    }
 	    in_module = (char)1;
@@ -950,7 +958,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			SkipTokComments(VLOG_DELIMITERS);
 			if (strcmp(nexttok, "(")) {
 			    fprintf(stderr, "Badly formed module block parameter"
-						" list.\n");
+						" list (line %d).\n", linenum);
 			    goto skip_endmodule;
 			}
 		    }
@@ -1048,7 +1056,8 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	else if (!strcmp(nexttok, "endmodule")) {
 
 	    if (in_module == (char)0) {
-		fprintf(stderr, "\"endmodule\" occurred outside of a module!\n");
+		fprintf(stderr, "\"endmodule\" occurred outside of a "
+				"module (line %d)!\n", linenum);
 	        InputParseError(stderr);
 	    }
 	    in_module = (char)0;
@@ -1228,7 +1237,8 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			    // needed.
 			}
 			else {
-			    fprintf(stdout, "Assignment is not a net.\n");
+			    fprintf(stdout, "Assignment is not a net (line %d).\n",
+					linenum);
 			    fprintf(stdout, "Module '%s' is not structural verilog,"
 					" making black-box.\n", top->name);
 			    goto skip_endmodule;
@@ -1291,11 +1301,12 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			SkipTokComments(VLOG_DELIMITERS);
 			if (strcmp(nexttok, "(")) {
 			    fprintf(stdout, "Error: Expecting parameter value, "
-					"got %s.\n", nexttok);
+					"got %s (line %d).\n", nexttok, linenum);
 			}
 			SkipTokComments(VLOG_DELIMITERS);
 			if (!strcmp(nexttok, ")")) {
-			    fprintf(stdout, "Error: Parameter with no value found.\n");
+			    fprintf(stdout, "Error: Parameter with no value found"
+					" (line %d).\n", linenum);
 			}
 			else {
 			    HashPtrInstall(paramname, strdup(nexttok),
@@ -1303,7 +1314,8 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			    SkipTokComments(VLOG_DELIMITERS);
 			    if (strcmp(nexttok, ")")) {
 				fprintf(stdout, "Error: Expecting end of parameter "
-					"value, got %s.\n", nexttok);
+					"value, got %s (line %d).\n", nexttok,
+					linenum);
 			    }
 			}
 			free(paramname);
@@ -1355,8 +1367,9 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		    // We need to look for pins of the type ".name(value)"
 
 		    if (nexttok[0] != '.') {
-			fprintf(stdout, "Badly formed subcircuit pin line at \"%s\"\n",
-				nexttok);
+			fprintf(stdout, "Badly formed subcircuit pin "
+				"line at \"%s\" (line %d)\n",
+				nexttok, linenum);
 			SkipNewLine(VLOG_DELIMITERS);
 		    }
 		    else {
@@ -1364,7 +1377,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			SkipTokComments(VLOG_DELIMITERS);
 			if (strcmp(nexttok, "(")) {
 			    fprintf(stdout, "Badly formed subcircuit pin line "
-					"at \"%s\"\n", nexttok);
+					"at \"%s\" (line %d)\n", nexttok, linenum);
 			    SkipNewLine(VLOG_DELIMITERS);
 			}
 			SkipTokComments(VLOG_PIN_NAME_DELIMITERS);
@@ -1378,19 +1391,20 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			else {
 
 			    if (!strcmp(nexttok, "{")) {
-				char *in_line_net = strdup(nexttok);
+				char *in_line_net = (char *)malloc(1);
 				/* In-line array---Read to "}" */
 				while (nexttok) {
 				    in_line_net = (char *)realloc(in_line_net,
 						strlen(in_line_net) +
 						strlen(nexttok) + 1);
 				    strcat(in_line_net, nexttok);
-				    if (strcmp(nexttok, "}")) break;
+				    if (!strcmp(nexttok, "}")) break;
 				    SkipTokComments(VLOG_DELIMITERS);
 				}
 				if (!nexttok) {
-				    fprintf(stderr, "Unterminated net in pin %s\n",
-						in_line_net);
+				    fprintf(stderr, "Unterminated net in pin %s "
+						"(line %d)\n", in_line_net,
+						linenum);
 				}
 				new_port->net = in_line_net;
 			    }
@@ -1416,7 +1430,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			    }
 			    if (strcmp(nexttok, ")")) {
 				fprintf(stdout, "Badly formed subcircuit pin line "
-					"at \"%s\"\n", nexttok);
+					"at \"%s\" (line %d)\n", nexttok, linenum);
 				SkipNewLine(VLOG_DELIMITERS);
 			    }
 			}
@@ -1427,13 +1441,16 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			/* vector, then process each component separately.	*/
 
 			ncomp = new_port->net;
-			if (*new_port->net == '{') ncomp++;
+			while (isdigit(*ncomp)) ncomp++;
+			if (*ncomp == '{') ncomp++;
 			while (isspace(*ncomp)) ncomp++;
 			while (*ncomp != '\0') {
+			    char saveptr;
 			    nptr = ncomp;
 			    while (*nptr != ',' && *nptr != '}' && *nptr != '\0' &&
 					!isspace(*nptr))
 				nptr++;
+			    saveptr = *nptr;
 			    *nptr = '\0';
 
 			    /* Parse ncomp as a net or bus */
@@ -1451,6 +1468,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			    }
 
 			    if (*new_port->net != '{') break;
+			    *nptr = saveptr;
 			    ncomp = nptr + 1;
 			    while ((*ncomp != '\0') && (isspace(*ncomp) || 
 					*nptr == ',' || *nptr == '}'))
@@ -1460,15 +1478,15 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		}
 	    }
 	    else {
-		fprintf(stdout, "Expected to find instance pin block but got \"%s\"\n",
-				nexttok);
+		fprintf(stdout, "Expected to find instance pin block but got "
+				"\"%s\" (line %d)\n", nexttok, linenum);
 	    }
 
 	    /* Instance should end with a semicolon */
 	    SkipTokComments(VLOG_DELIMITERS);
 	    if (strcmp(nexttok, ";")) {
-		fprintf(stdout, "Expected to find end of instance but got \"%s\"\n",
-			nexttok);
+		fprintf(stdout, "Expected to find end of instance but got "
+				"\"%s\" (line %d)\n", nexttok, linenum);
 	    }
 	}
 	continue;
@@ -1489,7 +1507,7 @@ skip_endmodule:
 	continue;
 
 baddevice:
-	fprintf(stderr, "Badly formed line in input.\n");
+	fprintf(stderr, "Badly formed line in input (line %d).\n", linenum);
     }
 
     /* Watch for bad ending syntax */

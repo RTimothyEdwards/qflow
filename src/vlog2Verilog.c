@@ -171,6 +171,89 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 }
 
 /*----------------------------------------------------------------------*/
+/* Convert an integer into a binary string.  The target string 		*/
+/* "bitstring" is assumed to be at least (bits + 1) bytes in length.	*/
+/*----------------------------------------------------------------------*/
+
+char *int2binary(int dval, int bits)
+{
+    int first;
+    char *bitstring = (char *)malloc(1 + bits);
+    char *hptr, *bptr;
+    char *hstring = (char *)malloc(2 + (bits >> 2));
+    char binhex[5];
+
+    first = bits % 4;
+
+    sprintf(hstring, "%x", dval);
+    hptr = hstring;
+    bptr = bitstring;
+    while (*hptr != '\0') {
+	switch(*hptr) {
+	    case '0':
+		strcpy(binhex, "0000");
+		break;
+	    case '1':
+		strcpy(binhex, "0001");
+		break;
+	    case '2':
+		strcpy(binhex, "0010");
+		break;
+	    case '3':
+		strcpy(binhex, "0011");
+		break;
+	    case '4':
+		strcpy(binhex, "0100");
+		break;
+	    case '5':
+		strcpy(binhex, "0101");
+		break;
+	    case '6':
+		strcpy(binhex, "0110");
+		break;
+	    case '7':
+		strcpy(binhex, "0111");
+		break;
+	    case '8':
+		strcpy(binhex, "1000");
+		break;
+	    case '9':
+		strcpy(binhex, "1001");
+		break;
+	    case 'a':
+		strcpy(binhex, "1010");
+		break;
+	    case 'b':
+		strcpy(binhex, "1011");
+		break;
+	    case 'c':
+		strcpy(binhex, "1100");
+		break;
+	    case 'd':
+		strcpy(binhex, "1101");
+		break;
+	    case 'e':
+		strcpy(binhex, "1110");
+		break;
+	    case 'f':
+		strcpy(binhex, "1111");
+		break;
+	}
+	if (first > 0) {
+	    strncpy(bptr, binhex + (4 - first), first);
+	    bptr += first;
+	    first = 0;
+	}
+	else {
+	    strcpy(bptr, binhex);
+	    bptr += 4;
+	}
+	hptr++;
+    }
+    return bitstring;
+}
+
+/*----------------------------------------------------------------------*/
 /* Recursion callback function for each item in the cellrec properties  */
 /* hash table                                                           */
 /*----------------------------------------------------------------------*/
@@ -321,20 +404,132 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 	    /* convert them to the power bus names.		*/
 
 	    if ((Flags & IMPLICIT_POWER) || (!(Flags & NONAME_POWER))) {
-		if (port->net[0] == '1' && port->net[1] == '\'') {
-		    char c = port->net[2];
-		    char b = port->net[3];
-		    if (c == 'b' || c == 'h' || c == 'd' || c == 'o') {
-			if (b == '1') {
-			    free(port->net);
-			    port->net = strdup(VddNet);
-			 }
-			else if (b == '0') {
-			    free(port->net);
-			    port->net = strdup(GndNet);
+		int brepeat = 0;
+		char is_array = FALSE, saveptr;
+		char *sptr = port->net, *nptr;
+		char *expand = (char *)malloc(1);
+
+		*expand = '\0';
+		if (*sptr == '{') {
+		    is_array = TRUE;
+		    sptr++;
+		    expand = (char *)realloc(expand, 2);
+		    strcpy(expand, "{");
+		}
+		while ((*sptr != '}') && (*sptr != '\0')) {
+		    int nest = 0;
+
+		    nptr = sptr + 1;
+		    while ((*nptr != '\0') && (*nptr != ',')) {
+			if (*nptr == '{') nest++;
+			if (*nptr == '}') {
+			    if (nest == 0) break;
+			    else nest--;
+			}
+			nptr++;
+		    }
+		    saveptr = *nptr;
+		    *nptr = '\0';
+
+		    if (isdigit(*sptr)) {
+			int bval;
+			char *bptr = sptr;
+			sscanf(bptr, "%d", &brepeat);
+			while (isdigit(*bptr)) bptr++;
+
+			/* Is digit followed by "'" (fixed values 1 or 0)? */
+			if (*bptr == '\'') {
+			    char *bitstring;
+			    bptr++;
+			    switch(*bptr) {
+				case 'd':
+				    sscanf(bptr + 1, "%d", &bval);
+				    bitstring = int2binary(bval, brepeat);
+				    break;
+				case 'h':
+				    sscanf(bptr + 1, "%h", &bval);
+				    bitstring = int2binary(bval, brepeat);
+				    break;
+				case 'o':
+				    sscanf(bptr + 1, "%o", &bval);
+				    bitstring = int2binary(bval, brepeat);
+				    break;
+				default:
+				    bitstring = strdup(bptr + 1);
+				    break;
+			    }
+
+			    bptr = bitstring;
+			    while (*bptr != '\0') {
+				if (*bptr == '1') {
+				    expand = (char *)realloc(expand,
+						strlen(expand) +
+						strlen(VddNet) + 2);
+				    strcat(expand, VddNet);
+				}
+				else { /* Note: If 'X', then ground it */
+				    expand = (char *)realloc(expand,
+						strlen(expand) +
+						strlen(GndNet) + 2);
+				    strcat(expand, GndNet);
+				}
+				brepeat--;
+				if (brepeat > 0)
+				    strcat(expand, ",");
+				bptr++;
+				if (brepeat <= 0) break;
+			    }
+			    while (brepeat > 0) {
+				if (*(bptr - 1) == '1') {
+				    expand = (char *)realloc(expand,
+						strlen(expand) +
+						strlen(VddNet) + 2);
+				    strcat(expand, VddNet);
+				}
+				else { /* Note: If 'X', then ground it */
+				    expand = (char *)realloc(expand,
+						strlen(expand) +
+						strlen(GndNet) + 2);
+				    strcat(expand, GndNet);
+				}
+				brepeat--;
+				if (brepeat > 0)
+				    strcat(expand, ",");
+			    }
+			    free(bitstring);
+			}
+
+			/* Otherwise add to "expand" verbatim */
+			else {
+			    expand = (char *)realloc(expand, strlen(expand) +
+					strlen(sptr) + 1);
+			    strcat(expand, sptr);
 			}
 		    }
+		    else {
+			/* Normal net name, add to "expand" */
+			expand = (char *)realloc(expand, strlen(expand) +
+				strlen(sptr) + 1);
+			strcat(expand, sptr);
+		    }
+		    if (saveptr == ',') {
+			expand = (char *)realloc(expand, strlen(expand) + 2);
+			strcat(expand, ",");
+		    }
+		    *nptr = saveptr;
+		    sptr = nptr;
+		    if (saveptr != '\0') sptr++;
 		}
+
+		if (is_array) {
+		    expand = (char *)realloc(expand, strlen(expand) + 2);
+		    strcat(expand, "}");
+		}
+
+		/* Replace port->net */
+		
+		free(port->net);
+		port->net = expand;
 	    }
 	    fprintf(outfptr, "    .%s(%s)", port->name, port->net);
 	    if (port->next) fprintf(outfptr, ",");

@@ -60,6 +60,9 @@
  *	the code so that iterative calls are run inside vlogFanout instead
  *	of requiring vlogFanout to be run multiple times, so that the
  *	liberty file and netlist do not have to be re-read on each pass.
+ *
+ * Update 1/17/2019:
+ *	Added handling of pins which are buses.
  *---------------------------------------------------------------------------
  *
  * Revision 1.3  2008/09/09 21:24:30  steve_beccue
@@ -153,6 +156,12 @@ struct Nodelist {
 } Nodelist_;
 
 struct hashtable Nodehash;
+struct hashtable Bushash;
+
+struct Bus {
+    int imax;
+    int imin;
+} Bus_;
 
 struct Drivelist {
     char *Separator;	// Separator (e.g., "X")
@@ -347,6 +356,7 @@ void insert_buffers(struct cellrec *topcell)
     for (inst = topcell->instlist; inst; inst = inst->next) {
 	/* Check each port and net connection */
 	gl = (struct Gatelist *)HashLookup(inst->cellname, &Gatehash);
+	if (gl == NULL) continue;
 	for (port = inst->portlist; port; port = port->next) {
 	    if (port->direction != PORT_OUTPUT) {
 
@@ -713,6 +723,7 @@ struct Nodelist *registernode(char *nodename, int type, struct Gatelist *gl,
 {
     struct Nodelist *nl;
     double pincap;
+    char *dptr;
 
     nl = (struct Nodelist *)HashLookup(nodename, &Nodehash);
    
@@ -723,6 +734,28 @@ struct Nodelist *registernode(char *nodename, int type, struct Gatelist *gl,
 	HashPtrInstall(nodename, nl, &Nodehash);
 	nl->type = type;
 	nl->outputgate = NULL;
+
+	if ((dptr = strchr(nodename, '[')) != NULL) {
+	    struct Bus *newbus = (struct Bus *)malloc(sizeof(struct Bus));
+	    int idx;
+	    *dptr = '\0';
+	    sscanf(dptr + 1, "%d", &idx);
+	    newbus->imax = newbus->imin = idx; 
+	    HashPtrInstall(nodename, newbus, &Bushash);
+	    *dptr = '[';
+	}
+    }
+    else {
+	if ((dptr = strchr(nodename, '[')) != NULL) {
+	    struct Bus *newbus;
+	    int idx;
+	    *dptr = '\0';
+	    newbus = (struct Bus *)HashLookup(nodename, &Bushash);
+	    sscanf(dptr + 1, "%d", &idx);
+	    if (idx < newbus->imin) newbus->imin = idx; 
+	    if (idx > newbus->imax) newbus->imax = idx; 
+	    *dptr = '[';
+	}
     }
 
     if (type == OUTPUT) {
@@ -1220,6 +1253,7 @@ int main (int argc, char *argv[])
     SuffixIsNumeric = TRUE;	// By default, assume numeric suffixes
 
     InitializeHashTable(&Nodehash, LARGEHASHSIZE);
+    InitializeHashTable(&Bushash, SMALLHASHSIZE);
     InitializeHashTable(&Drivehash, SMALLHASHSIZE);
     InitializeHashTable(&Gatehash, SMALLHASHSIZE);
     InitializeHashTable(&Basehash, SMALLHASHSIZE);

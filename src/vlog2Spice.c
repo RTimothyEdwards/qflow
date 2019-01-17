@@ -27,13 +27,21 @@
 
 #define LengthOfLine    	16384
 
-/* Function prototypes */
-int write_output(struct cellrec *, char *, char *, int);
-int loc_getline(char s[], int lim, FILE *fp);
-void helpmessage(FILE *);
-
 #define DO_INCLUDE   0x01
 #define DO_DELIMITER 0x02
+
+/* Linked list of names of SPICE libraries to read */
+typedef struct _linkedstring *LinkedStringPtr;
+
+typedef struct _linkedstring {
+    char *string;
+    LinkedStringPtr next;
+} LinkedString;
+
+/* Function prototypes */
+int write_output(struct cellrec *, LinkedStringPtr, char *, int);
+int loc_getline(char s[], int lim, FILE *fp);
+void helpmessage(FILE *);
 
 //--------------------------------------------------------
 
@@ -46,12 +54,18 @@ int main (int argc, char *argv[])
     char *spclibname = NULL;
     char *spcoutname = NULL;
 
+    LinkedStringPtr spicelibs = NULL, newspicelib;
+
+
     struct cellrec *topcell = NULL;
 
     while ((i = getopt(argc, argv, "hHidl:s:o:")) != EOF) {
 	switch (i) {
 	    case 'l':
-		spclibname = strdup(optarg);
+		newspicelib = (LinkedStringPtr)malloc(sizeof(LinkedString));
+		newspicelib->string = strdup(optarg);
+		newspicelib->next = spicelibs;
+		spicelibs = newspicelib;
 		break;
 	    case 'o':
 		spcoutname = strdup(optarg);
@@ -87,7 +101,10 @@ int main (int argc, char *argv[])
     optind++;
 
     topcell = ReadVerilog(vloginname);
-    result = write_output(topcell, spclibname, spcoutname, flags);
+    if (topcell != NULL)
+	result = write_output(topcell, spicelibs, spcoutname, flags);
+    else
+	result = 1;	/* Return error code */
 
     return result;
 }
@@ -100,10 +117,13 @@ int main (int argc, char *argv[])
 /* SIDE EFFECTS: 						*/
 /*--------------------------------------------------------------*/
 
-int write_output(struct cellrec *topcell, char *libname, char *outname, int flags)
+int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
+		char *outname, int flags)
 {
     FILE *libfile;
     FILE *outfile;
+    char *libname;
+    LinkedStringPtr curspicelib;
 
     struct netrec *net;
     struct instance *inst;
@@ -118,18 +138,6 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
 
     struct hashtable Libhash;
 
-    // Read a SPICE library of subcircuits and use it to define the order
-    // of pins that were read from LEF (which is not necessarily in SPICE
-    // pin order).
-
-    if (libname) {
-	libfile = fopen(libname, "r");
-	if (libfile == NULL) {
-	    fprintf(stderr, "Couldn't open %s for reading\n", libname);
-	    return 1;
-	}
-    }
-
     if (outname != NULL) {
 	outfile = fopen(outname, "w");
 	if (outfile == NULL) {
@@ -143,77 +151,93 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
     /* Initialize SPICE library hash table */
     InitializeHashTable(&Libhash, SMALLHASHSIZE);
 
-    /* Read SPICE library of subcircuits, if one is specified.	*/
-    /* Retain the name and order of ports passed to each	*/
-    /* subcircuit.						*/
+    // Read one or more SPICE libraries of subcircuits and use them to define
+    // the order of pins that were read from LEF (which is not necessarily in
+    // SPICE pin order).
 
-    j = 0;
-    while (loc_getline(line, sizeof(line), libfile) > 0) {
-	if (!strncasecmp(line, ".subckt", 7)) {
-	    char *cellname;
-	    lastport = NULL;
-	    portlist = NULL;
+    for (curspicelib = spicelibs; curspicelib; curspicelib = curspicelib->next) {
+	libname = curspicelib->string;
 
-	    /* Read cellname */
-	    sp = line + 7;
-	    while (isspace(*sp) && (*sp != '\n')) sp++;
-	    sp2 = sp;
-	    while (!isspace(*sp2) && (*sp2 != '\n')) sp2++;
-	    *sp2 = '\0';
+	libfile = fopen(libname, "r");
+	if (libfile == NULL) {
+	    fprintf(stderr, "Couldn't open %s for reading\n", libname);
+	    continue;
+	}
 
-	    /* Keep a record of the cellname until we generate the hash entry for it */
-	    cellname = strdup(sp);
+	/* Read SPICE library of subcircuits, if one is specified.	*/
+	/* Retain the name and order of ports passed to each		*/
+	/* subcircuit.							*/
 
-	    /* Now fill out the ordered port list */
-	    sp = sp2 + 1;
-	    while (isspace(*sp) && (*sp != '\n') && (*sp != '\0')) sp++;
-	    while (sp) {
+	j = 0;
+	while (loc_getline(line, sizeof(line), libfile) > 0) {
+	    if (!strncasecmp(line, ".subckt", 7)) {
+		char *cellname;
+		lastport = NULL;
+		portlist = NULL;
 
-		/* Move string pointer to next port name */
-
-		if (*sp == '\n' || *sp == '\0') {
-		    loc_getline(line, sizeof(line), libfile);
-		    if (*line == '+') {
-			sp = line + 1;
-			while (isspace(*sp) && (*sp != '\n')) sp++;
-		    }
-		    else
-			break;
-		}
-
-		/* Terminate port name and advance pointer */
+		/* Read cellname */
+		sp = line + 7;
+		while (isspace(*sp) && (*sp != '\n')) sp++;
 		sp2 = sp;
-		while (!isspace(*sp2) && (*sp2 != '\n') && (*sp2 != '\0')) sp2++;
+		while (!isspace(*sp2) && (*sp2 != '\n')) sp2++;
 		*sp2 = '\0';
 
-		/* Add port to list (in forward order) */
+		/* Keep a record of the cellname until we generate the	*/
+		/* hash entry for it					*/
+		cellname = strdup(sp);
 
-		newport = (struct portrec *)malloc(sizeof(struct portrec));
-		if (portlist == NULL)
-		    portlist = newport;
-		else
-		    lastport->next = newport;
-		lastport = newport;
-		newport->name = strdup(sp);
-		newport->net = NULL;
-		newport->direction = 0;
-		newport->next = NULL;
-
+		/* Now fill out the ordered port list */
 		sp = sp2 + 1;
+		while (isspace(*sp) && (*sp != '\n') && (*sp != '\0')) sp++;
+		while (sp) {
+
+		    /* Move string pointer to next port name */
+
+		    if (*sp == '\n' || *sp == '\0') {
+			loc_getline(line, sizeof(line), libfile);
+			if (*line == '+') {
+			    sp = line + 1;
+			    while (isspace(*sp) && (*sp != '\n')) sp++;
+			}
+			else
+			    break;
+		    }
+
+		    /* Terminate port name and advance pointer */
+		    sp2 = sp;
+		    while (!isspace(*sp2) && (*sp2 != '\n') && (*sp2 != '\0')) sp2++;
+		    *sp2 = '\0';
+
+		    /* Add port to list (in forward order) */
+
+		    newport = (struct portrec *)malloc(sizeof(struct portrec));
+		    if (portlist == NULL)
+			portlist = newport;
+		    else
+			lastport->next = newport;
+		    lastport = newport;
+		    newport->name = strdup(sp);
+		    newport->net = NULL;
+		    newport->direction = 0;
+		    newport->next = NULL;
+
+		    sp = sp2 + 1;
+		}
+
+		/* Read input to end of subcircuit */
+
+		if (strncasecmp(line, ".ends", 4)) {
+		    while (loc_getline(line, sizeof(line), libfile) > 0)
+			if (!strncasecmp(line, ".ends", 4))
+			    break;
+		}
+
+		/* Hash the new port record by cellname */
+		HashPtrInstall(cellname, portlist, &Libhash);
+		free(cellname);
 	    }
-
-	    /* Read input to end of subcircuit */
-
-	    if (strncasecmp(line, ".ends", 4)) {
-		while (loc_getline(line, sizeof(line), libfile) > 0)
-		    if (!strncasecmp(line, ".ends", 4))
-			break;
-	    }
-
-	    /* Hash the new port record by cellname */
-	    HashPtrInstall(cellname, portlist, &Libhash);
-	    free(cellname);
 	}
+	fclose(libfile);
     }
 
     /* Write output header */
@@ -223,20 +247,25 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
     fprintf(outfile, "\n");
 
     /* If flags has DO_INCLUDE then dump the contents of the	*/
-    /* libraray.  If 0, then just write a .include line.	*/
+    /* libraries.  If 0, then just write a .include line.	*/
 
-    if (flags & DO_INCLUDE) {
-	if (libname != NULL) {
+    for (curspicelib = spicelibs; curspicelib; curspicelib = curspicelib->next) {
+	libname = curspicelib->string;
 
-	    /* Write out the subcircuit library file verbatim */
-	    rewind(libfile);
-	    while (loc_getline(line, sizeof(line), libfile) > 0)
-		fputs(line, outfile);
-	    fclose(libfile);
+	if (flags & DO_INCLUDE) {
+	    libfile = fopen(libname, "r");
+	    if (libname != NULL) {
+		fprintf(outfile, "** Start of included library %s\n", libname);
+		/* Write out the subcircuit library file verbatim */
+		while (loc_getline(line, sizeof(line), libfile) > 0)
+		    fputs(line, outfile);
+		fprintf(outfile, "** End of included library %s\n", libname);
+		fclose(libfile);
+	    }
 	}
-    }
-    else {
-	fprintf(outfile, ".include %s\n", libname);
+	else {
+	    fprintf(outfile, ".include %s\n", libname);
+	}
     }
     fprintf(outfile, "\n");
 
@@ -277,7 +306,7 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
     /* Output instances */
 
     for (inst = topcell->instlist; inst; inst = inst->next) {
-
+	int argcnt;
 	struct portrec *libport;
 
 	/* Search library records for subcircuit */
@@ -294,7 +323,26 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
 	/* Output pin connections in the order of the LEF record, which	*/
 	/* has been forced to match the port order of the SPICE library	*/
 
+	argcnt = 0;
 	for (libport = portlist; libport; libport = libport->next) {
+	    char *dptr, dsave;
+	    int idx = 0, is_array = FALSE;
+
+	    argcnt++;
+	    argcnt %= 8;
+	    if (argcnt == 7)
+		fprintf(outfile, "\n+ ");
+
+	    for (dptr = libport->name; *dptr != '\0'; dptr++) {
+		if (*dptr == '[') {
+		    is_array = TRUE;
+		    dsave = *dptr;
+		    *dptr = '\0';
+		    sscanf(dptr + 1, "%d", &idx);
+		    break;
+		}
+	    }
+
 	    for (port = inst->portlist; port; port = port->next) {
 		if (!strcasecmp(libport->name, port->name)) {
 		    if (flags & DO_DELIMITER) {
@@ -306,10 +354,70 @@ int write_output(struct cellrec *topcell, char *libname, char *outname, int flag
 			    }
 			}
 		    }
-		    fprintf(outfile, "%s ", port->net);
+		    if (is_array) {
+			char *portname = port->net;
+			if (*portname == '{') {
+			    char *epos, ssave;
+			    int k;
+
+			    /* Bus notation "{a, b, c, ... }" */
+			    /* Go to the end and count bits backwards.	*/
+			    /* until reaching the idx'th position.	*/
+
+			    while (*portname != '}') portname++;
+			    for (k = 0; k < idx; k++) {
+				epos = portname;
+				portname--;
+				while (*portname != ',' && portname > port->net)
+				    portname--;
+			    }
+			    if (*portname == ',') portname++;
+			    ssave = *epos;
+			    *epos = '\0';
+			    fprintf(outfile, "%s ", portname);
+			    *epos = ssave;
+			}
+			else {
+			    char *dptr = strrchr(portname, '[');
+			    char *cptr = strrchr(portname, ':');
+			    int amax, amin;
+
+			    if (dptr == NULL) {
+				/* portname is a complete bus */
+				if (flags & DO_DELIMITER)
+				    fprintf(outfile, "%s<%d> ", portname, idx);
+				else
+				    fprintf(outfile, "%s[%d] ", portname, idx);
+			    }
+			    else if (cptr != NULL) {
+				int lidx;
+				sscanf(dptr + 1, "%d", &amax);
+				sscanf(cptr + 1, "%d", &amin);
+				if (amax > amin)
+				    lidx =  amin + idx;
+				else
+				    lidx = amax - idx;
+				/* portname is a partial bus */
+				*dptr = '\0';
+				if (flags & DO_DELIMITER)
+				    fprintf(outfile, "%s<%d> ", portname, lidx);
+				else
+				    fprintf(outfile, "%s[%d] ", portname, lidx);
+				*dptr = '[';
+			    }
+			    else {
+				fprintf(outfile, "%s ", portname);
+			    }
+			}
+		    }
+		    else {
+			fprintf(outfile, "%s ", port->net);
+		    }
 		    break;
 		}
 	    }
+
+	    if (is_array) *dptr = dsave;
 	}
 	fprintf(outfile, "%s\n", inst->cellname);
     }
