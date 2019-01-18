@@ -155,11 +155,19 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
     net = (struct netrec *)(p->ptr);
 
     /* Ignore the power and ground nets;  these have already been output */
-    if (p->name[0] == '1' && p->name[1] == '\'') {
-	char c = p->name[2];
-	char b = p->name[3];
-	if (c == 'b' || c == 'h' || c == 'd' || c == 'o')
-	    return NULL;
+    /* This also extends to any net in the form <digit><single quote>	 */
+
+    if (isdigit(p->name[0])) {
+	char c, *dptr;
+
+	dptr = p->name;
+	while (isdigit(*dptr)) dptr++;
+	if (*dptr == '\0') return NULL;
+	else if (*dptr == '\'') {
+	    c = *(dptr + 1);
+	    if (c == 'b' || c == 'h' || c == 'd' || c == 'o')
+		return NULL;
+	}
     }
 
     fprintf(outf, "wire ");

@@ -841,6 +841,21 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
     FILE *outf = (FILE *)cptr;
 
     net = (struct netrec *)(p->ptr);
+
+    /* Ignore any net which is a hardwired 1/0 bit list */
+
+    if (isdigit(p->name[0])) {
+	char c, *dptr;
+
+	dptr = p->name;
+	while (isdigit(*dptr)) dptr++;
+	if (*dptr == '\0') return NULL;
+	else if (*dptr == '\'') {
+	    c = *(dptr + 1);
+	    if (c == 'b' || c == 'h' || c == 'd' || c == 'o')
+		return NULL;
+	}
+    }
     
     fprintf(outf, "wire ");
     if (net->start >= 0 && net->end >= 0) {
