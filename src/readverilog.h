@@ -54,6 +54,7 @@ struct cellrec {
 
     struct portrec *portlist;
     struct instance *instlist;
+    struct instance *lastinst;		/* Track last item in list */
 };
 
 /*------------------------------------------------------*/

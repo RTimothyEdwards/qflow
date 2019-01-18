@@ -808,6 +808,7 @@ struct cellrec *Cell(char *cellname)
     new_cell->name = strdup(cellname);
     new_cell->portlist = NULL;
     new_cell->instlist = NULL;
+    new_cell->lastinst = NULL;
 
     InitializeHashTable(&new_cell->nets, LARGEHASHSIZE);
     InitializeHashTable(&new_cell->propdict, TINYHASHSIZE);
@@ -842,8 +843,13 @@ struct instance *Instance(struct cellrec *cell, char *cellname, int prepend)
 	    cell->instlist = newinst;
 	}
 	else {
+	    instsrch = (cell->lastinst != NULL) ?
+			cell->lastinst : cell->instlist;
+
 	    /* Go to end of the instance list */
-	    for (instsrch = cell->instlist; instsrch->next; instsrch = instsrch->next);
+	    for (; instsrch->next; instsrch = instsrch->next);
+		
+	    cell->lastinst = instsrch;
  	    instsrch->next = newinst;
 	}
     }
