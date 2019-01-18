@@ -1467,8 +1467,10 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 				if (nb->end > wb.end) nb->end = wb.end;
 			    }
 
-			    if (*new_port->net != '{') break;
 			    *nptr = saveptr;
+			    if (*new_port->net != '{')
+				break;
+
 			    ncomp = nptr + 1;
 			    while ((*ncomp != '\0') && (isspace(*ncomp) || 
 					*nptr == ',' || *nptr == '}'))

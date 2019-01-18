@@ -705,14 +705,12 @@ else
 endif
 
 #---------------------------------------------------------------------
-# Remove backslashes, references to "$techmap", and
-# make local input nodes of the form $0node<a:b><c> into the
-# form node<c>_FF_INPUT
+# Remove references to "$techmap", and make local input nodes of the
+# form $0node<a:b><c> into the form node<c>_FF_INPUT
 #---------------------------------------------------------------------
 
 cat ${final_vlog} | sed \
 	-e "$subs0a" -e "$subs0b" -e "$subs1a" -e "$subs1b" \
-	-e 's/\\\([^$]\)/\1/g' \
 	-e 's/$techmap//g' \
 	-e 's/$0\([^ \t<]*\)<[0-9]*:[0-9]*>\([^ \t]*\)/\1\2_FF_INPUT/g' \
 	> ${synthdir}/${modulename}.v
