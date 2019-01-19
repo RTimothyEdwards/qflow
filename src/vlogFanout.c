@@ -379,6 +379,12 @@ void insert_buffers(struct cellrec *topcell)
 			    char *dptr = nodename + slen - 1;
 			    while (dptr >= nodename && *dptr != '[') dptr--;
 			    if (dptr >= nodename) *dptr = '_';
+			    if (dptr > nodename && *(dptr - 1) == ' ') {
+				/* There was a space in front of the vector */
+				/* delimiter, so move everything back one.  */
+				memmove(dptr - 1, dptr, strlen(dptr));
+				spos--;
+			    }
 			    sprintf(spos, "_bF$buf%d", nl->curcount);
 			}
 			else {
@@ -432,6 +438,10 @@ void insert_buffers(struct cellrec *topcell)
 		    char *dptr = nodename + slen - 1;
 		    while (dptr >= nodename && *dptr != '[') dptr--;
 		    if (dptr >= nodename) *dptr = '_';
+		    if (dptr > nodename && *(dptr - 1) == ' ') {
+			memmove(dptr - 1, dptr, strlen(dptr));
+			spos--;
+		    }
 		    sprintf(spos, "_bF$buf%d", i);
 		}
 		else {
@@ -844,6 +854,7 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 
     /* Ignore any net which is a hardwired 1/0 bit list */
 
+    if (p->name[0] == '\'') return NULL;
     if (isdigit(p->name[0])) {
 	char c, *dptr;
 
@@ -1098,7 +1109,8 @@ void write_output(struct cellrec *topcell, FILE *outfptr, int doLoadBalance,
 
 	/* Write each port and net connection */
 	for (port = inst->portlist; port; port = port->next) {
-	    fprintf(outfptr, "    .%s(%s)", port->name, port->net); 
+	    fprintf(outfptr, "    .%s(%s%s)", port->name, port->net,
+			(port->net[0] == '\\') ? " " : ""); 
 	    if (port->next) fprintf(outfptr, ",");
 	    fprintf(outfptr, "\n");
 	}
@@ -1546,13 +1558,15 @@ int main (int argc, char *argv[])
 	net = BusHashLookup(port->name, &topcell->nets);
 	if (net->start > net->end) {
 	    for (i = net->end; i <= net->start; i++) {
-		sprintf(netname, "%s[%d]", port->name, i);
+		sprintf(netname, "%s%s[%d]", port->name,
+				(port->name[0] == '\\') ? " " : "", i);
 		registernode(netname, locdir, NULL, NULL);
 	    }
 	}
 	else if (net->start < net->end) {
 	    for (i = net->start; i <= net->end; i++) {
-		sprintf(netname, "%s[%d]", port->name, i);
+		sprintf(netname, "%s%s[%d]", port->name,
+				(port->name[0] == '\\') ? " " : "", i);
 		registernode(netname, locdir, NULL, NULL);
 	    }
 	}

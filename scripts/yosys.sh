@@ -105,6 +105,19 @@ foreach f (${spicefile})
    set spicepath="${spicepath} $p"
 end
 
+# Add hard macros to spice path
+
+if ( ${?hard_macros} ) then
+   foreach macro_path ( $hard_macros )
+      foreach file ( `ls ${sourcedir}/${macro_path}` )
+         if ( ${file:e} == "sp" || ${file:e} == "spc" || ${file:e} == "spice") then
+            set spicepath="${spicepath} -l ${sourcedir}/${macro_path}/${file}"
+            break
+         endif
+      end
+   end
+endif
+
 # Prepend techdir to leffile unless leffile begins with "/"
 set lefpath=""
 foreach f (${leffile})

@@ -1427,8 +1427,8 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 				if (strcmp(nexttok, ")")) {
 				    char *expnet;
 				    expnet = (char *)malloc(strlen(new_port->net)
-						+ strlen(nexttok) + 2);
-				    sprintf(expnet, "%s[%s", new_port->net, nexttok);
+						+ strlen(nexttok) + 3);
+				    sprintf(expnet, "%s [%s", new_port->net, nexttok);
 				    free(new_port->net);
 				    new_port->net = expnet;
 				}

@@ -2355,6 +2355,7 @@ class QflowManager(ttk.Frame):
             seenpwr = False
             for line in varlines:
                 linesub = line
+                # self.print("Line in: " + linesub, file=sys.stdin)
                 is_comment = commentrex.match(line)
                 if densrex.match(line):
                     if do_density:
@@ -2489,6 +2490,7 @@ class QflowManager(ttk.Frame):
                         linesub = '# set display_tool = '
 
                 newlines.append(linesub)
+                # self.print("Line out: " + linesub, file=sys.stdout)
 
         with open(pvars, 'w') as ofile:
             for line in newlines:

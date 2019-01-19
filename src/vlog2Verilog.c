@@ -157,6 +157,7 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
     /* Ignore the power and ground nets;  these have already been output */
     /* This also extends to any net in the form <digit><single quote>	 */
 
+    if (p->name[0] == '\'') return NULL;
     if (isdigit(p->name[0])) {
 	char c, *dptr;
 
@@ -539,7 +540,8 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		free(port->net);
 		port->net = expand;
 	    }
-	    fprintf(outfptr, "    .%s(%s)", port->name, port->net);
+	    fprintf(outfptr, "    .%s(%s%s)", port->name, port->net,
+			(port->net[0] == '\\') ? " " : "");
 	    if (port->next) fprintf(outfptr, ",");
 	    fprintf(outfptr, "\n");
 	}
