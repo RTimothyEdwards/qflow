@@ -1711,7 +1711,9 @@ class QflowManager(ttk.Frame):
                     cmatch = cmdrex.match(line)
                     if cmatch:
                         command = cmatch.group(1)
-                        if 'synthesize.sh' in command:
+                        # NOTE:  Need to modify if another synthesis tool is used;
+                        # there needs to be a more general method here. . .
+                        if 'yosys.sh' in command:
                             module = cmatch.group(3)
                             self.module.set(module)
                             self.project = module
@@ -3804,7 +3806,8 @@ class QflowManager(ttk.Frame):
                     self.print('No technology setup file found.')
                     return False
         else:
-            if not os.path.isdir(pdkdir):
+            realpdkdir = os.path.realpath(pdkdir)
+            if not os.path.isdir(realpdkdir):
                 self.print('Error:  No tech directory ' + pdkdir + ' found.', file=sys.stderr)
                 return False
             else:

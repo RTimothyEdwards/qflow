@@ -141,7 +141,24 @@ char *strdtok(char *pstring, char *delim1, char *delim2)
     /* as for "delim2" above.  If not, then set "lastdelim" to a null byte and  */
     /* return the token.                                                        */
 
-    for (s = stoken; *s; s++) {
+    s = stoken;
+
+    /* Special verilog rule:  If a name begins with '\', then all characters	*/
+    /* are a valid part of the name until a space character is reached.	  The	*/
+    /* space character becomes part of the verilog name.  The remainder of the	*/
+    /* name is parsed according to the rules of "delim2".			*/
+
+    if (*s == '\\') {
+	while (*s != '\0') {
+	    if (*s == ' ') {
+		s++;
+		break;
+	    }
+	    s++;
+	}
+    }
+
+    for (; *s; s++) {
 	twofer = TRUE;
 	for (s2 = delim2; s2 && *s2; s2++) {
 	    if (*s2 == 'X') {
@@ -479,8 +496,13 @@ void *BusHashLookup(char *s, struct hashtable *table)
 {
     void *rval;
     char *dptr = NULL;
+    char *sptr = s;
 
-    if ((dptr = strrchr(s, '[')) != NULL) *dptr = '\0';
+    if (*sptr == '\\') {
+	sptr = strchr(s, ' ');
+	if (sptr == NULL) sptr = s;
+    }
+    if ((dptr = strchr(sptr, '[')) != NULL) *dptr = '\0';
 
     rval = HashLookup(s, table);
     if (dptr) *dptr = '[';
@@ -497,8 +519,13 @@ struct hashlist *BusHashPtrInstall(char *name, void *ptr,
 {
     struct hashlist *rval;
     char *dptr = NULL;
+    char *sptr = name;
 
-    if ((dptr = strrchr(name, '[')) != NULL) *dptr = '\0';
+    if (*sptr == '\\') {
+	sptr = strchr(name, ' ');
+	if (sptr == NULL) sptr = name;
+    }
+    if ((dptr = strchr(sptr, '[')) != NULL) *dptr = '\0';
 
     rval = HashPtrInstall(name, ptr, table);
     if (dptr) *dptr = '[';
@@ -657,7 +684,7 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 
 int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
 {
-    char *colonptr, *brackstart, *brackend;
+    char *colonptr, *brackstart, *brackend, *sstr;
     int result, start, end;
 
     if (wb == NULL) return 0;
@@ -665,16 +692,22 @@ int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
         wb->start = -1;
         wb->end = -1;
     }
-    brackstart = strchr(astr, '[');
+    sstr = astr;
+
+    // Skip to the end of verilog names bounded by '\' and ' '
+    if (*sstr == '\\')
+	while (*sstr && *sstr != ' ') sstr++;
+
+    brackstart = strchr(sstr, '[');
     if (brackstart != NULL) {
-	brackend = strchr(astr, ']');
+	brackend = strchr(sstr, ']');
 	if (brackend == NULL) {
 	    fprintf(stdout, "Badly formed array notation \"%s\" (line %d)\n", astr,
 			linenum);
 	    return 1;
 	}
 	*brackend = '\0';
-	colonptr = strchr(astr, ':');
+	colonptr = strchr(sstr, ':');
 	if (colonptr) *colonptr = '\0';
 	result = sscanf(brackstart + 1, "%d", &start);
 	if (colonptr) *colonptr = ':';
@@ -1451,11 +1484,21 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			if (*ncomp == '{') ncomp++;
 			while (isspace(*ncomp)) ncomp++;
 			while (*ncomp != '\0') {
+			    int is_esc = FALSE;
 			    char saveptr;
+
+			    /* NOTE:  This follows same rules in strdtok() */
 			    nptr = ncomp;
-			    while (*nptr != ',' && *nptr != '}' && *nptr != '\0' &&
-					!isspace(*nptr))
+			    if (*nptr == '\\') is_esc = TRUE;
+			    while (*nptr != ',' && *nptr != '}' && *nptr != '\0') {
+				if (*nptr == ' ') {
+				    if (is_esc == TRUE)
+					is_esc = FALSE;
+				    else
+					break;
+				}
 				nptr++;
+			    }
 			    saveptr = *nptr;
 			    *nptr = '\0';
 
@@ -1478,8 +1521,10 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 				break;
 
 			    ncomp = nptr + 1;
-			    while ((*ncomp != '\0') && (isspace(*ncomp) || 
-					*nptr == ',' || *nptr == '}'))
+			    /* Skip over any whitespace at the end of a name */
+			    while ((*ncomp != '\0') && (*ncomp == ' '))
+				ncomp++;
+			    while ((*ncomp != '\0') && (*nptr == ',' || *nptr == '}'))
 				ncomp++;
 			}
 		    }

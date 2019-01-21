@@ -364,7 +364,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    /* Go to the end and count bits backwards.	*/
 			    /* until reaching the idx'th position.	*/
 
-			    while (*portname != '}') portname++;
+			    while (*portname != '}' && *portname != '\0') portname++;
 			    for (k = 0; k < idx; k++) {
 				epos = portname;
 				portname--;

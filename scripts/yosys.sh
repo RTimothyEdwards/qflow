@@ -120,6 +120,7 @@ endif
 
 # Prepend techdir to leffile unless leffile begins with "/"
 set lefpath=""
+set postproclefpath=""
 foreach f (${leffile})
    set abspath=`echo ${f} | cut -c1`
    if ( "${abspath}" == "/" ) then
@@ -128,6 +129,7 @@ foreach f (${leffile})
       set p=${techdir}/${leffile}
    endif
    set lefpath="${lefpath} $p"
+   set postproclefpath="${postproclefpath} -l $p"
 end
 
 # Determine version of yosys
@@ -663,72 +665,17 @@ if (! $?postproc_options) then
 else
    if ( $postproc_options == "-anchors" ) then
       if ( $?antennacell ) then
-          echo "Running getantennacell to determine cell to use for anchoring." |& tee -a ${synthlog}
-          echo "getantennacell.tcl $modulename ${lefpath} $antennacell" |& tee -a ${synthlog}
-          set anchorinfo=`${scriptdir}/getantennacell.tcl $modulename ${lefpath} $antennacell  | grep antenna= | cut -d= -f2`
-          set postproc_options = "-anchor=$anchorinfo"
+          set postproc_options = "-a $antennacell"
       else
           echo "Antenna anchoring requested but no antenna cell defined in tech."
           set postproc_options = ""
       endif
    endif
 endif
-
-#----------------------------------------------------------------------
-# Add buffers in front of all outputs (for yosys versions before 0.2.0)
-#----------------------------------------------------------------------
-
-if ( ${major} == 0 && ${minor} < 2 ) then
-   if ($?nobuffers) then
-      set final_vlog = "${modulename}_mapped.v"
-   else
-      echo "Adding output buffers"
-      ${scriptdir}/ybuffer.tcl ${modulename}_mapped_tmp.v \
-		${modulename}_mapped_buf.v ${techdir}/${techname}.sh
-      set final_vlog = "${modulename}_mapped_buf.v"
-   endif
-else
-   # Buffers already handled within yosys
-   set final_vlog = "${modulename}_mapped.v"
-endif
-
-#---------------------------------------------------------------------
-# The following definitions will replace "LOGIC0" and "LOGIC1"
-# with buffers from gnd and vdd, respectively.  This takes care
-# of technologies where tie-low and tie-high cells are not
-# defined.
-#---------------------------------------------------------------------
-
-echo "Cleaning up verilog file syntax" |& tee -a ${synthlog}
-
-if ( "$tielo" == "") then
-   set subs0a="/LOGIC0/s/O=/${bufpin_in}=gnd ${bufpin_out}=/"
-   set subs0b="/LOGIC0/s/LOGIC0/${bufcell}/"
-else
-   set subs0a=""
-   set subs0b=""
-endif
-
-if ( "$tiehi" == "") then
-   set subs1a="/LOGIC1/s/O=/${bufpin_in}=vdd ${bufpin_out}=/"
-   set subs1b="/LOGIC1/s/LOGIC1/${bufcell}/"
-else
-   set subs1a=""
-   set subs1b=""
-endif
-
-#---------------------------------------------------------------------
-# Remove references to "$techmap", and make local input nodes of the
-# form $0node<a:b><c> into the form node<c>_FF_INPUT
-#---------------------------------------------------------------------
-
-cat ${final_vlog} | sed \
-	-e "$subs0a" -e "$subs0b" -e "$subs1a" -e "$subs1b" \
-	-e 's/$techmap//g' \
-	-e 's/$0\([^ \t<]*\)<[0-9]*:[0-9]*>\([^ \t]*\)/\1\2_FF_INPUT/g' \
-	> ${synthdir}/${modulename}.v
+set postproc_options="${postproclefpath} ${postproc_options}"
 
 # Switch to synthdir for processing of the RTL verilog netlist
+cp ${modulename}_mapped.v ${synthdir}/${modulename}.v
 cd ${synthdir}
 
 #---------------------------------------------------------------------
@@ -812,13 +759,13 @@ else
       endif
 
       echo "Running vlogFanout" |& tee -a ${synthlog}
-      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} tmp.v ${modulename}.v" |& tee -a ${synthlog}
+      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} tmp.v ${modulename}_sized.v" |& tee -a ${synthlog}
       echo "" >> ${synthlog}
 
       mv ${modulename}.v tmp.v
       ${bindir}/vlogFanout ${fanout_options} \
 		-I ${modulename}_nofanout ${libertyoption} ${sepoption} \
-		${bufoption} tmp.v ${modulename}.v |& tee -a ${synthlog}
+		${bufoption} tmp.v ${modulename}_sized.v |& tee -a ${synthlog}
 
       set errcond = ${status}
       if ( ${errcond} != 0 ) then
@@ -832,6 +779,14 @@ else
       echo "vlogFanout not run:  No cell size optimization." |& tee -a ${synthlog}
    endif
 endif
+
+echo "Running vlog2Verilog for antenna cell mapping." |& tee -a ${synthlog}
+echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options}" \
+	 |& tee -a ${synthlog}
+echo "   -o ${modulename}.v ${modulename}_sized.v" |& tee -a ${synthlog}
+
+${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options} \
+	-o ${modulename}.v ${modulename}_sized.v >>& ${synthlog}
 
 #---------------------------------------------------------------------
 # Spot check:  Did vlogFanout produce an error?

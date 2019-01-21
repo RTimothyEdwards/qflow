@@ -90,6 +90,7 @@ cd ${synthdir}
 rm -f ${origname}_bak.v
 rm -f ${origname}_tmp.v
 rm -f ${rootname}_orig.v
+rm -f ${rootname}_sized.v
 rm -f ${rootname}_anno.v
 rm -f ${rootname}.anno.v
 rm -f ${rootname}_nofanout

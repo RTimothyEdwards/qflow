@@ -27,6 +27,7 @@ void cleanup_string(char *);
 
 char *VddNet = NULL;
 char *GndNet = NULL;
+char *AntennaCell = NULL;
 
 struct hashtable Lefhash;
 
@@ -36,6 +37,7 @@ struct hashtable Lefhash;
 #define	MAINTAIN_CASE	(unsigned char)0x02
 #define	BIT_BLAST	(unsigned char)0x04
 #define	NONAME_POWER	(unsigned char)0x08
+#define ADD_ANTENNA	(unsigned char)0x10
 
 /*--------------------------------------------------------------*/
 
@@ -55,7 +57,7 @@ int main (int argc, char *argv[])
 
     InitializeHashTable(&Lefhash, SMALLHASHSIZE);
 
-    while ((i = getopt(argc, argv, "pbchnHv:g:l:o:")) != EOF) {
+    while ((i = getopt(argc, argv, "pbchnHv:g:l:o:a:")) != EOF) {
 	switch( i ) {
 	    case 'p':
 		Flags &= ~IMPLICIT_POWER;
@@ -65,6 +67,11 @@ int main (int argc, char *argv[])
 		break;
 	    case 'c':
 		Flags |= MAINTAIN_CASE;
+		break;
+	    case 'a':
+		Flags |= ADD_ANTENNA;
+		if (AntennaCell != NULL) free(AntennaCell);
+		AntennaCell = strdup(optarg);
 		break;
 	    case 'n':
 		Flags |= NONAME_POWER;
@@ -180,21 +187,44 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 }
 
 /*----------------------------------------------------------------------*/
-/* Convert an integer into a binary string.  The target string 		*/
+/* Convert a verilog number into a binary string.  The target string 	*/
 /* "bitstring" is assumed to be at least (bits + 1) bytes in length.	*/
+/* "c" is a conversion type ('h', 'o', or 'd').				*/
 /*----------------------------------------------------------------------*/
 
-char *int2binary(int dval, int bits)
+char *num2binary(char *uval, int bits, char c)
 {
-    int first;
+    int first, dval, hexc;
     char *bitstring = (char *)malloc(1 + bits);
-    char *hptr, *bptr;
-    char *hstring = (char *)malloc(2 + (bits >> 2));
+    char *hptr, *bptr, *hstring, *nval;
     char binhex[5];
 
     first = bits % 4;
+    hexc = ((first == 0) ? 0 : 1) + bits >> 2;	/* Number of hex characters */
+    hstring = (char *)malloc(1 + hexc);
 
-    sprintf(hstring, "%x", dval);
+    if (c == 'd') {
+	sscanf(uval, "%d", &dval);
+    }
+    else {
+	nval = strdup(uval);
+	for (bptr = nval; *bptr != '\0'; bptr++) {
+	    /* Catch 'x', 'X', etc., and convert to zero */
+	    if (isalpha(*bptr)) *bptr = '0';
+	}
+	if (c == 'b') {
+	    return(nval);
+	}
+	else if (c == 'h') {
+	    sscanf(nval, "%h", &dval);
+	}
+	else {
+	    sscanf(nval, "%o", &dval);
+	}
+	free(nval);
+    }
+    sprintf(hstring, "%0*x", hexc, dval);
+    
     hptr = hstring;
     bptr = bitstring;
     while (*hptr != '\0') {
@@ -440,32 +470,33 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		    saveptr = *nptr;
 		    *nptr = '\0';
 
-		    if (isdigit(*sptr)) {
-			int bval;
+		    if (isdigit(*sptr) || (*sptr == '\'')) {
 			char *bptr = sptr;
-			sscanf(bptr, "%d", &brepeat);
+			if (sscanf(bptr, "%d", &brepeat) == 0) brepeat = -1;
 			while (isdigit(*bptr)) bptr++;
 
 			/* Is digit followed by "'" (fixed values 1 or 0)? */
 			if (*bptr == '\'') {
 			    char *bitstring;
 			    bptr++;
+
 			    switch(*bptr) {
 				case 'd':
-				    sscanf(bptr + 1, "%d", &bval);
-				    bitstring = int2binary(bval, brepeat);
-				    break;
 				case 'h':
-				    sscanf(bptr + 1, "%h", &bval);
-				    bitstring = int2binary(bval, brepeat);
-				    break;
 				case 'o':
-				    sscanf(bptr + 1, "%o", &bval);
-				    bitstring = int2binary(bval, brepeat);
+				    bitstring = num2binary(bptr + 1, brepeat, *bptr);
 				    break;
 				default:
 				    bitstring = strdup(bptr + 1);
 				    break;
+			    }
+
+			    if (brepeat < 0) brepeat = strlen(bitstring);
+
+			    if ((brepeat > 1) && (is_array == FALSE)) {
+				is_array = TRUE;
+				expand = (char *)realloc(expand, strlen(expand) + 2);
+				strcat(expand, "{");
 			    }
 
 			    bptr = bitstring;
@@ -540,12 +571,76 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		free(port->net);
 		port->net = expand;
 	    }
-	    fprintf(outfptr, "    .%s(%s%s)", port->name, port->net,
-			(port->net[0] == '\\') ? " " : "");
+	    fprintf(outfptr, "    .%s(%s)", port->name, port->net);
 	    if (port->next) fprintf(outfptr, ",");
 	    fprintf(outfptr, "\n");
 	}
 	fprintf(outfptr, ");\n\n");
+    }
+
+    if (Flags & ADD_ANTENNA) {
+	char *antennapin = NULL;
+	GATE gate, acell;
+	double asize;
+
+	/* Find the cell name that matches the antenna cell	*/
+	/* Can't use the hash table here because name may be a	*/
+ 	/* prefix.  If more than one cell matches by prefix,	*/
+	/* then use the cell with the smallest area.		*/
+
+	for (gate = GateInfo; gate; gate = gate->next) {
+	    if (!strncmp(gate->gatename, AntennaCell, strlen(AntennaCell))) {
+		if (!strcmp(gate->gatename, AntennaCell)) {
+		    acell = gate;
+		    break;
+		}
+		else if (acell == NULL) {
+		    acell = gate;
+		}
+		else {
+		    if (gate->width < acell->width) {
+			acell = gate;
+		    }
+		}
+	    }
+	}
+
+	if (acell) {
+	    int i;
+	    /* Find the node that isn't a power pin */
+	    for (i = 0; i < acell->nodes; i++) {
+		if (acell->use[i] != PORT_USE_POWER &&
+			acell->use[i] != PORT_USE_GROUND) {
+		    antennapin = acell->node[i];
+		    break;
+		}
+	    }
+	}
+
+	if (antennapin) {
+	    int antcnt = 0;
+
+	    /* Add antenna cells to all module inputs */
+
+	    for (port = topcell->portlist; port; port = port->next) {
+		if (port->name == NULL) continue;
+		switch(port->direction) {
+		    case PORT_INPUT:
+			fprintf(outfptr, "%s antenna_%d ", acell->gatename, antcnt);
+
+			net = HashLookup(port->name, &topcell->nets);
+			if (net && net->start >= 0 && net->end >= 0) {
+			    fprintf(outfptr, "[%d:%d] ", net->start, net->end);
+			}
+
+			fprintf(outfptr, "(\n");
+			fprintf(outfptr, "   .%s(%s)\n",  antennapin, port->name);
+			fprintf(outfptr, ");\n\n");
+			antcnt++;
+			break;
+		}
+	    }
+	}
     }
 
     /* End the module */
@@ -582,6 +677,7 @@ void helpmessage(FILE *outf)
     fprintf(outf, "  -b         Remove vectors (bit-blasted)\n");
     fprintf(outf, "  -c         Case-insensitive output (SPICE compatible) \n");
     fprintf(outf, "  -n         Convert power nets to binary 1 and 0\n");
+    fprintf(outf, "  -a	<name>	Add antenna cells to module input pins.\n");
     fprintf(outf, "  -l <path>  Read LEF file from <path>\n");
     fprintf(outf, "  -v <name>  Use <name> for power net (default \"Vdd\")\n");
     fprintf(outf, "  -g <name>  Use <name> for ground net (default \"Gnd\")\n");

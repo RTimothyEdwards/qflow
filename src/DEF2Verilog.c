@@ -14,6 +14,10 @@
 //
 // This program is written in ISO C99.
 //----------------------------------------------------------------
+// Update 1/21/2019:  Note that the DEF format does not preserve
+// verilog backslash escape names, so ensure that backslash names
+// include a space at the end of the name.
+//----------------------------------------------------------------
 
 #include <stdio.h>
 #include <string.h>
@@ -164,6 +168,12 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
     }
     fprintf(outf, "%s", p->name);
 
+    // Ensure backslash escaped names end in a space character per
+    // verilog syntax.
+    if (*(p->name) == '\\')
+	if (*(p->name + strlen(p->name) - 1) != ' ')
+	    fprintf(outf, " ");
+
     /* NOTE:  The output format is fixed with power and ground		*/
     /* specified as wires and set to binary values.  May want		*/
     /* additional command line options for various forms;  otherwise,	*/
@@ -219,7 +229,15 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
 	/* options for handling power and ground in various ways.	*/
 
 	if (node) {
-	    fprintf(outf, "    .%s(%s)", gate->node[i], node->netname);
+	    fprintf(outf, "    .%s(%s", gate->node[i], node->netname);
+
+	    // Ensure backslash escaped names end in a space character per
+	    // verilog syntax.
+	    if (*(node->netname) == '\\')
+		if (*(node->netname + strlen(node->netname) - 1) != ' ')
+		    fprintf(outf, " ");
+
+	    fprintf(outf, ")");
 	    if (i < gate->nodes - 1) fprintf(outf, ",");
 	    fprintf(outf, "\n");
 	}

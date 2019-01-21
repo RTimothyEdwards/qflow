@@ -745,7 +745,7 @@ struct Nodelist *registernode(char *nodename, int type, struct Gatelist *gl,
 	nl->type = type;
 	nl->outputgate = NULL;
 
-	if ((dptr = strchr(nodename, '[')) != NULL) {
+	if ((dptr = strrchr(nodename, '[')) != NULL) {
 	    struct Bus *newbus = (struct Bus *)malloc(sizeof(struct Bus));
 	    int idx;
 	    *dptr = '\0';
@@ -756,7 +756,7 @@ struct Nodelist *registernode(char *nodename, int type, struct Gatelist *gl,
 	}
     }
     else {
-	if ((dptr = strchr(nodename, '[')) != NULL) {
+	if ((dptr = strrchr(nodename, '[')) != NULL) {
 	    struct Bus *newbus;
 	    int idx;
 	    *dptr = '\0';
@@ -986,7 +986,7 @@ void resize_gates(struct cellrec *topcell, int doLoadBalance, int doFanout)
 		s = strstr(port->name, nl->nodename);	// get output node
 		s = strtok(s, " \\\t");		// strip it clean
 		if (*s == '[') {
-		    char *p = strchr(s, ']');
+		    char *p = strrchr(s, ']');
 		    if (p != NULL)
 			strcpy(p, "_bF$buf]\";\n");            // rename it
 		    else
@@ -1109,8 +1109,7 @@ void write_output(struct cellrec *topcell, FILE *outfptr, int doLoadBalance,
 
 	/* Write each port and net connection */
 	for (port = inst->portlist; port; port = port->next) {
-	    fprintf(outfptr, "    .%s(%s%s)", port->name, port->net,
-			(port->net[0] == '\\') ? " " : ""); 
+	    fprintf(outfptr, "    .%s(%s)", port->name, port->net);
 	    if (port->next) fprintf(outfptr, ",");
 	    fprintf(outfptr, "\n");
 	}
@@ -1558,15 +1557,13 @@ int main (int argc, char *argv[])
 	net = BusHashLookup(port->name, &topcell->nets);
 	if (net->start > net->end) {
 	    for (i = net->end; i <= net->start; i++) {
-		sprintf(netname, "%s%s[%d]", port->name,
-				(port->name[0] == '\\') ? " " : "", i);
+		sprintf(netname, "%s[%d]", port->name, i);
 		registernode(netname, locdir, NULL, NULL);
 	    }
 	}
 	else if (net->start < net->end) {
 	    for (i = net->start; i <= net->end; i++) {
-		sprintf(netname, "%s%s[%d]", port->name,
-				(port->name[0] == '\\') ? " " : "", i);
+		sprintf(netname, "%s[%d]", port->name, i);
 		registernode(netname, locdir, NULL, NULL);
 	    }
 	}
