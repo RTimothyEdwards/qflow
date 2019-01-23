@@ -17,6 +17,7 @@
  *
  * Routed nets have their routes dropped into track obstructions, and the
  * nets are ignored.
+ *
  */
 
 #include <stdio.h>

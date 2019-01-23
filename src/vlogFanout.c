@@ -371,8 +371,12 @@ void insert_buffers(struct cellrec *topcell)
 		    nltest = nl;
 		    sprintf(nodename, "%s", nl->nodename);
 		    while (1) {
+			int is_escaped;
+
 	 		slen = strlen(nodename);
 			spos = nodename + slen - 1;
+			is_escaped = (*nodename == '\\') ? TRUE : FALSE;
+			if ((is_escaped == TRUE) && (*spos == ' ')) spos--;
 			if (*spos == ']') {
 			    /* Avoid downstream problems:		*/
 			    /* recast "[X]_bF$bufN" as _X_bF$bufN"	*/
@@ -384,13 +388,14 @@ void insert_buffers(struct cellrec *topcell)
 				/* delimiter, so move everything back one.  */
 				memmove(dptr - 1, dptr, strlen(dptr));
 				spos--;
+				is_escaped = TRUE;
 			    }
-			    sprintf(spos, "_bF$buf%d", nl->curcount);
 			}
 			else {
 			    spos++;
-			    sprintf(spos, "_bF$buf%d", nl->curcount);
 			}
+			sprintf(spos, "_bF$buf%d%s", nl->curcount,
+				((is_escaped == TRUE) ? " " : ""));
 
 			/* For buffer trees of depth > 1, there will be	 */
 			/* an existing node name wih the _bufN extension */
@@ -402,7 +407,11 @@ void insert_buffers(struct cellrec *topcell)
 			nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
 			if (nltest == NULL) break;
 			if (nltest->outputgate == NULL) break;
-			sprintf(nodename, "%s_hier%d", nl->nodename, hier);
+			if (is_escaped) {
+			    sprintf(nodename + strlen(nodename) - 2, "_hier%d ", hier);
+			}
+			else
+			    sprintf(nodename, "%s_hier%d", nl->nodename, hier);
 			hier++;
 		    }
 
@@ -430,8 +439,12 @@ void insert_buffers(struct cellrec *topcell)
 	    nltest = nl;
 	    sprintf(nodename, "%s", nl->nodename);
 	    while (1) {
+		int is_escaped;
+
 		slen = strlen(nodename);
 		spos = nodename + slen - 1;
+		is_escaped = (*nodename == '\\') ? TRUE : FALSE;
+		if ((is_escaped == TRUE) && (*spos == ' ')) spos--;
 		if (*spos == ']') {
 		    /* Avoid downstream problems:		*/
 		    /* recast "[X]_bF$bufN" as _X_bF$bufN"	*/
@@ -442,12 +455,12 @@ void insert_buffers(struct cellrec *topcell)
 			memmove(dptr - 1, dptr, strlen(dptr));
 			spos--;
 		    }
-		    sprintf(spos, "_bF$buf%d", i);
 		}
 		else {
 		    spos++;
-		    sprintf(spos, "_bF$buf%d", i);
 		}
+		sprintf(spos, "_bF$buf%d%s", i,
+			((is_escaped == TRUE) ? " " : ""));
 
 		/* For buffer trees of depth > 1, there will be  */
 		/* an existing node name wih the _bufN extension */
@@ -459,7 +472,11 @@ void insert_buffers(struct cellrec *topcell)
 		nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
 		if (nltest == NULL) break;
 		if (nltest->outputgate == NULL) break;
-		sprintf(nodename, "%s_hier%d", nl->nodename, hier);
+		if (is_escaped) {
+		    sprintf(nodename + strlen(nodename) - 2, "_hier%d ", hier);
+		}
+		else
+		    sprintf(nodename, "%s_hier%d", nl->nodename, hier);
 		hier++;
 	    }
 

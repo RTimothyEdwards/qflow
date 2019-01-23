@@ -30,6 +30,7 @@
 
 GATE   GateInfo = NULL;		// standard cell macro information
 u_char Verbose = 0;
+char   delimiter;		// opening bus delimiter;
 
 /*----------------------------------------------------------------------*/
 
@@ -1754,11 +1755,13 @@ LefReadPort(lefMacro, f, pinName, pinNum, pinDir, pinUse, pinArea, oscale)
     float oscale;
 {
     DSEG rectList, rlist;
+    BUS bus;
 
     rectList = LefReadGeometry(lefMacro, f, oscale);
 
     if (pinNum >= 0) {
-        int nodealloc, orignodes;
+        int nodealloc, orignodes, ival;
+	char *aptr;
 
 	if (lefMacro->nodes <= pinNum) {
             orignodes = lefMacro->nodes;
@@ -1789,8 +1792,34 @@ LefReadPort(lefMacro, f, pinName, pinNum, pinDir, pinUse, pinArea, oscale)
 	lefMacro->area[pinNum] = pinArea;
 	lefMacro->use[pinNum] = (u_char)pinUse;
 	lefMacro->netnum[pinNum] = -1;
-        if (pinName != NULL)
+        if (pinName != NULL) {
             lefMacro->node[pinNum] = strdup(pinName);
+
+	    /* Check for bus delimiters */
+	    aptr = strrchr(pinName, delimiter);
+	    if (aptr != NULL) {
+		if (sscanf(aptr + 1, "%d", &ival) == 1) {
+		     *aptr = '\0';
+
+		     /* Add to bus list if needed, or adjust bounds */
+		     for (bus = lefMacro->bus; bus; bus = bus->next) {
+			 if (!strcmp(pinName, bus->busname)) {
+			     if (ival > bus->high) bus->high = ival;
+			     if (ival < bus->low) bus->low = ival;
+			     break;
+			 }
+		     }
+		     if (bus == NULL) {
+			bus = (BUS)malloc(sizeof(struct bus_));
+			bus->busname = strdup(pinName);
+			bus->high = bus->low = ival;
+			bus->next = lefMacro->bus;
+			lefMacro->bus = bus;
+		     }
+		     *aptr = '[';
+		}
+	    }
+	}
         else
 	    lefMacro->node[pinNum] = NULL;
     }
@@ -2113,6 +2142,7 @@ LefReadMacro(f, mname, oscale)
     lefMacro->noderec[0] = NULL;
     lefMacro->area[0] = 0.0;
     lefMacro->node[0] = NULL;
+    lefMacro->bus = NULL;
     lefMacro->netnum[0] = -1;
     GateInfo = lefMacro;
 
@@ -3029,11 +3059,15 @@ LefRead(inName)
 	switch (keyword)
 	{
 	    case LEF_VERSION:
-	    case LEF_BUSBITCHARS:
 	    case LEF_DIVIDERCHAR:
 	    case LEF_CLEARANCEMEASURE:
 	    case LEF_USEMINSPACING:
 	    case LEF_NAMESCASESENSITIVE:
+		LefEndStatement(f);
+		break;
+	    case LEF_BUSBITCHARS:
+		token = LefNextToken(f, TRUE);
+		delimiter = (*token == '\"') ? *(token + 1) : *token;
 		LefEndStatement(f);
 		break;
 	    case LEF_MANUFACTURINGGRID:

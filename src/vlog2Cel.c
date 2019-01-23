@@ -203,6 +203,19 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 	for (port = inst->portlist; port; port = port->next) {
 	    int is_array = FALSE;
 
+	    /* Verilog backslash-escaped names have spaces that	*/
+	    /* break pretty much every other format, so replace	*/
+	    /* the space with the (much more sensible) second	*/
+	    /* backslash.  This can be detected and changed	*/
+	    /* back by programs converting the syntax back into	*/
+	    /* verilog.						*/
+
+	    if (*port->net == '\\') {
+		char *sptr;
+		sptr = strchr(port->net, ' ');
+		if (sptr != NULL) *sptr = '\\';
+	    }
+
 	    /* Find the port name in the gate pin list */
 	    for (j = 0; j < gateginfo->nodes; j++) {
 		if (!strcmp(port->name, gateginfo->node[j])) break;

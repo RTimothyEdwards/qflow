@@ -117,7 +117,7 @@ struct nlist *hash_nets(struct hashlist *p, void *cptr)
 {
     struct hashtable *NetHash = (struct hashtable *)cptr;
     NET net;
-    char *dptr;
+    char *dptr, *sptr, *bptr;
     struct busData *bdata;
     int aidx;
 
@@ -131,6 +131,18 @@ struct nlist *hash_nets(struct hashlist *p, void *cptr)
 	sscanf(dptr + 1, "%d", &aidx);
     }
     else aidx = -1;
+
+    /* Check for backslash-escape names modified by other tools */
+    /* (e.g., vlog2Cel) which replace the trailing space with a	*/
+    /* backslash, making the name verilog-incompatible.		*/
+
+    if (*net->netname == '\\') {
+	sptr = strchr(net->netname, ' ');
+	if (sptr == NULL) {
+	    bptr = strrchr(net->netname + 1, '\\');
+	    if (bptr != NULL) *bptr = ' ';
+	}
+    }
 
     /* Check if record already exists */
     bdata = HashLookup(net->netname, NetHash);  
@@ -204,6 +216,7 @@ struct nlist *output_props(struct hashlist *p, void *cptr)
 
 /*----------------------------------------------------------------------*/
 /* Recursion callback function for each item in InstanceTable		*/
+/* Output all module instances.						*/
 /*----------------------------------------------------------------------*/
 
 struct nlist *output_instances(struct hashlist *p, void *cptr)
@@ -211,7 +224,9 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
     GATE gate = (GATE)(p->ptr);
     FILE *outf = (FILE *)cptr;
     NODE node;
-    int i;
+    BUS bus;
+    int i, j, lastidx, nbus;
+    char ***net_array = NULL;
 
     /* Ignore pins which are recorded as gates */
     if (gate->gatetype == PinMacro) return NULL;
@@ -219,30 +234,119 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
     fprintf(outf, "%s ", gate->gatetype->gatename);
     fprintf(outf, "%s (\n", gate->gatename);
 
+    /* In case power/ground pins are at the end of the list, find the	*/
+    /* index of the last valid output line.				*/
+
+    for (lastidx = gate->nodes - 1; lastidx >= 0; lastidx--) {
+	node = gate->noderec[lastidx];
+	if (node) break;
+    }
+
+    /* If the gate defines pin buses, then prepare a set of arrays for	*/
+    /* each bus and its connections.					*/
+    if (gate->gatetype->bus != NULL) {
+	for (bus = gate->gatetype->bus, nbus = 0; bus; bus = bus->next) nbus++;
+	net_array = (char ***)malloc(nbus * sizeof(char **));
+	for (bus = gate->gatetype->bus, i = 0; bus; bus = bus->next, i++) {
+	    net_array[i] = (char **)calloc((bus->high - bus->low + 1), sizeof(char *));
+	}
+    }
+
     /* Write each port and net connection */
-    for (i = 0; i < gate->nodes; i++) {
+    for (i = 0; i <= lastidx; i++) {
 	node = gate->noderec[i];
 
 	/* node may be NULL if power or ground.  Currently not handling */
 	/* this in expectation that the output is standard functional	*/
 	/* verilog without power and ground.  Should have runtime	*/
 	/* options for handling power and ground in various ways.	*/
+	/*								*/
+	/* node may also be NULL if not connected, in which case it is	*/
+	/* optional to output it in verilog.				*/
 
 	if (node) {
-	    fprintf(outf, "    .%s(%s", gate->node[i], node->netname);
+	    char *sptr, *eptr;
+	    int k;
 
-	    // Ensure backslash escaped names end in a space character per
-	    // verilog syntax.
-	    if (*(node->netname) == '\\')
-		if (*(node->netname + strlen(node->netname) - 1) != ' ')
-		    fprintf(outf, " ");
+	    /* If the gate defines pin buses, then ignore individual	*/
+	    /* pins and print out a single bus instead.			*/
+	    if (gate->gatetype->bus != NULL) {
+		if ((sptr = strchr(gate->node[i], '[')) != NULL) {
+		    if (sscanf(sptr + 1, "%d", &k) == 1) {
+			*sptr = '\0';
+			for (bus = gate->gatetype->bus, j = 0; bus;
+					bus = bus->next, j++) {
+			    if (!strcmp(bus->busname, gate->node[i])) {
+				net_array[j][k] = strdup(node->netname);
+				break;
+			    }
+			}
+			*sptr = '[';
+			if (bus != NULL) continue;
+		    }
+		}
+	    }
 
-	    fprintf(outf, ")");
-	    if (i < gate->nodes - 1) fprintf(outf, ",");
+	    fprintf(outf, "    .%s(%s)", gate->node[i], node->netname);
+	    if ((i != lastidx) || (gate->bus != NULL)) fprintf(outf, ",");
 	    fprintf(outf, "\n");
 	}
     }
+
+    /* Write out bus connections */
+    for (bus = gate->gatetype->bus, i = 0; bus; bus = bus->next, i++) {
+	int defnets = 0, samenet = 0;
+	char *dptr, *d0ptr = NULL;
+
+	fprintf(outf, "    .%s(", bus->busname);
+	for (j = bus->low; j <= bus->high; j++) {
+	    if (net_array[i][j] != NULL) {
+		defnets++;
+		if ((dptr = strrchr(net_array[i][j], '[')) != NULL) {
+		    *dptr = '\0';
+		    if (j == bus->low) {
+			d0ptr = dptr;
+		    }
+		    else {
+			if (!strcmp(net_array[i][j], net_array[i][bus->low])) samenet++;
+			*dptr = '[';
+		    }
+		}
+	    }
+	}
+	if (d0ptr != NULL) *d0ptr = '[';
+	if ((d0ptr != NULL) && (samenet == (bus->high - bus->low))) {
+	    *d0ptr = '\0';
+	    fprintf(outf, "%s", net_array[i][bus->low]);
+	    *d0ptr = '[';
+	}
+	else if (defnets > 0) {
+	    fprintf(outf, "{");
+	    for (j = bus->high; j >= bus->low; j--) {
+		if (net_array[i][j] != NULL) {
+		    fprintf(outf, "%s", net_array[i][j]);
+		}
+		if (j > bus->low) fprintf(outf, ",");
+	    }
+	    fprintf(outf, "}");
+	}
+	fprintf(outf, ")");
+	if (bus->next != NULL) fprintf(outf, ",");
+	fprintf(outf, "\n");
+    }
+
     fprintf(outf, ");\n\n");
+
+    if (gate->gatetype->bus != NULL) {
+	/* Free memory allocated to net arrays */
+	for (bus = gate->gatetype->bus, i = 0; bus; bus = bus->next, i++) {
+	    for (j = bus->low; j <= bus->high; j++)
+		if (net_array[i][j]) free(net_array[i][j]);
+	    free(net_array[i]);
+	}
+	free(net_array);
+    }
+
     return NULL;
 }
 
@@ -313,7 +417,6 @@ void write_output(struct cellrec *topcell, char *vlogoutname)
     fprintf(outfptr, "\n");
 
     /* Write instances in the order found in the DEF file */
-
     RecurseHashTablePointer(&InstanceTable, output_instances, outfptr);
 
     /* End the module */

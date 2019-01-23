@@ -110,7 +110,10 @@ end
 if ( ${?hard_macros} ) then
    foreach macro_path ( $hard_macros )
       foreach file ( `ls ${sourcedir}/${macro_path}` )
-         if ( ${file:e} == "sp" || ${file:e} == "spc" || ${file:e} == "spice") then
+	 # Too bad SPICE doesn't have an agreed-upon extension.  Common ones are:
+         if ( ${file:e} == "sp" || ${file:e} == "spc" || \
+			${file:e} == "spice" || ${file:e} == "cdl" || \
+			${file:e} == "ckt" || ${file:e} == "net") then
             set spicepath="${spicepath} -l ${sourcedir}/${macro_path}/${file}"
             break
          endif

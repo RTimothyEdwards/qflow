@@ -111,6 +111,17 @@ struct dpoint_ {
    int gridx, gridy;
 };
 
+/* BUS is used for keep information about pins that are array components */
+
+typedef struct bus_ *BUS;
+
+struct bus_ {
+   BUS  next;
+   char *busname;
+   int  low;
+   int  high;
+};
+
 typedef struct node_ *NODE;
 
 struct node_ {
@@ -146,6 +157,7 @@ struct gate_ {
     u_char *use;	// pin use (power, ground, etc.)
     DSEG  *taps;	// list of gate node locations and layers
     DSEG   obs;		// list of obstructions in gate
+    BUS    bus;		// linked list of buses in the pin list
     double width, height;
     double placedX;                 
     double placedY;

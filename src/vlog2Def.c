@@ -114,10 +114,20 @@ int main (int argc, char *argv[])
 struct nlist *output_nets(struct hashlist *p, void *cptr)
 {
     struct netrec *net;
+    char *sptr = NULL;
     FILE *outf = (FILE *)cptr;
     linkedNetPtr nlink, nsrch;
 
     nlink = (linkedNetPtr)(p->ptr);
+
+    // Verilog backslash-escaped names are decidedly not SPICE
+    // compatible, so replace the mandatory trailing space character
+    // with another backslash.
+
+    if (*p->name == '\\') {
+	sptr = strchr(p->name, ' ');
+	if (sptr != NULL) *sptr = '\\';
+    }
 
     fprintf(outf, "- %s\n", p->name);
 
@@ -128,6 +138,7 @@ struct nlist *output_nets(struct hashlist *p, void *cptr)
 	fprintf(outf, "\n");
     }
 
+    if (sptr != NULL) *sptr = ' ';
     return NULL;
 }
 

@@ -322,29 +322,42 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
 	/* Output pin connections in the order of the LEF record, which	*/
 	/* has been forced to match the port order of the SPICE library	*/
+	/* If there is no SPICE library record, output in the order of	*/
+	/* the instance, which may or may not be correct.  In such a	*/
+	/* case, flag a warning.					*/
 
 	argcnt = 0;
-	for (libport = portlist; libport; libport = libport->next) {
+	for (libport = portlist; ; libport = libport->next) {
 	    char *dptr, dsave;
-	    int idx = 0, is_array = FALSE;
+	    int idx = 0, is_array = FALSE, match = FALSE;
+
+	    if (portlist != NULL && libport == NULL) break;
 
 	    argcnt++;
 	    argcnt %= 8;
 	    if (argcnt == 7)
 		fprintf(outfile, "\n+ ");
 
-	    for (dptr = libport->name; *dptr != '\0'; dptr++) {
-		if (*dptr == '[') {
-		    is_array = TRUE;
-		    dsave = *dptr;
-		    *dptr = '\0';
-		    sscanf(dptr + 1, "%d", &idx);
-		    break;
+	    if (libport) {
+		for (dptr = libport->name; *dptr != '\0'; dptr++) {
+		    if (*dptr == '[') {
+			is_array = TRUE;
+			dsave = *dptr;
+			*dptr = '\0';
+			sscanf(dptr + 1, "%d", &idx);
+			break;
+		    }
 		}
 	    }
 
 	    for (port = inst->portlist; port; port = port->next) {
-		if (!strcasecmp(libport->name, port->name)) {
+		if (libport) {
+		    if (!strcasecmp(libport->name, port->name))
+			match = TRUE;
+		}
+		else match = TRUE;
+
+		if (match) {
 		    if (flags & DO_DELIMITER) {
 			char *d1ptr, *d2ptr;
 			if ((d1ptr = strchr(port->net, '[')) != NULL) {
@@ -413,6 +426,12 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 		    else {
 			fprintf(outfile, "%s ", port->net);
 		    }
+		    break;
+		}
+		if (portlist == NULL) {
+		    fprintf(stdout, "Warning:  No defined subcircuit %s for "
+				"instance %s!\n", inst->cellname, inst->instname);
+		    fprintf(stdout, "Pins will be output in arbitrary order.\n");
 		    break;
 		}
 	    }

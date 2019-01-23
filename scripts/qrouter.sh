@@ -94,6 +94,22 @@ foreach f (${spicefile})
    set spicepath="${spicepath} $p"
 end
 
+# Add hard macros to spice path
+
+if ( ${?hard_macros} ) then
+   foreach macro_path ( $hard_macros )
+      foreach file ( `ls ${sourcedir}/${macro_path}` )
+	 # Too bad SPICE doesn't have an agreed-upon extension.  Common ones are:
+	 if ( ${file:e} == "sp" || ${file:e} == "spc" || \
+			${file:e} == "spice" || ${file:e} == "cdl" || \
+			${file:e} == "ckt" || ${file:e} == "net") then
+	    set spicepath="${spicepath} -l ${sourcedir}/${macro_path}/${file}"
+	    break
+	 endif
+      end
+   end
+endif
+
 # Prepare LEF file options to pass to DEF2Verilog (post-route)
 
 if ( "$techleffile" == "" ) then
@@ -110,7 +126,6 @@ if ( ${?hard_macros} ) then
         foreach file ( `ls ${sourcedir}/${macro_path}` )
             if ( ${file:e} == "lef" ) then
                 set lefoptions="${lefoptions} -l ${sourcedir}/${macro_path}/${file}"
-                set addsoptions="${addsoptions} -hardlef ${sourcedir}/${macro_path}/${file}"
             endif
         end
     end
@@ -161,30 +176,6 @@ else
       exit 1
    endif
 endif
-
-# Prepend techdir to leffile unless leffile begins with "/"
-set lefpath=""
-foreach f (${leffile})
-   set abspath=`echo ${f} | cut -c1`
-   if ( "${abspath}" == "/" ) then
-      set p=${leffile}
-   else
-      set p=${techdir}/${leffile}
-   endif
-   set lefpath="${lefpath} $p"
-end
-
-# Ditto for spicefile
-set spicepath=""
-foreach f (${spicefile})
-   set abspath=`echo ${f} | cut -c1`
-   if ( "${abspath}" == "/" ) then
-      set p=${spicefile}
-   else
-      set p=${techdir}/${spicefile}
-   endif
-   set spicepath="${spicepath} $p"
-end
 
 #----------------------------------------------------------
 # Done with initialization
