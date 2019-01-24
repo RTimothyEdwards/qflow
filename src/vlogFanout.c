@@ -802,7 +802,8 @@ struct Nodelist *registernode(char *nodename, int type, struct Gatelist *gl,
     }
     if (type == CLOCK) nl->clock = TRUE;
 
-    if ((nl->type != INPUTPIN) && (nl->type != OUTPUTPIN) && (gl == NULL)) {
+    if ((nl->type != INPUTPIN) && (nl->type != OUTPUTPIN) &&
+		(nl->type != INOUTPIN) && (gl == NULL)) {
 	fprintf(stderr, "\nError: no output gate for net %s\n", nodename);
 	fflush(stderr);
     }
