@@ -56,6 +56,7 @@ set dodisplay=0
 
 while ($#argv > 0)
    switch($argv[1]:q)
+      case -t:
       case -T:
       case --tech:
 	 shift
@@ -64,17 +65,20 @@ while ($#argv > 0)
 	 shift
 	 breaksw
       case -p:
+      case -P:
       case --project:
 	 shift
 	 set project=$argv[1]
 	 shift
 	 breaksw
       case -h:
+      case -H:
       case --help:
 	 set dohelp=1
 	 shift
 	 breaksw
       case -v:
+      case -V:
       case --version:
 	 set doversion=1
 	 shift
@@ -187,11 +191,17 @@ while ($#argv > 0)
 	 shift
 	 breaksw
       default:
-	 if ($modulename != "") then
+	 if (`echo $argv[1] | cut -c1` == "-") then
+	    echo "Unknown option $argv[1]"
+	    set dohelp=1
 	    break
-	 else
+	 else if ($modulename == "") then
 	    set modulename=$argv[1]
 	    shift
+	 else
+	    echo "Argument $argv[1] after module name $modulename"
+	    set dohelp=1
+	    break
 	 endif
 	 breaksw
    endsw
@@ -249,6 +259,7 @@ if ($dohelp == 1 || $#argv != 0) then
    echo ""
    echo "Options:    -T, --tech <name>		Use technology <name>"
    echo "            -p, --project <name>	Project root directory is <name>"
+   echo "            -v, --version		Print qflow version and revision"
    if ($dohelp == 1) then
       exit 0
    else
