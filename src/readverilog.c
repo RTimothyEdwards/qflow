@@ -1431,6 +1431,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 
 			    if (!strcmp(nexttok, "{")) {
 				char *in_line_net = (char *)malloc(1);
+				*in_line_net = '\0';
 				/* In-line array---Read to "}" */
 				while (nexttok) {
 				    in_line_net = (char *)realloc(in_line_net,
