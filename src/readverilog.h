@@ -18,6 +18,7 @@
 
 #define VLOG_DELIMITERS "///**/(**)#(X,;:(){}[]="
 #define VLOG_PIN_NAME_DELIMITERS "///**/(**)X()"
+#define VLOG_PIN_CHECK_DELIMITERS "///**/(**)X(),{}"
 
 #define VERILOG_EXTENSION ".v"
 

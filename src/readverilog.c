@@ -1419,7 +1419,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 					"at \"%s\" (line %d)\n", nexttok, linenum);
 			    SkipNewLine(VLOG_DELIMITERS);
 			}
-			SkipTokComments(VLOG_PIN_NAME_DELIMITERS);
+			SkipTokComments(VLOG_PIN_CHECK_DELIMITERS);
 			if (!strcmp(nexttok, ")")) {
 			    char localnet[100];
 			    // Empty parens, so create a new local node
@@ -1438,7 +1438,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 						strlen(nexttok) + 1);
 				    strcat(in_line_net, nexttok);
 				    if (!strcmp(nexttok, "}")) break;
-				    SkipTokComments(VLOG_DELIMITERS);
+				    SkipTokComments(VLOG_PIN_CHECK_DELIMITERS);
 				}
 				if (!nexttok) {
 				    fprintf(stderr, "Unterminated net in pin %s "
