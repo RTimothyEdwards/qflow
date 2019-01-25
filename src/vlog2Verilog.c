@@ -191,8 +191,173 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 /* "bitstring" is assumed to be at least (bits + 1) bytes in length.	*/
 /* "c" is a conversion type ('h', 'o', or 'd').				*/
 /*----------------------------------------------------------------------*/
+/* hexidecimal to binary */
 
-char *num2binary(char *uval, int bits, char c)
+char *hex2binary(char *uval, int bits)
+{
+    int first, dval, hexc;
+    char *bitstring = (char *)malloc(1 + bits);
+    char *hptr, *bptr, *hstring;
+    char binhex[5];
+
+    first = bits % 4;
+    hexc = ((first == 0) ? 0 : 1) + bits >> 2;	/* Number of hex characters */
+    hstring = (char *)malloc(1 + hexc);
+
+    hstring = (char *)malloc(hexc + 1);
+    strncpy(hstring, uval, hexc);
+    for (hptr = hstring; *hptr != '\0'; hptr++) {
+
+	/* Catch 'x', 'X', etc., and convert to zero.	*/
+	/* Keep 'z'/'Z' as this must be handled differently	*/
+
+	if ((*hptr == 'z') || (*hptr == 'Z')) *hptr = 'Z';
+	else if ((*hptr == 'x') || (*hptr == 'X')) *hptr = '0';
+    }
+    
+    hptr = hstring;
+    bptr = bitstring;
+    while (*hptr != '\0') {
+	switch(*hptr) {
+	    case 'Z':
+		strcpy(binhex, "ZZZZ");
+		break;
+	    case '0':
+		strcpy(binhex, "0000");
+		break;
+	    case '1':
+		strcpy(binhex, "0001");
+		break;
+	    case '2':
+		strcpy(binhex, "0010");
+		break;
+	    case '3':
+		strcpy(binhex, "0011");
+		break;
+	    case '4':
+		strcpy(binhex, "0100");
+		break;
+	    case '5':
+		strcpy(binhex, "0101");
+		break;
+	    case '6':
+		strcpy(binhex, "0110");
+		break;
+	    case '7':
+		strcpy(binhex, "0111");
+		break;
+	    case '8':
+		strcpy(binhex, "1000");
+		break;
+	    case '9':
+		strcpy(binhex, "1001");
+		break;
+	    case 'a':
+		strcpy(binhex, "1010");
+		break;
+	    case 'b':
+		strcpy(binhex, "1011");
+		break;
+	    case 'c':
+		strcpy(binhex, "1100");
+		break;
+	    case 'd':
+		strcpy(binhex, "1101");
+		break;
+	    case 'e':
+		strcpy(binhex, "1110");
+		break;
+	    case 'f':
+		strcpy(binhex, "1111");
+		break;
+	}
+	if (first > 0) {
+	    strncpy(bptr, binhex + (4 - first), first);
+	    bptr += first;
+	    first = 0;
+	}
+	else {
+	    strcpy(bptr, binhex);
+	    bptr += 4;
+	}
+	hptr++;
+    }
+    return bitstring;
+}
+
+/* octal to binary */
+
+char *oct2binary(char *uval, int bits)
+{
+    int first, dval, octc;
+    char *bitstring = (char *)malloc(1 + bits);
+    char *optr, *bptr, *ostring;
+    char binoct[4];
+
+    first = bits % 3;
+    octc = ((first == 0) ? 0 : 1) + (bits / 3);	/* Number of octal characters */
+    ostring = (char *)malloc(1 + octc);
+
+    ostring = (char *)malloc(octc + 1);
+    strncpy(ostring, uval, octc);
+    for (optr = ostring; *optr != '\0'; optr++) {
+
+	/* Catch 'x', 'X', etc., and convert to zero.	*/
+	/* Keep 'z'/'Z' as this must be handled differently	*/
+
+	if ((*optr == 'z') || (*optr == 'Z')) *optr = 'Z';
+	else if ((*optr == 'x') || (*optr == 'X')) *optr = '0';
+    }
+    
+    optr = ostring;
+    bptr = bitstring;
+    while (*optr != '\0') {
+	switch(*optr) {
+	    case 'Z':
+		strcpy(binoct, "ZZZ");
+		break;
+	    case '0':
+		strcpy(binoct, "000");
+		break;
+	    case '1':
+		strcpy(binoct, "001");
+		break;
+	    case '2':
+		strcpy(binoct, "010");
+		break;
+	    case '3':
+		strcpy(binoct, "011");
+		break;
+	    case '4':
+		strcpy(binoct, "100");
+		break;
+	    case '5':
+		strcpy(binoct, "101");
+		break;
+	    case '6':
+		strcpy(binoct, "110");
+		break;
+	    case '7':
+		strcpy(binoct, "11");
+		break;
+	}
+	if (first > 0) {
+	    strncpy(bptr, binoct + (3 - first), first);
+	    bptr += first;
+	    first = 0;
+	}
+	else {
+	    strcpy(bptr, binoct);
+	    bptr += 3;
+	}
+	optr++;
+    }
+    return bitstring;
+}
+
+/* decimal to binary */
+
+char *dec2binary(char *uval, int bits)
 {
     int first, dval, hexc;
     char *bitstring = (char *)malloc(1 + bits);
@@ -203,26 +368,8 @@ char *num2binary(char *uval, int bits, char c)
     hexc = ((first == 0) ? 0 : 1) + bits >> 2;	/* Number of hex characters */
     hstring = (char *)malloc(1 + hexc);
 
-    if (c == 'd') {
-	sscanf(uval, "%d", &dval);
-    }
-    else {
-	nval = strdup(uval);
-	for (bptr = nval; *bptr != '\0'; bptr++) {
-	    /* Catch 'x', 'X', etc., and convert to zero */
-	    if (isalpha(*bptr)) *bptr = '0';
-	}
-	if (c == 'b') {
-	    return(nval);
-	}
-	else if (c == 'h') {
-	    sscanf(nval, "%h", &dval);
-	}
-	else {
-	    sscanf(nval, "%o", &dval);
-	}
-	free(nval);
-    }
+    /* Scan integer value then convert to hex */
+    sscanf(uval, "%d", &dval);
     sprintf(hstring, "%0*x", hexc, dval);
     
     hptr = hstring;
@@ -318,6 +465,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 {
     FILE *outfptr = stdout;
     int result = 0;
+    int nunconn = 0;
 
     struct netrec *net;
     struct portrec *port;
@@ -476,15 +624,31 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 			while (isdigit(*bptr)) bptr++;
 
 			/* Is digit followed by "'" (fixed values 1 or 0)? */
+
 			if (*bptr == '\'') {
 			    char *bitstring;
 			    bptr++;
 
+			    /* Important note:  Need to check if 'x' is	*/
+			    /* on an output, in which case it should be	*/
+			    /* treated like 'z' (unconnected).		*/
+			    if (port->direction != PORT_INPUT) {
+				char *xptr;
+				for (xptr = bptr; *xptr != '\0'; xptr++) {
+				    if ((*xptr == 'X') || (*xptr == 'x'))
+					*xptr = 'z';
+				}
+			    }
+
 			    switch(*bptr) {
 				case 'd':
+				    bitstring = dec2binary(bptr + 1, brepeat);
+				    break;
 				case 'h':
+				    bitstring = hex2binary(bptr + 1, brepeat);
+				    break;
 				case 'o':
-				    bitstring = num2binary(bptr + 1, brepeat, *bptr);
+				    bitstring = oct2binary(bptr + 1, brepeat);
 				    break;
 				default:
 				    bitstring = strdup(bptr + 1);
@@ -506,6 +670,17 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 						strlen(expand) +
 						strlen(VddNet) + 2);
 				    strcat(expand, VddNet);
+				}
+				else if (*bptr == 'Z') {
+				    char unconnect[20];
+				    /* Unconnected node:  Make a new node name. */
+				    /* This is a single bit, so it can be	*/
+				    /* implicitly declared.			*/
+				    sprintf(unconnect, "\\$_unconn_%d_ ", nunconn++);
+				    expand = (char *)realloc(expand,
+						strlen(expand) + strlen(unconnect)
+						+ 1);
+				    strcat(expand, unconnect);
 				}
 				else { /* Note: If 'X', then ground it */
 				    expand = (char *)realloc(expand,

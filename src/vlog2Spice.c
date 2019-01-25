@@ -130,7 +130,8 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
     struct portrec *port;
     struct portrec *newport, *portlist, *lastport;
 
-    int i, j, k, start, end, result = 0;
+    int i, j, k, start, end, pcount = 1;
+    int result = 0;
 
     char *lptr;
     char *sp, *sp2;
@@ -287,7 +288,12 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 	    end = tmp;
 	}
 	if (start == end) {
-	    fprintf(outfile, "%s ", port->name);
+	    fprintf(outfile, "%s", port->name);
+	    if (pcount++ % 8 == 7) {
+		pcount = 0;
+		fprintf(outfile, "\n+");
+	    }
+	    fprintf(outfile, " ");
 	}
 	else {
 	    for (i = start; i <= end; i++) {
@@ -295,9 +301,15 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 		/* but suffices for LVS and such.  Output should be	*/
 		/* post-processed before using in simulation.		*/
 		if (flags & DO_DELIMITER)
-		    fprintf(outfile, "%s<%d> ", port->name, i);
+		    fprintf(outfile, "%s<%d>", port->name, i);
 		else
-		    fprintf(outfile, "%s[%d] ", port->name, i);
+		    fprintf(outfile, "%s[%d]", port->name, i);
+
+		if (pcount++ % 8 == 7) {
+		    pcount = 0;
+		    fprintf(outfile, "\n+");
+		}
+		fprintf(outfile, " ");
 	    }
 	}
     }
@@ -312,13 +324,8 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 	/* Search library records for subcircuit */
 
 	portlist = (struct portrec *)HashLookup(inst->cellname, &Libhash);
-	if (portlist == NULL) {
-	    fprintf(stderr, "Error:  No such gate \"%s\" in SPICE library!\n",
-			inst->cellname);
-	    result = 1;		// Mark as error but continue output.
-	    continue;
-	}
 	fprintf(outfile, "X%s ", inst->instname);
+        pcount = 1;
 
 	/* Output pin connections in the order of the LEF record, which	*/
 	/* has been forced to match the port order of the SPICE library	*/
@@ -387,7 +394,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    if (*portname == ',') portname++;
 			    ssave = *epos;
 			    *epos = '\0';
-			    fprintf(outfile, "%s ", portname);
+			    fprintf(outfile, "%s", portname);
 			    *epos = ssave;
 			}
 			else {
@@ -398,9 +405,9 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    if (dptr == NULL) {
 				/* portname is a complete bus */
 				if (flags & DO_DELIMITER)
-				    fprintf(outfile, "%s<%d> ", portname, idx);
+				    fprintf(outfile, "%s<%d>", portname, idx);
 				else
-				    fprintf(outfile, "%s[%d] ", portname, idx);
+				    fprintf(outfile, "%s[%d]", portname, idx);
 			    }
 			    else if (cptr != NULL) {
 				int lidx;
@@ -413,29 +420,35 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 				/* portname is a partial bus */
 				*dptr = '\0';
 				if (flags & DO_DELIMITER)
-				    fprintf(outfile, "%s<%d> ", portname, lidx);
+				    fprintf(outfile, "%s<%d>", portname, lidx);
 				else
-				    fprintf(outfile, "%s[%d] ", portname, lidx);
+				    fprintf(outfile, "%s[%d]", portname, lidx);
 				*dptr = '[';
 			    }
 			    else {
-				fprintf(outfile, "%s ", portname);
+				fprintf(outfile, "%s", portname);
 			    }
 			}
 		    }
 		    else {
-			fprintf(outfile, "%s ", port->net);
+			fprintf(outfile, "%s", port->net);
 		    }
-		    break;
-		}
-		if (portlist == NULL) {
-		    fprintf(stdout, "Warning:  No defined subcircuit %s for "
-				"instance %s!\n", inst->cellname, inst->instname);
-		    fprintf(stdout, "Pins will be output in arbitrary order.\n");
-		    break;
+
+		    if (pcount++ % 8 == 7) {
+			pcount = 0;
+			fprintf(outfile, "\n+");
+		    }
+		    fprintf(outfile, " ");
+
+		    if (libport != NULL) break;
 		}
 	    }
-
+	    if (portlist == NULL) {
+		fprintf(stdout, "Warning:  No defined subcircuit %s for "
+				"instance %s!\n", inst->cellname, inst->instname);
+		fprintf(stdout, "Pins will be output in arbitrary order.\n");
+		break;
+	    }
 	    if (is_array) *dptr = dsave;
 	}
 	fprintf(outfile, "%s\n", inst->cellname);
