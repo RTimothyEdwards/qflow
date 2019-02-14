@@ -111,7 +111,7 @@ class QflowManager(ttk.Frame):
         # Read user preferences file, get default font size from it.
         prefspath = os.path.expanduser(prefsfile)
         if os.path.exists(prefspath):
-            with open(prefspath, 'r') as f:
+            with open(prefspath, 'r', encoding='utf-8') as f:
                 self.prefs = json.load(f)
             if 'fontsize' in self.prefs:
                 fontsize = self.prefs['fontsize']
@@ -1832,7 +1832,7 @@ class QflowManager(ttk.Frame):
                 # Did addspacers fail to create power stripes due to bad user input?
                 logfile = self.rootpath + 'log/place.log'
                 if os.path.exists(logfile):
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'No room for stripes' in line:
                                 self.print('Status: Log file reports power buses not placed.')
@@ -1861,7 +1861,7 @@ class QflowManager(ttk.Frame):
                 # for output from vesta.
                 sta_ok = False
                 is_not_vesta = False
-                with open(logfile, 'r') as ifile:
+                with open(logfile, 'r', encoding='utf-8') as ifile:
                     for line in ifile:
                         if 'Design meets minimum' in line:
                             sta_ok = True
@@ -1871,7 +1871,7 @@ class QflowManager(ttk.Frame):
                             break
                 if is_not_vesta:
                     sta_ok = True
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'VIOLATED' in line:
                                 sta_ok = False
@@ -1907,7 +1907,7 @@ class QflowManager(ttk.Frame):
                 # DEF file exists, but did all routes get completed?
                 logfile = self.logdir + '/route.log'
                 if os.path.exists(logfile):
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'Final: Failed net routes:' in line:
                                 self.print('Status: log file reports unrouted nets.')
@@ -1942,7 +1942,7 @@ class QflowManager(ttk.Frame):
                 # for vesta or MET or VIOLATED for OpenSTA and OpenTimer
                 is_not_vesta = False
                 sta_ok = False
-                with open(logfile, 'r') as ifile:
+                with open(logfile, 'r', encoding='utf-8') as ifile:
                     for line in ifile:
                         if 'Design meets minimum' in line:
                             sta_ok = True
@@ -1952,7 +1952,7 @@ class QflowManager(ttk.Frame):
                             break
                 if is_not_vesta:
                     sta_ok = True
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'VIOLATED' in line:
                                 sta_ok = False
@@ -2008,7 +2008,7 @@ class QflowManager(ttk.Frame):
             if os.path.exists(logfile):
                 statbuf = os.stat(logfile)
                 if statbuf.st_mtime >= stime:
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'No DRC errors' in line:
                                 stime = statbuf.st_mtime
@@ -2090,7 +2090,7 @@ class QflowManager(ttk.Frame):
             if os.path.exists(logfile):
                 statbuf = os.stat(logfile)
                 if statbuf.st_mtime >= stime:
-                    with open(logfile, 'r') as ifile:
+                    with open(logfile, 'r', encoding='utf-8') as ifile:
                         for line in ifile:
                             if 'No DRC errors' in line:
                                 stime = statbuf.st_mtime
@@ -3438,7 +3438,7 @@ class QflowManager(ttk.Frame):
         # Check if yosys reported an error
         logfile = self.logdir + '/synth.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Errors detected in verilog' in line:
                         self.print("Failure to synthesize the verilog.")
@@ -3498,7 +3498,7 @@ class QflowManager(ttk.Frame):
         # Check if log/sta.log shows an error occurring
         logfile = self.logdir + '/sta.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("STA failed with error condition (see log file).")
@@ -3530,7 +3530,7 @@ class QflowManager(ttk.Frame):
         # Check if qrouter reported failed routes
         logfile = self.logdir + '/route.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Final: Failed net routes:' in line:
                         self.print("Route attempt resulted in failed routes.")
@@ -3559,7 +3559,7 @@ class QflowManager(ttk.Frame):
         # Check if log/post_sta.log shows an error occurring
         logfile = self.logdir + '/post_sta.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("Post-route STA failed with error condition (see log file).")
@@ -3591,7 +3591,7 @@ class QflowManager(ttk.Frame):
         # Check if log/migrate.log shows an error occurring
         logfile = self.logdir + '/migrate.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("Migration failed with error condition (see log file).")
@@ -3623,7 +3623,7 @@ class QflowManager(ttk.Frame):
         # Check if log/drc.log shows an error occurring
         logfile = self.logdir + '/drc.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("DRC failed with error condition (see log file).")
@@ -3655,7 +3655,7 @@ class QflowManager(ttk.Frame):
         # Check if log/lvs.log shows an error occurring
         logfile = self.logdir + '/lvs.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("LVS failed with error condition (see log file).")
@@ -3687,7 +3687,7 @@ class QflowManager(ttk.Frame):
         # Check if log/gdsii.log shows an error occurring
         logfile = self.logdir + '/gdsii.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r') as ifile:
+            with open(logfile, 'r', encoding='utf-8') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("GDS generation failed with error condition (see log file).")

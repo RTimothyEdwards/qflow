@@ -664,7 +664,7 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	/* Move token forward to bus name */
 	SkipTokComments(VLOG_DELIMITERS);
     }
-    else {
+    else if (nets) {
 	struct netrec *hbus;
 	hbus = (struct netrec *)BusHashLookup(nexttok, nets);
 	if (hbus != NULL) {
@@ -732,7 +732,7 @@ int GetBus(char *astr, struct netrec *wb, struct hashtable *nets)
 	wb->start = start;
 	wb->end = end;
     }
-    else {
+    else if (nets) {
 	struct netrec *hbus;
 	hbus = (struct netrec *)BusHashLookup(astr, nets);
 	if (hbus != NULL) {
@@ -1307,7 +1307,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    goto skip_endmodule;
 	}
 	else {	/* module instances */
-	    int itype, arraystart, arrayend, arraymax, arraymin;
+	    int itype, arraymax, arraymin;
 	    struct instance *thisinst;
 
 	    thisinst = AppendInstance(top, nexttok);
@@ -1374,15 +1374,14 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    /*			thisinst->instname);			*/
 	    SkipTokComments(VLOG_DELIMITERS);
 
-	    arraystart = arrayend = -1;
+	    thisinst->arraystart = thisinst->arrayend = -1;
 	    if (!strcmp(nexttok, "[")) {
 		// Handle instance array notation.
 		struct netrec wb;
-		if (GetBusTok(&wb, &top->nets) == 0) {
-		    arraystart = wb.start;
-		    arrayend = wb.end;
+		if (GetBusTok(&wb, NULL) == 0) {
+		    thisinst->arraystart = wb.start;
+		    thisinst->arrayend = wb.end;
 		}
-		SkipTokComments(VLOG_DELIMITERS);
 	    }
 
 	    if (!strcmp(nexttok, "(")) {

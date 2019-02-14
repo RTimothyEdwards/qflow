@@ -454,6 +454,74 @@ struct nlist *output_props(struct hashlist *p, void *cptr)
 }
 
 /*--------------------------------------------------------------*/
+/* Find the idx'th component of a net name.  This pulls the	*/
+/* single wire name out of an indexed or concatenated array.	*/
+/*								*/
+/* Note that this routine does not handle nested braces.	*/
+/*--------------------------------------------------------------*/
+
+char *GetIndexedNet(char *netname, int ridx, struct cellrec *topcell)
+{
+    int i, alen, idx;
+    struct netrec wb;
+    char *sptr, *pptr, savc, *bptr;
+    static char *subname = NULL;
+    if (subname == NULL) subname = (char *)malloc(1);
+
+    if (*netname == '{') {
+	sptr = netname + 1;
+	i = 0;
+	while (i <= ridx) {
+	    /* Advance to next comma or close-brace */
+	    pptr = strchr(sptr, ',');
+	    if (pptr == NULL) pptr = strchr(sptr, '}');
+	    if (pptr == NULL) pptr = sptr + strlen(sptr) - 1;
+
+	    savc = *pptr;
+	    *pptr = '\0';
+
+	    /* Does the array component at sptr have array bounds? */
+	    GetBus(sptr, &wb, &topcell->nets);
+	    if (wb.start != -1) {
+		alen = (wb.start - wb.end);
+		if (alen < 0) alen = -alen;
+		if (i + alen < ridx)
+		    i += alen;
+		else {
+		    if (wb.start < wb.end) idx = wb.start + (ridx - i);
+		    else idx = wb.start - (ridx - i);
+		    bptr = strrchr(sptr, '[');
+		    if (bptr != NULL) *bptr = '\0';
+		    subname = (char *)realloc(subname, strlen(sptr) + 10);
+		    sprintf(subname, "%s[%d]", sptr, idx);
+		    i = ridx;
+		    if (bptr != NULL) *bptr = '[';
+		}
+	    }
+	    else {
+		if (i == ridx) {
+		    subname = (char *)realloc(subname, strlen(sptr) + 1);
+		    sprintf(subname, "%s", sptr);
+		}
+		i++;
+	    }
+	    *pptr = savc;
+	}
+    }
+    else {
+	GetBus(netname, &wb, &topcell->nets);
+	idx = (wb.start > wb.end) ? (wb.start - ridx) : (wb.start + ridx);
+	bptr = strrchr(netname, '[');
+	if (bptr != NULL) *bptr = '\0';
+
+	subname = (char *)realloc(subname, strlen(netname) + 10);
+	sprintf(subname, "%s[%d]", netname, idx);
+	if (bptr != NULL) *bptr = '[';
+    }
+    return subname;
+}
+
+/*--------------------------------------------------------------*/
 /* write_output							*/
 /*								*/
 /*         ARGS: 						*/
@@ -466,6 +534,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
     FILE *outfptr = stdout;
     int result = 0;
     int nunconn = 0;
+    int arrayidx = -1;
 
     struct netrec *net;
     struct portrec *port;
@@ -534,7 +603,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 
     /* Write instances in the order of the input file */
 
-    for (inst = topcell->instlist; inst; inst = inst->next) {
+    for (inst = topcell->instlist; inst; ) {
 	int nprops = RecurseHashTable(&inst->propdict, CountHashTableEntries);
 	fprintf(outfptr, "%s ", inst->cellname);
 	if (nprops > 0) {
@@ -543,11 +612,21 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 	    fprintf(outfptr, ") ");
 	}
 	if (inst->cellname)
-	    fprintf(outfptr, "%s (\n", inst->instname);
+	    fprintf(outfptr, "%s", inst->instname);
 	else {
 	    fprintf(outfptr, "vlog2Verilog:  No cell for instance %s\n", inst->instname);
 	    result = 1;		// Set error result but continue output.
 	}
+	if (inst->arraystart != -1) {
+	    if (Flags & BIT_BLAST) {
+		if (arrayidx == -1) arrayidx = inst->arraystart;
+		fprintf(outfptr, "[%d]", arrayidx);
+	    }
+	    else {
+		fprintf(outfptr, " [%d:%d]", inst->arraystart, inst->arrayend);
+	    }
+	}
+	fprintf(outfptr, " (\n");
 
 	if (Flags & IMPLICIT_POWER) {
 
@@ -746,11 +825,35 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		free(port->net);
 		port->net = expand;
 	    }
-	    fprintf(outfptr, "    .%s(%s)", port->name, port->net);
+	    fprintf(outfptr, "    .%s(", port->name);
+	    if ((Flags & BIT_BLAST) && (arrayidx != -1)) {
+		/* Find the index from the start and pull that item from port->net */
+		int ridx;
+		ridx = arrayidx - inst->arraystart;
+		if (ridx < 0) ridx = -ridx;
+		fprintf(outfptr, "%s", GetIndexedNet(port->net, ridx, topcell));
+	    }
+	    else
+		fprintf(outfptr, "%s", port->net);
+	    fprintf(outfptr, ")");
 	    if (port->next) fprintf(outfptr, ",");
 	    fprintf(outfptr, "\n");
 	}
 	fprintf(outfptr, ");\n\n");
+
+	/* For bit-blasted output, output each element of an array separately. */
+	if (Flags & BIT_BLAST) {
+	    if (arrayidx == inst->arrayend) {
+		inst = inst->next;
+		arrayidx = -1;
+	    }
+	    else if (arrayidx < inst->arrayend)
+		arrayidx++;
+	    else if (arrayidx > inst->arrayend)
+		arrayidx--;
+	}
+	else
+	    inst = inst->next;
     }
 
     if (Flags & ADD_ANTENNA) {

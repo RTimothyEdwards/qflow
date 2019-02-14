@@ -132,6 +132,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
     int i, j, k, start, end, pcount = 1;
     int result = 0;
+    int instidx, insti;
 
     char *lptr;
     char *sp, *sp2;
@@ -317,14 +318,34 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
     /* Output instances */
 
-    for (inst = topcell->instlist; inst; inst = inst->next) {
+    instidx = -1;
+    for (inst = topcell->instlist; inst; ) {
 	int argcnt;
 	struct portrec *libport;
+
+	/* Check if the instance is an array */
+	if (inst->arraystart != -1) {
+	    if (instidx == -1) {
+		instidx = inst->arraystart;
+		insti = 0;
+	    }
+	    else if (inst->arraystart > inst->arrayend) {
+		instidx--;
+		insti++;
+	    }
+	    else if (inst->arraystart < inst->arrayend) {
+		instidx++;
+		insti++;
+	    }
+	}
 
 	/* Search library records for subcircuit */
 
 	portlist = (struct portrec *)HashLookup(inst->cellname, &Libhash);
-	fprintf(outfile, "X%s ", inst->instname);
+	if (inst->arraystart == -1)
+	    fprintf(outfile, "X%s ", inst->instname);
+	else
+	    fprintf(outfile, "X%s[%d] ", inst->instname, instidx);
         pcount = 1;
 
 	/* Output pin connections in the order of the LEF record, which	*/
@@ -345,6 +366,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 	    if (argcnt == 7)
 		fprintf(outfile, "\n+ ");
 
+	    dptr = NULL;
 	    if (libport) {
 		for (dptr = libport->name; *dptr != '\0'; dptr++) {
 		    if (*dptr == '[') {
@@ -356,6 +378,12 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 		    }
 		}
 	    }
+
+	    /* Treat arrayed instances like a bit-blasted port */
+	    if ((is_array == FALSE) && (inst->arraystart != -1)) {
+		is_array = TRUE;
+		idx = insti;
+	    } 
 
 	    for (port = inst->portlist; port; port = port->next) {
 		if (libport) {
@@ -384,6 +412,11 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    /* Go to the end and count bits backwards.	*/
 			    /* until reaching the idx'th position.	*/
 
+			    /* To be done:  Move GetIndexedNet() from	*/
+			    /* vlog2Verilog.c to readverilog.c and call	*/
+			    /* it from here.  It is more complete than	*/
+			    /* this implementation.			*/
+
 			    while (*portname != '}' && *portname != '\0') portname++;
 			    for (k = 0; k < idx; k++) {
 				epos = portname;
@@ -398,35 +431,28 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    *epos = ssave;
 			}
 			else {
-			    char *dptr = strrchr(portname, '[');
-			    char *cptr = strrchr(portname, ':');
-			    int amax, amin;
+			    struct netrec wb;
 
-			    if (dptr == NULL) {
-				/* portname is a complete bus */
-				if (flags & DO_DELIMITER)
-				    fprintf(outfile, "%s<%d>", portname, idx);
-				else
-				    fprintf(outfile, "%s[%d]", portname, idx);
+			    GetBus(portname, &wb, &topcell->nets);
+
+			    if (wb.start < 0) {
+				/* portname is not a bus */
+				fprintf(outfile, "%s", portname);
 			    }
-			    else if (cptr != NULL) {
+			    else {
 				int lidx;
-				sscanf(dptr + 1, "%d", &amax);
-				sscanf(cptr + 1, "%d", &amin);
-				if (amax > amin)
-				    lidx =  amin + idx;
+				if (wb.start < wb.end)
+				    lidx =  wb.start + idx;
 				else
-				    lidx = amax - idx;
-				/* portname is a partial bus */
-				*dptr = '\0';
+				    lidx = wb.start - idx;
+				/* portname is a partial or full bus */
+				dptr = strrchr(portname, '[');
+				if (dptr) *dptr = '\0';
 				if (flags & DO_DELIMITER)
 				    fprintf(outfile, "%s<%d>", portname, lidx);
 				else
 				    fprintf(outfile, "%s[%d]", portname, lidx);
-				*dptr = '[';
-			    }
-			    else {
-				fprintf(outfile, "%s", portname);
+				if (dptr) *dptr = '[';
 			    }
 			}
 		    }
@@ -449,9 +475,13 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 		fprintf(stdout, "Pins will be output in arbitrary order.\n");
 		break;
 	    }
-	    if (is_array) *dptr = dsave;
+	    if (dptr != NULL) *dptr = '[';
 	}
 	fprintf(outfile, "%s\n", inst->cellname);
+
+	if ((inst->arraystart != -1) && (instidx != inst->arrayend)) continue;
+	instidx = -1;
+	inst = inst->next;
     }
     fprintf(outfile, "\n.ends\n");
     fprintf(outfile, ".end\n");

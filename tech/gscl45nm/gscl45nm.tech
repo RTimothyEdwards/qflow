@@ -809,8 +809,8 @@ extract
  cscale 1
  lambda  0.025
  units	microns
- step   100
- sidehalo 8
+ step    5
+ sidehalo 2
 
  planeorder well 	0
  planeorder active 	1

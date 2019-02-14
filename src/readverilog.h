@@ -38,6 +38,8 @@ struct portrec {
 struct instance {		/* Hashed by instance name */
     char *instname;
     char *cellname;
+    int arraystart;		/* -1 if not arrayed */
+    int arrayend;		/* -1 if not arrayed */
     struct portrec *portlist;
     struct hashtable propdict;	/* Instance properties */
     struct instance *next;
