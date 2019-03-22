@@ -100,8 +100,9 @@ while ($#argv > 0)
 	 shift
 	 breaksw
       case sta:
-      case timing:
-      case statictiming:
+      case vesta:
+      case opentimer:
+      case opensta:
 	 set dosta=1
 	 set actions=1
 	 shift
@@ -259,7 +260,6 @@ if ($dohelp == 1 || $#argv != 0) then
    echo ""
    echo "Options:    -T, --tech <name>		Use technology <name>"
    echo "            -p, --project <name>	Project root directory is <name>"
-   echo "            -v, --version		Print qflow version and revision"
    if ($dohelp == 1) then
       exit 0
    else
@@ -289,7 +289,7 @@ if ($status == 1) then
 endif
 
 # Use find, not ls, to avoid error output when no match is found.
-set nvsrc = `find ${sourcedir} -name \*.v -print | grep -v _mapped.v | wc -l`
+set nvsrc = `find ${sourcedir} -name \*.v -print | grep -v match | wc -l`
 set nsvsrc = `find ${sourcedir} -name \*.sv -print | wc -l`
 
 # Verilog file root name is the same as the module name, at least until
@@ -299,7 +299,7 @@ set nsvsrc = `find ${sourcedir} -name \*.sv -print | wc -l`
 
 if ($modulename == "") then
    if ($nvsrc == 1) then
-      set vsource=`ls ${sourcedir}/*.v | grep -v _mapped.v`
+      set vsource=`ls ${sourcedir}/*.v`
       set modulename=${vsource:r}
    else if ($nsvsrc == 1) then
       set vsource=`ls ${sourcedir}/*.sv`
@@ -326,7 +326,7 @@ if ($vsource == "") then
    # If there is no file list, then search for modules with this name.
    if ( ! ($?source_file_list) ) then
       # Check all .v and .sv files for one with the specified module.
-      foreach file ( `ls ${sourcedir}/*.v ${sourcedir}/*.sv | grep -v _mapped.v` )
+      foreach file ( `ls ${sourcedir}/*.v ${sourcedir}/*.sv` )
          set mline = `cat $file | grep module | grep ${modulename} | wc -l`
          if ( $mline > 0 ) then
 	    set vsource = ${file}
@@ -403,64 +403,6 @@ echo "# qflow exec script for project ${project}" >> ${execfile}
 echo "#-------------------------------------------" >> ${execfile}
 echo "" >> ${execfile}
 
-#---------------------------------------------------------
-# Make sure that the flow tools are defined with defaults
-#---------------------------------------------------------
-
-if ( ! (${?synthesis_tool}) ) then
-   if ( HAVE_YOSYS ) then
-      set synthesis_tool=yosys
-   endif
-endif
-
-if ( ! (${?placement_tool}) ) then
-   if ( HAVE_GRAYWOLF ) then
-      set placement_tool=graywolf
-   else if ( HAVE_REPLACE ) then
-      set placement_tool=replace
-   endif
-endif
-
-if ( ! (${?sta_tool}) ) then
-   set sta_tool=vesta
-endif
-
-if ( ! (${?router_tool}) ) then
-   if ( HAVE_QROUTER ) then
-      set router_tool=qrouter
-   endif
-endif
-
-if ( ! (${?migrate_tool}) ) then
-   if ( HAVE_MAGIC ) then
-      set migrate_tool=magic_db
-   endif
-endif
-
-if ( ! (${?lvs_tool}) ) then
-   if ( HAVE_NETGEN ) then
-      set lvs_tool=netgen_lvs
-   endif
-endif
-
-if ( ! (${?drc_tool}) ) then
-   if ( HAVE_MAGIC ) then
-      set drc_tool=magic_drc
-   endif
-endif
-
-if ( ! (${?gds_tool}) ) then
-   if ( HAVE_MAGIC ) then
-      set gds_tool=magic_gds
-   endif
-endif
-
-if ( ! (${?display_tool}) ) then
-   if ( HAVE_MAGIC ) then
-      set display_tool=magic_view
-   endif
-endif
-
 #-----------------------------------------------------
 # The file "project_vars.sh" will ONLY be written if
 # one does not already exist, and then it will be an
@@ -474,6 +416,8 @@ if ( ! -f ${userfile} ) then
    echo "# project variables for project ${project}" >> ${userfile}
    echo "#------------------------------------------------------------" >> ${userfile}
    echo "" >> ${userfile}
+   echo "# Synthesis command options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
 
    #------------------------------------------------------------------
    # Check for any option defaults set by the .sh file for each entry
@@ -485,112 +429,6 @@ if ( ! -f ${userfile} ) then
    # purpose is to show the user what the default is, so that they
    # are aware what they may be changing.
    #------------------------------------------------------------------
-
-   echo "# Flow options:" >> ${userfile}
-   echo "# -------------------------------------------" >> ${userfile}
-
-   if ( ${?synthesis_tool} ) then
-      echo \# set synthesis_tool = ${synthesis_tool} >> ${userfile}
-   else
-      if ( HAVE_YOSYS ) then
-         echo \# set synthesis_tool = yosys >> ${userfile}
-         set synthesis_tool = yosys
-      else
-         echo \# set synthesis_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?placement_tool} ) then
-      echo \# set placement_tool = ${placement_tool} >> ${userfile}
-   else
-      if ( HAVE_GRAYWOLF ) then
-         echo \# set placement_tool = graywolf >> ${userfile}
-         set placement_tool = graywolf
-      else if ( HAVE_REPLACE ) then
-         echo \# set placement_tool = replace >> ${userfile}
-         set placement_tool = replace
-      else
-         echo \# set placement_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?sta_tool} ) then
-      echo \# set sta_tool = ${sta_tool} >> ${userfile}
-   else
-      echo \# set sta_tool = vesta >> ${userfile}
-      set sta_tool = vesta
-   endif
-
-   if ( ${?router_tool} ) then
-      echo \# set router_tool = ${router_tool} >> ${userfile}
-   else
-      if ( HAVE_QROUTER ) then
-         echo \# set router_tool = qrouter >> ${userfile}
-         set router_tool = qrouter
-      else
-         echo \# set router_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?migrate_tool} ) then
-      echo \# set migrate_tool = ${migrate_tool} >> ${userfile}
-   else
-      if ( HAVE_MAGIC ) then
-         echo \# set migrate_tool = magic_db >> ${userfile}
-         set migrate_tool = magic_db
-      else
-         echo \# set migrate_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?lvs_tool} ) then
-      echo \# set lvs_tool = ${lvs_tool} >> ${userfile}
-   else
-      if ( HAVE_NETGEN ) then
-         echo \# set lvs_tool = netgen_lvs >> ${userfile}
-         set lvs_tool = netgen_lvs
-      else
-         echo \# set lvs_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?drc_tool} ) then
-      echo \# set drc_tool = ${drc_tool} >> ${userfile}
-   else
-      if ( HAVE_MAGIC ) then
-         echo \# set drc_tool = magic_drc >> ${userfile}
-         set drc_tool = magic_drc
-      else
-         echo \# set drc_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?gds_tool} ) then
-      echo \# set gds_tool = ${gds_tool} >> ${userfile}
-   else
-      if ( HAVE_MAGIC ) then
-         echo \# set gds_tool = magic_gds >> ${userfile}
-         set gds_tool = magic_gds
-      else
-         echo \# set gds_tool = >> ${userfile}
-      endif
-   endif
-
-   if ( ${?display_tool} ) then
-      echo \# set display_tool = ${display_tool} >> ${userfile}
-   else
-      if ( HAVE_MAGIC ) then
-         echo \# set display_tool = magic_view >> ${userfile}
-         set display_tool = magic_view
-      else
-         echo \# set display_tool = >> ${userfile}
-      endif
-   endif
-
-   echo "" >> ${userfile}
-
-   echo "# Synthesis command options:" >> ${userfile}
-   echo "# -------------------------------------------" >> ${userfile}
 
    if ( ${?hard_macros} ) then
       echo \# set hard_macros = \"${hard_macros}\" >> ${userfile}
@@ -743,6 +581,11 @@ if ( ! -f ${userfile} ) then
       else
          echo \# set opensta_options = >> ${userfile}
       endif
+      if ( ${?run_opensta} ) then
+	 echo \# set run_opensta = \"${run_opensta}\" >> ${userfile}
+      else
+	 echo \# set run_opensta = 1 >> ${userfile}
+      endif
    endif
    if ( HAVE_OPENTIMER ) then
       if ( ${?opentimer_options} ) then
@@ -750,11 +593,21 @@ if ( ! -f ${userfile} ) then
       else
          echo \# set opentimer_options = >> ${userfile}
       endif
+      if ( ${?run_opentimer} ) then
+	 echo \# set run_opentimer = \"${run_opentimer}\" >> ${userfile}
+      else
+         echo \# set run_opentimer = 1 >> ${userfile}
+      endif
    endif
    if ( ${?vesta_options} ) then
       echo \# set vesta_options = \"${vesta_options}\" >> ${userfile}
    else
       echo \# set vesta_options = >> ${userfile}
+   endif
+   if ( ${?run_vesta} ) then
+      echo \# set run_vesta = \"${run_vesta}\" >> ${userfile}
+   else
+      echo \# set run_vesta = 0 >> ${userfile}
    endif
    if ( ${?migrate_options} ) then
       echo \# set migrate_options = \"${migrate_options}\" >> ${userfile}
@@ -780,9 +633,9 @@ if ($dosynth == 0) then
    echo -n "# " >> ${execfile}
 endif
 if ( ${vsource} == "" ) then
-   echo "${scriptdir}/${synthesis_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+   echo "${scriptdir}/synthesize.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 else
-   echo "${scriptdir}/${synthesis_tool}.sh ${projectpath} ${modulename} ${vsource} || exit 1" >> ${execfile}
+   echo "${scriptdir}/synthesize.sh ${projectpath} ${modulename} ${vsource} || exit 1" >> ${execfile}
 endif
 
 if ($doplace == 0) then
@@ -790,48 +643,92 @@ if ($doplace == 0) then
 endif
 # Use -d because the user may decide not to run fanout buffering,
 # and the files generated by place2def.tcl are required for routing.
-echo "${scriptdir}/${placement_tool}.sh -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/placement.sh -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 set first=""
-if ($dosta == 0) then
+if (HAVE_OPENSTA) then
+    if ($dosta == 0) then
 	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opensta} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opensta.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
 endif
-echo "${scriptdir}/${sta_tool}.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
-set first="-a"
+if (HAVE_OPENTIMER) then
+    if ($dosta == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opentimer} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opentimer.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
 endif
+if ($dosta == 0) then
+    echo -n "# " >> ${execfile}
+else
+    if ( ${?run_opensta} || ${?run_opentimer} ) then
+	if ( ! (${?run_vesta} ) ) then
+	    echo -n "# " >> ${execfile}
+	endif
+    endif
+endif
+echo "${scriptdir}/vesta.sh ${first} ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($doroute == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${router_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/router.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 set first=""
+if (HAVE_OPENSTA) then
+    if ($dobackanno == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opensta} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opensta.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
+if (HAVE_OPENTIMER) then
+    if ($dobackanno == 0) then
+	echo -n "# " >> ${execfile}
+    else if ( ! (${?run_opentimer} ) ) then
+	echo -n "# " >> ${execfile}
+    endif
+    echo "${scriptdir}/opentimer.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
+    set first="-a"
+endif
 if ($dobackanno == 0) then
     echo -n "# " >> ${execfile}
+else
+    if ( ${?run_opensta} || ${?run_opentimer} ) then
+	if ( ! (${?run_vesta} ) ) then
+	    echo -n "# " >> ${execfile}
+	endif
+    endif
 endif
-echo "${scriptdir}/${sta_tool}.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
-set first="-a"
-endif
+echo "${scriptdir}/vesta.sh ${first} -d ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($domigrate == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${migrate_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/migrate.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($dodrc == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${drc_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/drc.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($dolvs == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${lvs_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/lvs.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($dogdsii == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${gds_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/gdsii.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($doclean == 0) then
    echo -n "# " >> ${execfile}
@@ -841,7 +738,7 @@ echo "${scriptdir}/cleanup.sh ${projectpath} ${modulename} || exit 1" >> ${execf
 if ($dodisplay == 0) then
    echo -n "# " >> ${execfile}
 endif
-echo "${scriptdir}/${display_tool}.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+echo "${scriptdir}/display.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ( $actions == 0 ) then
    echo "No actions specified on command line;"
@@ -851,15 +748,6 @@ endif
 
 chmod u+x ${execfile}
 
-# Note: Support legacy behavior;  ${magicrc} may be a full path or may be
-# relative to ${techdir}
-
-if ( -f ${techdir}/${magicrc} ) then
-    set magicrc=${techdir}/${magicrc}
-else if (!( -f ${magicrc} )) then
-    echo "Error:  Technology file not in ${techdir}/${magicrc} or ${magicrc}!"
-endif
-
 # Drop the magic startup file into the layout directory if it does not exist
 # If it exists but the technology directory has a newer file, or if we are
 # changing technologies, then copy the old file to a backup and create a new
@@ -867,16 +755,16 @@ endif
 
 if (-d ${layoutdir}) then
    if (!(-f ${layoutdir}/.magicrc)) then
-      cp ${magicrc} ${layoutdir}/.magicrc
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
    else if ( $newtech == 1 ) then
       echo "Technology changed:  Old .magicrc file moved to .magicrc.orig"
       cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
-      cp ${magicrc} ${layoutdir}/.magicrc
-   else if ( -M ${magicrc} > -M ${layoutdir}/.magicrc ) then
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+   else if ( -M ${techdir}/${magicrc} > -M ${layoutdir}/.magicrc ) then
       echo -n "Technology .magicrc file has been updated.  "
       echo "Old .magicrc file moved to .magicrc.orig"
       cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
-      cp ${magicrc} ${layoutdir}/.magicrc
+      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
    endif
 endif
 

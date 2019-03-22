@@ -1,10 +1,9 @@
 #!/bin/tcsh -f
 #
-# yosys.sh:
+# synthesize.sh:
 #-------------------------------------------------------------------------
 #
 # This script synthesizes verilog files for qflow using yosys
-# Prerequisites:  Synthesizable verilog source file.
 #
 #-------------------------------------------------------------------------
 # November 2006
@@ -24,7 +23,7 @@ if ($#argv == 2 || $#argv == 3) then
       set sourcename=""
    endif
 else
-   echo Usage:  yosys.sh <project_path> <module_name> [<source_file>]
+   echo Usage:  synthesize.sh <project_path> <module_name> [<source_file>]
    echo
    echo   where
    echo
@@ -43,7 +42,7 @@ else
    echo			$yosys_script	for yosys
    echo			$nobuffers	to ignore output buffering
    echo			$inbuffers	to force input buffering
-   echo			$fanout_options	for vlogFanout
+   echo			$fanout_options	for blifFanout
    exit 1
 endif
 
@@ -105,25 +104,8 @@ foreach f (${spicefile})
    set spicepath="${spicepath} $p"
 end
 
-# Add hard macros to spice path
-
-if ( ${?hard_macros} ) then
-   foreach macro_path ( $hard_macros )
-      foreach file ( `ls ${sourcedir}/${macro_path}` )
-	 # Too bad SPICE doesn't have an agreed-upon extension.  Common ones are:
-         if ( ${file:e} == "sp" || ${file:e} == "spc" || \
-			${file:e} == "spice" || ${file:e} == "cdl" || \
-			${file:e} == "ckt" || ${file:e} == "net") then
-            set spicepath="${spicepath} -l ${sourcedir}/${macro_path}/${file}"
-            break
-         endif
-      end
-   end
-endif
-
 # Prepend techdir to leffile unless leffile begins with "/"
 set lefpath=""
-set postproclefpath=""
 foreach f (${leffile})
    set abspath=`echo ${f} | cut -c1`
    if ( "${abspath}" == "/" ) then
@@ -132,7 +114,6 @@ foreach f (${leffile})
       set p=${techdir}/${leffile}
    endif
    set lefpath="${lefpath} $p"
-   set postproclefpath="${postproclefpath} -l $p"
 end
 
 # Determine version of yosys
@@ -157,7 +138,6 @@ else
    set subrevision = ${minortest}
 
 endif
-
 
 # Check if "yosys_options" specifies a script to use for yosys.
 if ( ! ${?yosys_options} ) then
@@ -397,10 +377,13 @@ endif
 # Generate the main yosys script
 #---------------------------------------------------------------------
 
-set vlog_opts = ""
+set blif_opts = ""
+
+# Set option for generating buffers
+set blif_opts = "${blif_opts} -buf ${bufcell} ${bufpin_in} ${bufpin_out}"
 
 # Set option for generating only the flattened top-level cell
-# set vlog_opts = "${vlog_opts} ${modulename}"
+# set blif_opts = "${blif_opts} ${modulename}"
 
 cat > ${modulename}.ys << EOF
 # Synthesis script for yosys created by qflow
@@ -409,12 +392,10 @@ EOF
 # Support for structural verilog---any cell can be called as long as
 # it has a liberty file entry to go along with it.  Standard cells
 # are supported automatically.  All other cells should be put in the
-# "hard_macro" variable.  Also use the "setundef" command to ensure
-# that unconnected inputs are grounded.
+# "hard_macro" variable.
 
 cat >> ${modulename}.ys << EOF
 read_liberty -lib -ignore_miss_dir -setattr blackbox ${libertypath}
-setundef -zero
 EOF
 
 if ( ${?hard_macros} ) then
@@ -579,21 +560,22 @@ cat >> ${modulename}.ys << EOF
 opt
 clean
 rename -enumerate
-write_verilog ${vlog_opts} ${modulename}_mapped.v
+write_blif ${blif_opts} ${modulename}_mapped.blif
 stat
 EOF
 
 endif # Generation of yosys script if ${usescript} == 0
 
+
 #---------------------------------------------------------------------
 # Yosys synthesis
 #---------------------------------------------------------------------
 
-# If there is a file ${modulename}_mapped.v, move it to a temporary
+# If there is a file ${modulename}_mapped.blif, move it to a temporary
 # place so we can see if yosys generates a new one or not.
 
-if ( -f ${modulename}_mapped.v ) then
-   mv ${modulename}_mapped.v ${modulename}_mapped_orig.v
+if ( -f ${modulename}_mapped.blif ) then
+   mv ${modulename}_mapped.blif ${modulename}_mapped_orig.blif
 endif
 
 echo "Running yosys for verilog parsing and synthesis" |& tee -a ${synthlog}
@@ -607,23 +589,23 @@ else
 endif
 
 #---------------------------------------------------------------------
-# Spot check:  Did yosys produce file ${modulename}_mapped.v?
+# Spot check:  Did yosys produce file ${modulename}_mapped.blif?
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}_mapped.v )) then
-   echo "outputprep failure:  No file ${modulename}_mapped.v." \
+if ( !( -f ${modulename}_mapped.blif )) then
+   echo "outputprep failure:  No file ${modulename}_mapped.blif." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-   # Replace the old verilog file, if we had moved it
-   if ( -f ${modulename}_mapped_orig.v ) then
-      mv ${modulename}_mapped_orig.v ${modulename}_mapped.v
+   # Replace the old blif file, if we had moved it
+   if ( -f ${modulename}_mapped_orig.blif ) then
+      mv ${modulename}_mapped_orig.blif ${modulename}_mapped.blif
    endif
    exit 1
 else
-   # Remove the old verilog file, if we had moved it
-   if ( -f ${modulename}_mapped_orig.v ) then
-      rm ${modulename}_mapped_orig.v
+   # Remove the old blif file, if we had moved it
+   if ( -f ${modulename}_mapped_orig.blif ) then
+      rm ${modulename}_mapped_orig.blif
    endif
 endif
 
@@ -660,7 +642,7 @@ echo set vddnet=\"${vddnet}\" > ${synthdir}/${modulename}_powerground
 echo set gndnet=\"${gndnet}\" >> ${synthdir}/${modulename}_powerground
 
 #----------------------------------------------------------------------
-# Run post-processor
+# Run ypostproc syntax post-processor
 #----------------------------------------------------------------------
 
 if (! $?postproc_options) then
@@ -668,21 +650,92 @@ if (! $?postproc_options) then
 else
    if ( $postproc_options == "-anchors" ) then
       if ( $?antennacell ) then
-          set postproc_options = "-a $antennacell"
+          echo "Running getantennacell to determine cell to use for anchoring." |& tee -a ${synthlog}
+          echo "getantennacell.tcl $modulename ${lefpath} $antennacell" |& tee -a ${synthlog}
+          set anchorinfo=`${scriptdir}/getantennacell.tcl $modulename ${lefpath} $antennacell  | grep antenna= | cut -d= -f2`
+          set postproc_options = "-anchor=$anchorinfo"
       else
           echo "Antenna anchoring requested but no antenna cell defined in tech."
           set postproc_options = ""
       endif
    endif
 endif
-set postproc_options="${postproclefpath} ${postproc_options}"
 
-# Switch to synthdir for processing of the RTL verilog netlist
-cp ${modulename}_mapped.v ${synthdir}/${modulename}.v
+echo "Cleaning up output syntax" |& tee -a ${synthlog}
+echo "ypostproc.tcl ${modulename}_mapped.blif ${modulename} ${techdir}/${techname}.sh ${vddnet} ${gndnet} ${postproc_options}" \
+	|& tee -a ${synthlog}
+${scriptdir}/ypostproc.tcl ${modulename}_mapped.blif ${modulename} \
+		${techdir}/${techname}.sh ${vddnet} ${gndnet} ${postproc_options}
+set errcond = ${status}
+if ( $errcond != 0 ) then
+   echo "ypostproc failure.  See file ${synthlog} for error messages." \
+	|& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped due to error condition." >> ${synthlog}
+   exit 1
+endif
+
+#----------------------------------------------------------------------
+# Add buffers in front of all outputs (for yosys versions before 0.2.0)
+#----------------------------------------------------------------------
+
+if ( ${major} == 0 && ${minor} < 2 ) then
+   if ($?nobuffers) then
+      set final_blif = "${modulename}_mapped_tmp.blif"
+   else
+      echo "Adding output buffers"
+      ${scriptdir}/ybuffer.tcl ${modulename}_mapped_tmp.blif \
+		${modulename}_mapped_buf.blif ${techdir}/${techname}.sh
+      set final_blif = "${modulename}_mapped_buf.blif"
+   endif
+else
+   # Buffers already handled within yosys
+   set final_blif = "${modulename}_mapped_tmp.blif"
+endif
+
+#---------------------------------------------------------------------
+# The following definitions will replace "LOGIC0" and "LOGIC1"
+# with buffers from gnd and vdd, respectively.  This takes care
+# of technologies where tie-low and tie-high cells are not
+# defined.
+#---------------------------------------------------------------------
+
+echo "Cleaning up blif file syntax" |& tee -a ${synthlog}
+
+if ( "$tielo" == "") then
+   set subs0a="/LOGIC0/s/O=/${bufpin_in}=gnd ${bufpin_out}=/"
+   set subs0b="/LOGIC0/s/LOGIC0/${bufcell}/"
+else
+   set subs0a=""
+   set subs0b=""
+endif
+
+if ( "$tiehi" == "") then
+   set subs1a="/LOGIC1/s/O=/${bufpin_in}=vdd ${bufpin_out}=/"
+   set subs1b="/LOGIC1/s/LOGIC1/${bufcell}/"
+else
+   set subs1a=""
+   set subs1b=""
+endif
+
+#---------------------------------------------------------------------
+# Remove backslashes, references to "$techmap", and
+# make local input nodes of the form $0node<a:b><c> into the
+# form node<c>_FF_INPUT
+#---------------------------------------------------------------------
+
+cat ${final_blif} | sed \
+	-e "$subs0a" -e "$subs0b" -e "$subs1a" -e "$subs1b" \
+	-e 's/\\\([^$]\)/\1/g' \
+	-e 's/$techmap//g' \
+	-e 's/$0\([^ \t<]*\)<[0-9]*:[0-9]*>\([^ \t]*\)/\1\2_FF_INPUT/g' \
+	> ${synthdir}/${modulename}.blif
+
+# Switch to synthdir for processing of the BDNET netlist
 cd ${synthdir}
 
 #---------------------------------------------------------------------
-# If "nofanout" is set, then don't run vlogFanout.
+# If "nofanout" is set, then don't run blifFanout.
 #---------------------------------------------------------------------
 
 if ($?nofanout) then
@@ -690,11 +743,11 @@ if ($?nofanout) then
 else
 
 #---------------------------------------------------------------------
-# Make a copy of the original verilog file, as this will be overwritten
+# Make a copy of the original blif file, as this will be overwritten
 # by the fanout handling process
 #---------------------------------------------------------------------
 
-   cp ${modulename}.v ${modulename}_bak.v
+   cp ${modulename}.blif ${modulename}_bak.blif
 
 #---------------------------------------------------------------------
 # Check all gates for fanout load, and adjust gate strengths as
@@ -715,12 +768,10 @@ else
       set fanout_options=""
    endif
 
-   if (-f ${libertypath} && -f ${bindir}/vlogFanout ) then
+   if (-f ${libertypath} && -f ${bindir}/blifFanout ) then
 
-      if (! $?separator) then
+      if ("x${separator}" == "x") then
 	 set sepoption=""
-      else if ("x$separator" == "x") then
-	 set sepoption='-s ""'
       else
 	 set sepoption="-s ${separator}"
       endif
@@ -761,43 +812,42 @@ else
          end
       endif
 
-      echo "Running vlogFanout" |& tee -a ${synthlog}
-      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} tmp.v ${modulename}_sized.v" |& tee -a ${synthlog}
+      echo "Running blifFanout (iterative)" |& tee -a ${synthlog}
+      echo "Each iteration calls:" |& tee -a ${synthlog}
+      echo "blifFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} tmp.blif ${modulename}.blif" |& tee -a ${synthlog}
       echo "" >> ${synthlog}
 
-      mv ${modulename}.v tmp.v
-      ${bindir}/vlogFanout ${fanout_options} \
+      set nchanged=1000
+      while ($nchanged > 0)
+         mv ${modulename}.blif tmp.blif
+         set nchanged = `${bindir}/blifFanout ${fanout_options} \
 		-I ${modulename}_nofanout ${libertyoption} ${sepoption} \
-		${bufoption} tmp.v ${modulename}_sized.v |& tee -a ${synthlog}
+		${bufoption} tmp.blif ${modulename}.blif |& tee -a ${synthlog} | \
+		grep "changed:" | cut -f5 -d' '`
 
-      set errcond = ${status}
-      if ( ${errcond} != 0 ) then
-         echo "vlogFanout failed with error condition ${errcond}." \
+         set errcond=$status
+	 if ( $errcond > 0 ) then
+	    echo "blifFanout failed with error condition ${errcond}." \
 			|& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-         exit 1
-      endif
+	    echo "Premature exit." |& tee -a ${synthlog}
+	    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
+	    exit 1
+	 else
+            echo "gates resized: $nchanged" |& tee -a ${synthlog}
+	 endif
+      end
    else
-      echo "vlogFanout not run:  No cell size optimization." |& tee -a ${synthlog}
+      echo "blifFanout not run:  No cell size optimization." |& tee -a ${synthlog}
+      set nchanged=0
    endif
 endif
 
-echo "Running vlog2Verilog for antenna cell mapping." |& tee -a ${synthlog}
-echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options}" \
-	 |& tee -a ${synthlog}
-echo "   -o ${modulename}.v ${modulename}_sized.v" |& tee -a ${synthlog}
-
-${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options} \
-	-o ${modulename}.v ${modulename}_sized.v >>& ${synthlog}
-
 #---------------------------------------------------------------------
-# Spot check:  Did vlogFanout produce an error?
+# Spot check:  Did blifFanout produce an error?
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}.v || \
-        ( -M ${modulename}.v < -M tmp.v ))) then
-   echo "vlogFanout failure.  See file ${synthlog} for error messages." \
+if ( $nchanged < 0 ) then
+   echo "blifFanout failure.  See file ${synthlog} for error messages." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -815,116 +865,70 @@ echo "   Verilog: ${synthdir}/${modulename}.rtlbb.v" |& tee -a ${synthlog}
 echo "   Spice:   ${synthdir}/${modulename}.spc" |& tee -a ${synthlog}
 echo "" >> ${synthlog}
 
-echo "Running vlog2Verilog." |& tee -a ${synthlog}
-echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${modulename}.rtl.v" \
-	|& tee -a ${synthlog}
-echo "   ${modulename}.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${modulename}.rtl.v \
-	${modulename}.v >>& ${synthlog}
-
-set errcond = ${status}
-if ( ${errcond} != 0 ) then
-    echo "vlog2Verilog failed with error condition ${errcond}." \
-			|& tee -a ${synthlog}
-    echo "Premature exit." |& tee -a ${synthlog}
-    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-    exit 1
-endif
+echo "Running blif2Verilog." |& tee -a ${synthlog}
+${bindir}/blif2Verilog -c -v ${vddnet} -g ${gndnet} ${modulename}.blif \
+	> ${modulename}.rtl.v
 
 # Version without explicit power and ground
-echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlnopwr.v" \
-	|& tee -a ${synthlog}
-echo "   ${modulename}.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlnopwr.v \
-	${modulename}.v >>& ${synthlog}
-
-set errcond = ${status}
-if ( ${errcond} != 0 ) then
-    echo "vlog2Verilog failed with error condition ${errcond}." \
-			|& tee -a ${synthlog}
-    echo "Premature exit." |& tee -a ${synthlog}
-    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-    exit 1
-endif
+${bindir}/blif2Verilog -c -p -v ${vddnet} -g ${gndnet} ${modulename}.blif \
+	> ${modulename}.rtlnopwr.v
 
 # Version without vectors
-echo "${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} " \
-	|& tee -a ${synthlog}
-echo "   -o ${modulename}.rtlbb.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlbb.v \
-	${modulename}.v >>& ${synthlog}
-
-set errcond = ${status}
-if ( ${errcond} != 0 ) then
-    echo "vlog2Verilog failed with error condition ${errcond}." \
-			|& tee -a ${synthlog}
-    echo "Premature exit." |& tee -a ${synthlog}
-    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-    exit 1
-endif
+${bindir}/blif2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} ${modulename}.blif \
+	> ${modulename}.rtlbb.v
 
 #---------------------------------------------------------------------
-# Spot check:  Did vlog2Verilog exit with an error?
+# Spot check:  Did blif2Verilog exit with an error?
 # Note that these files are not critical to the main synthesis flow,
 # so if they are missing, we flag a warning but do not exit.
 #---------------------------------------------------------------------
 
 if ( !( -f ${modulename}.rtl.v || \
-        ( -M ${modulename}.rtl.v < -M ${modulename}.v ))) then
-   echo "vlog2Verilog failure:  No file ${modulename}.rtl.v created." \
+        ( -M ${modulename}.rtl.v < -M ${modulename}.blif ))) then
+   echo "blif2Verilog failure:  No file ${modulename}.rtl.v created." \
                 |& tee -a ${synthlog}
 endif
 
 if ( !( -f ${modulename}.rtlnopwr.v || \
-        ( -M ${modulename}.rtlnopwr.v < -M ${modulename}.v ))) then
-   echo "vlog2Verilog failure:  No file ${modulename}.rtlnopwr.v created." \
+        ( -M ${modulename}.rtlnopwr.v < -M ${modulename}.blif ))) then
+   echo "blif2Verilog failure:  No file ${modulename}.rtlnopwr.v created." \
                 |& tee -a ${synthlog}
 endif
 
 if ( !( -f ${modulename}.rtlbb.v || \
-        ( -M ${modulename}.rtlbb.v < -M ${modulename}.v ))) then
-   echo "vlog2Verilog failure:  No file ${modulename}.rtlbb.v created." \
+        ( -M ${modulename}.rtlbb.v < -M ${modulename}.blif ))) then
+   echo "blif2Verilog failure:  No file ${modulename}.rtlbb.v created." \
                 |& tee -a ${synthlog}
 endif
 
 #---------------------------------------------------------------------
 
-echo "Running vlog2Spice." |& tee -a ${synthlog}
+echo "Running blif2BSpice." |& tee -a ${synthlog}
 if ("x${spicefile}" == "x") then
     set spiceopt=""
 else
     set spiceopt="-l ${spicepath}"
 endif
-echo "vlog2Spice -i ${spiceopt} -o ${modulename}.spc ${modulename}.rtl.v" |& tee -a ${synthlog}
-${bindir}/vlog2Spice -i ${spiceopt} -o ${modulename}.spc ${modulename}.rtl.v >>& ${synthlog}
-
-set errcond = ${status}
-if ( ${errcond} != 0 ) then
-    echo "vlog2Spice failed with error condition ${errcond}." \
-			|& tee -a ${synthlog}
-    echo "Premature exit." |& tee -a ${synthlog}
-    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
-    exit 1
-endif
+${bindir}/blif2BSpice -i -p ${vddnet} -g ${gndnet} ${spiceopt} \
+	${modulename}.blif > ${modulename}.spc
 
 #---------------------------------------------------------------------
-# Spot check:  Did vlog2Spice exit with an error?
+# Spot check:  Did blif2BSpice exit with an error?
 # Note that these files are not critical to the main synthesis flow,
 # so if they are missing, we flag a warning but do not exit.
 #---------------------------------------------------------------------
 
 if ( !( -f ${modulename}.spc || \
-        ( -M ${modulename}.spc < -M ${modulename}.v ))) then
-   echo "vlog2Spice failure:  No file ${modulename}.spc created." \
+        ( -M ${modulename}.spc < -M ${modulename}.blif ))) then
+   echo "blif2BSpice failure:  No file ${modulename}.spc created." \
                 |& tee -a ${synthlog}
 else
 
    set test=`which python3`
    if ( $status == 0 ) then
        echo "Running spi2xspice.py" |& tee -a ${synthlog}
-
        if (!( ${?xspice_options} )) then
-	   set xspice_options=""
+           set xspice_options=""
        endif
 
        # Add paths to liberty files for any hard macros

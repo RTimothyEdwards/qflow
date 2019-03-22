@@ -1,13 +1,18 @@
 #!/bin/tcsh -f
 #----------------------------------------------------------
-# Placement script using abk-openroad RePlAce
+# Placement script using GrayWolf
 #
+# This script assumes the existence of the pre-GrayWolf
+# ".cel" and ".par" files.  It will run GrayWolf for the
+# placement.
 #----------------------------------------------------------
-# Tim Edwards, 12/26/18, for Open Circuit Design
+# Tim Edwards, 5/16/11, for Open Circuit Design
+# Modified April 2013 for use with qflow
+# Modified November 2013 for congestion feedback
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  replace.sh <project_path> <source_name>
+   echo Usage:  placement.sh <project_path> <source_name>
    exit 1
 endif
 
@@ -20,7 +25,7 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  replace.sh [options] <project_path> <source_name>
+   echo Usage:  placement.sh [options] <project_path> <source_name>
    echo   where
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.
@@ -114,22 +119,6 @@ foreach f (${spicefile})
    set spicepath="${spicepath} $p"
 end
 
-# Add hard macros to spice path
-
-if ( ${?hard_macros} ) then
-   foreach macro_path ( $hard_macros )
-      foreach file ( `ls ${sourcedir}/${macro_path}` )
-	 # Too bad SPICE doesn't have an agreed-upon extension.  Common ones are:
-	 if ( ${file:e} == "sp" || ${file:e} == "spc" || \
-			${file:e} == "spice" || ${file:e} == "cdl" || \
-			${file:e} == "ckt" || ${file:e} == "net") then
-	    set spicepath="${spicepath} -l ${sourcedir}/${macro_path}/${file}"
-	    break
-	 endif
-      end
-   end
-endif
-
 if (!($?logdir)) then
    set logdir=${projectpath}/log
 endif
@@ -218,7 +207,7 @@ if ( "${units}" == "" ) then
 endif
 
 #-------------------------------------------------------------------------
-# Create the pre-placement .def file for RePlAce
+# Create the .cel file for GrayWolf
 #-------------------------------------------------------------------------
 
 cd ${projectpath}
@@ -227,50 +216,47 @@ if ( "$techleffile" == "" ) then
     set lefoptions=""
     set addsoptions=""
 else
-    set lefoptions="-l ${techlefpath}"
+    set lefoptions="--lef ${techlefpath}"
     set addsoptions="-techlef ${techlefpath}"
 endif
-set lefoptions="${lefoptions} -l ${lefpath}"
+set lefoptions="${lefoptions} --lef ${lefpath}"
 
-# Pass additional .lef files to vlog2Def and DEF2Verilog from the hard macros list
+# Pass additional .lef files to blif2cel.tcl from the hard macros list
 
 if ( ${?hard_macros} ) then
     foreach macro_path ( $hard_macros )
 	foreach file ( `ls ${sourcedir}/${macro_path}` )
 	    if ( ${file:e} == "lef" ) then
-		set lefoptions="${lefoptions} -l ${sourcedir}/${macro_path}/${file}"
+		set lefoptions="${lefoptions} --hard-macro ${sourcedir}/${macro_path}/${file}"
 		set addsoptions="${addsoptions} -hardlef ${sourcedir}/${macro_path}/${file}"
 	    endif
 	end
     end
 endif
 
-echo "Running vlog2Def to generate input files for graywolf" |& tee -a ${synthlog}
-echo "vlog2Def ${lefoptions} -u $units -o ${layoutdir}/${rootname}_preplace.def ${synthdir}/${rootname}.rtlnopwr.v" |& tee -a ${synthlog}
-
-${bindir}/vlog2Def ${lefoptions} -u $units -o ${layoutdir}/${rootname}_preplace.def \
-	${synthdir}/${rootname}.rtlnopwr.v >>& ${synthlog}
+echo "Running blif2cel to generate input files for graywolf" |& tee -a ${synthlog}
+echo "blif2cel.tcl --blif ${synthdir}/${rootname}.blif ${lefoptions} --cel ${layoutdir}/${rootname}.cel" |& tee -a ${synthlog}
+${scriptdir}/blif2cel.tcl --blif ${synthdir}/${rootname}.blif \
+	${lefoptions} --cel ${layoutdir}/${rootname}.cel >>& ${synthlog}
 
 set errcond = $status
 if ( ${errcond} != 0 ) then
-   echo "vlog2Def failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "blif2cel.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped on error condition." >>& ${synthlog}
    exit 1
 endif
 
 #---------------------------------------------------------------------
-# Spot check:  Did vlog2Def produce file ${rootname}_preplace.def?
+# Spot check:  Did blif2cel produce file ${rootname}.cel?
 #---------------------------------------------------------------------
 
-if ( !( -f ${layoutdir}/${rootname}_preplace.def || \
-	( -f ${layoutdir}/${rootname}_preplace.def && \
-	-M ${layoutdir}/${rootname}_preplace.def \
-	< -M ${rootname}.rtlnopwr.v ))) then
-   echo "vlog2Def failure:  No file ${rootname}_preplace.def." |& tee -a ${synthlog}
-   echo "vlog2Def was called with arguments: ${lefpath} "
-   echo "	-u $units -o ${layoutdir}/${rootname}_preplace.def"
-   echo "	${synthdir}/${rootname}.rtlnopwr.v"
+if ( !( -f ${layoutdir}/${rootname}.cel || \
+	( -f ${layoutdir}/${rootname}.cel && -M ${layoutdir}/${rootname}.cel \
+	< -M ${rootname}.blif ))) then
+   echo "blif2cel failure:  No file ${rootname}.cel." |& tee -a ${synthlog}
+   echo "blif2cel was called with arguments: ${synthdir}/${rootname}.blif "
+   echo "      ${lefpath} ${layoutdir}/${rootname}.cel"
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
    exit 1
@@ -283,8 +269,29 @@ endif
 cd ${layoutdir}
 
 #---------------------------------------------------------------------
-# To do:  Add behavior to manually define blockages.
+# Check if a .cel1 file exists and needs to be prepended to .cel
+# This file may contain hard macro definitions that assert blockages
+# to the placement.
 #---------------------------------------------------------------------
+
+if ( -f ${rootname}.cel1 ) then
+   echo "Preparing layout blockages from ${rootname}.cel1" |& tee -a ${synthlog}
+   mv ${rootname}.cel ${rootname}_tmp.cel
+   cp ${rootname}.cel1 ${rootname}.cel
+   cat ${rootname}_tmp.cel >> ${rootname}.cel
+   rm -f ${rootname}_tmp.cel
+else
+   echo -n "No ${rootname}.cel1 file found for project. . . " \
+		|& tee -a ${synthlog}
+   echo "no partial blockages to apply to layout." |& tee -a ${synthlog}
+endif
+
+
+#-------------------------------------------------------------------------
+# If placement option "initial_density" is set, run the decongest
+# script.  This will annotate the .cel file with fill cells to pad
+# out the area to the specified density.
+#-------------------------------------------------------------------------
 
 # Set value ${fillers} to be equal either to a single cell name if
 # only one of (decapcell, antennacell, fillcell) is defined, or a
@@ -336,96 +343,210 @@ else
    endif
 endif
 
-#---------------------------------------------------------------------
-# To do:  Define a way to pass pin placement hints to RePlAce
-#---------------------------------------------------------------------
-
-#-----------------------------------------------
-# 1) Run RePlAce
-#-----------------------------------------------
-
-if ( !( ${?replace_options} )) then
-   # Some defaults (to be refined)
-   set replace_options = "-bmflag ispd"
-   set replace_options = "${replace_options} -lef ${lefpath}"
-   set replace_options = "${replace_options} -def ${layoutdir}/${rootname}_preplace.def"
-   set replace_options = "${replace_options} -output outputs"
-   set replace_options = "${replace_options} -dpflag NTU3"
-   set replace_options = "${replace_options} -dploc ${bindir}/ntuplace3"
-endif
-
-#----------------------------------------------------------------------------
-# Set -den option to RePlAce if initial_density is defined in project_vars.sh
-
 if ( ${?initial_density} ) then
-   set replace_options = "${replace_options} -den ${initial_density}"
+   echo "Running decongest to set initial density of ${initial_density}" \
+		|& tee -a ${synthlog}
+   if ( ${?fill_ratios} ) then
+        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} ${fill_ratios} --units=${units}" \
+		|& tee -a ${synthlog}
+	${scriptdir}/decongest.tcl ${rootname} ${lefpath} \
+		${fillers} ${initial_density} ${fill_ratios} --units=${units} |& tee -a ${synthlog}
+   else
+        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} --units=${units}" \
+		|& tee -a ${synthlog}
+	${scriptdir}/decongest.tcl ${rootname} ${lefpath} \
+		${fillers} ${initial_density} --units=${units} |& tee -a ${synthlog}
+   endif
+   set errcond = $status
+   if ( ${errcond} != 0 ) then
+	 echo "decongest.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
+	 echo "Premature exit." |& tee -a ${synthlog}
+	 echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+	 exit 1
+   endif
+   cp ${rootname}.cel ${rootname}.cel.bak
+   mv ${rootname}.acel ${rootname}.cel
 endif
 
-echo "Running RePlAce placement" |& tee -a ${synthlog}
-echo "RePlAce ${replace_options}" |& tee -a ${synthlog}
-${bindir}/RePlAce ${replace_options} >>& ${synthlog}
+# Check if a .acel file exists.  This file is produced by qrouter and
+# its existance indicates that qrouter is passing back congestion
+# information to GrayWolf for a final placement pass using fill to
+# break up congested areas.
+
+if ( -f ${rootname}.acel && ( -M ${rootname}.acel >= -M ${rootname}.cel )) then
+   cp ${rootname}.cel ${rootname}.cel.bak
+   mv ${rootname}.acel ${rootname}.cel
+   set final = 1
+else
+   if ( ${final} == 1 ) then
+      # Called for final time, but routing already succeeded, so just exit
+      echo "First attempt routing succeeded;  final placement iteration is unnecessary."
+      exit 2
+   endif
+endif
+
+# Check if a .cel2 file exists and needs to be appended to .cel
+# If the .cel2 file is newer than .cel, then truncate .cel and
+# re-append.
+
+if ( -f ${rootname}.cel2 ) then
+   echo "Preparing pin placement hints from ${rootname}.cel2" |& tee -a ${synthlog}
+   if ( `grep -c padgroup ${rootname}.cel` == "0" ) then
+      cat ${rootname}.cel2 >> ${rootname}.cel
+   else if ( -M ${rootname}.cel2 > -M ${rootname}.cel ) then
+      # Truncate .cel file to first line containing "padgroup"
+      cat ${rootname}.cel | sed -e "/padgroup/Q" > ${rootname}_tmp.cel
+      cat ${rootname}_tmp.cel ${rootname}.cel2 > ${rootname}.cel
+      rm -f ${rootname}_tmp.cel
+   endif
+else
+   echo -n "No ${rootname}.cel2 file found for project. . . " \
+		|& tee -a ${synthlog}
+   echo "continuing without pin placement hints" |& tee -a ${synthlog}
+endif
+
+#-----------------------------------------------
+# 1) Run GrayWolf
+#-----------------------------------------------
+
+if ( !( ${?graywolf_options} )) then
+   if ( !( ${?DISPLAY} )) then
+      set graywolf_options = "-n"
+   else
+      set graywolf_options = ""
+   endif
+endif
+
+echo "Running GrayWolf placement" |& tee -a ${synthlog}
+echo "graywolf ${graywolf_options} $rootname" |& tee -a ${synthlog}
+${bindir}/graywolf ${graywolf_options} $rootname >>& ${synthlog}
 
 set errcond = $status
 if ( ${errcond} != 0 ) then
-   echo "RePlAce failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "graywolf failed with exit status ${errcond}" |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped on error condition." >>& ${synthlog}
    exit 1
 endif
 
 #---------------------------------------------------------------------
-# Spot check:  Did RePlAce produce file ${rootname}_preplace_final.def?
+# Spot check:  Did GrayWolf produce file ${rootname}.pin?
 #---------------------------------------------------------------------
 
-set outfile=outputs/ispd/${rootname}_preplace/experiment000/${rootname}_preplace_final.def
-
-if ( !( -f ${outfile} || \
-	( -f ${outfile} && -M ${outfile} < -M ${rootname}_preplace.def ))) then
-   echo "RePlAce failure:  No file ${rootname}_preplace_final.def." |& tee -a ${synthlog}
+if ( !( -f ${rootname}.pin || \
+	( -f ${rootname}.pin && -M ${rootname}.pin < -M ${rootname}.cel ))) then
+   echo "GrayWolf failure:  No file ${rootname}.pin." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
    exit 1
 endif
 
-echo "Copying RePlAce result up to layout directory:" |& tee -a ${synthlog}
-echo "cp ${outfile} ${rootname}.def" |& tee -a ${synthlog}
-cp ${outfile} ${rootname}.def
-
 #---------------------------------------------------
-# Remove RePlAce working files
+# Remove blockage hardcells defined in .cel1
 #---------------------------------------------------
 
-if ($keep == 0) then
-   rm -rf outputs
+# Remove any existing .obs file as place2def.tcl will append to it.
+rm -f ${rootname}.obs
+
+if ( (-f ${rootname}.cel1) && (-f ${scriptdir}/removeblocks.tcl) ) then
+
+      echo "Running removeblocks to remove partical blockage references" \
+		|& tee -a ${synthlog}
+      echo "removeblocks.tcl ${rootname}" \
+		|& tee -a ${synthlog}
+
+      ${scriptdir}/removeblocks.tcl ${rootname} >>& ${synthlog}
+      set errcond = $status
+      if ( ${errcond} != 0 ) then
+	 echo "removeblocks.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
+	 echo "Ignoring. . . this may cause errors downstream." |& tee -a ${synthlog}
+      endif
 endif
 
-#---------------------------------------------------------------
-# 2) Run clock tree synthesis and back-annotate netlists
-#---------------------------------------------------------------
-
 #---------------------------------------------------
-# NOTE:  This should be in the qrouter script. . .
-# 3) Prepare .cfg file for qrouter
+# 2) Prepare DEF and .cfg files for qrouter
 #---------------------------------------------------
 
 if ($makedef == 1) then
 
-   echo "Running getantennacell to determine cell to use for antenna anchors." \
-	|& tee -a ${synthlog}
-   echo "getantennacell.tcl $rootname ${lefpath} $antennacell" |& tee -a ${synthlog}
-   set useantennacell=`${scriptdir}/getantennacell.tcl $rootname \
-	${lefpath} $antennacell  | grep antenna= | cut -d= -f2 | cut -d/ -f1`
+   # Run getfillcell to determine which cell should be used for fill to
+   # match the width specified for feedthroughs in the .par file.  If
+   # nothing is returned by getfillcell, then either feedthroughs have
+   # been disabled, or else we'll try passing $fillcell directly to
+   # place2def
 
-   if ( "${useantennacell}" != "" ) then
-      echo "Using cell ${useantennacell} for antenna anchors" |& tee -a ${synthlog}
+   echo "Running getfillcell to determine cell to use for fill." |& tee -a ${synthlog}
+   echo "getfillcell.tcl $rootname ${lefpath} $fillcell" |& tee -a ${synthlog}
+   set usefillcell = `${scriptdir}/getfillcell.tcl $rootname \
+	${lefpath} $fillcell | grep fill= | cut -d= -f2`
+
+   if ( "${usefillcell}" == "" ) then
+      set usefillcell = $fillcell
+   endif
+   echo "Using cell ${usefillcell} for fill" |& tee -a ${synthlog}
+
+   # Set up antenna pin option, if it is defined, then use user-defined
+   # options for place2def, if they are defined.
+
+   if ( !( ${?antennapin_in} )) then
+      set antenna_opt = ""
+   else
+      if ( !( ${?antennacell} )) then
+         set antenna_opt = ""
+      else
+	 if ( "x${antennacell}" == "x" ) then
+            set antenna_opt = ""
+	 else
+            set antenna_opt = "antennapin=${antennapin_in} antennacell=${antennacell}"
+	 endif
+      endif
+   endif
+
+   if ( !( ${?place2def_options} )) then
+      set place2def_options = "$antenna_opt"
+   else
+      set place2def_options = "$antenna_opt $place2def_options"
+   endif
+
+   # Run place2def to turn the GrayWolf output into a DEF file
+
+   echo "Running place2def to translate graywolf output to DEF format." \
+		|& tee -a ${synthlog}
+   if ( ${?route_layers} ) then
+      echo "place2def.tcl $rootname $usefillcell ${route_layers} ${place2def_options}" \
+		|& tee -a ${synthlog}
+      ${scriptdir}/place2def.tcl $rootname $usefillcell ${route_layers} \
+		${place2def_options} >>& ${synthlog}
+      set errcond = $status
+      if ( ${errcond} != 0 ) then
+	 echo "place2def.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
+	 echo "Premature exit." |& tee -a ${synthlog}
+	 echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+	 exit 1
+      endif
+   else
+      echo "place2def.tcl $rootname $usefillcell ${place2def_options}" \
+		|& tee -a ${synthlog}
+      ${scriptdir}/place2def.tcl $rootname $usefillcell ${place2def_options} \
+		>>& ${synthlog}
+   endif
+
+   #---------------------------------------------------------------------
+   # Spot check:  Did place2def produce file ${rootname}.def?
+   #---------------------------------------------------------------------
+
+   if ( !( -f ${rootname}.def || \
+	( -f ${rootname}.def && -M ${rootname}.def < -M ${rootname}.pin ))) then
+      echo "place2def failure:  No file ${rootname}.def." |& tee -a ${synthlog}
+      echo "Premature exit." |& tee -a ${synthlog}
+      echo "Synthesis flow stopped due to error condition." >> ${synthlog}
+      exit 1
    endif
 
    #---------------------------------------------------------------------
    # Add spacer cells to create a straight border on the right side
    #---------------------------------------------------------------------
 
-# To be reinstated. . .
-if 0 then
    if ( !(${?nospacers}) && (-f ${scriptdir}/addspacers.tcl) ) then
 
       # Fill will use just the fillcell for padding under power buses
@@ -463,7 +584,39 @@ if 0 then
 	 mv ${rootname}.obsx ${rootname}.obs
       endif
    endif
-endif
+
+   #---------------------------------------------------------------------
+   # Run pin position adjustment script to make sure that pins avoid the
+   # power buses and are actually close to their respective connections
+   # in the digital core, which is something that graywolf has serious
+   # problems ensuring.  Also puts pins on a double-pitch spacing to make
+   # it much easier for the router to reach them.
+   #---------------------------------------------------------------------
+
+   if ( -f ${scriptdir}/arrangepins.tcl ) then
+
+      if ( !( ${?arrangepins_options} )) then
+         set arrangepins_options = ""
+      endif
+
+      echo "Running arrangepins to adjust pin positions for optimal routing." \
+		|& tee -a ${synthlog}
+      echo "arrangepins.tcl ${arrangepins_options} ${rootname}" |& tee -a ${synthlog}
+      ${scriptdir}/arrangepins.tcl ${arrangepins_options} ${rootname} \
+		|& tee -a ${synthlog}
+
+      # Check if the _mod.def output file was generated, and if so, rename it
+      # back to plain .def.
+
+      if ( !( -f ${rootname}_mod.def || ( -f ${rootname}_mode.def && \
+		-M ${rootname}_mod.def < -M ${rootname}.def ))) then
+          echo "Error (ignoring):"
+	  echo "   arrangepins.tcl failed to generate file ${rootname}_mod.def."
+      else
+          mv ${rootname}_mod.def ${rootname}.def
+      endif
+
+   endif
 
    # Copy the .def file to a backup called "unroute"
    cp ${rootname}.def ${rootname}_unroute.def
@@ -564,8 +717,8 @@ endif
    # Scripted version continues with the read-in of the DEF file
 
    if (${scripting} == "T") then
-      if ("x$useantennacell" != "x") then
-	 echo "catch {qrouter::antenna init ${useantennacell}}" >> ${rootname}.cfg
+      if ("x$antennacell" != "x") then
+	 echo "catch {qrouter::antenna init ${antennacell}}" >> ${rootname}.cfg
       endif
       echo "read_def ${rootname}.def" >> ${rootname}.cfg
    endif
@@ -594,33 +747,30 @@ endif
    #------------------------------------------------------------------
    # Automatic optimization of buffer tree placement causes the
    # original BLIF netlist, with tentative buffer assignments, to
-   # be invalid.  Use the DEF2Verilog tool to back-annotate the
+   # be invalid.  Use the blifanno.tcl script to back-annotate the
    # correct assignments into the original BLIF netlist, then
    # use that BLIF netlist to regenerate the SPICE and RTL verilog
    # netlists.
    #------------------------------------------------------------------
 
-   echo "DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v -o ${synthdir}/${rootname}_anno.v" \
+   echo "blifanno.tcl ${synthdir}/${rootname}.blif ${rootname}.def ${synthdir}/${rootname}_anno.blif" \
 	|& tee -a ${synthlog}
-   echo "-p ${vddnet} -g ${gndnet} ${lefoptions} ${rootname}.def" |& tee -a ${synthlog}
-   ${bindir}/DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v \
-		-o ${synthdir}/${rootname}_anno.v \
-		-p ${vddnet} -g ${gndnet} \
-		${lefoptions} ${rootname}.def >>& ${synthlog}
+   ${scriptdir}/blifanno.tcl ${synthdir}/${rootname}.blif ${rootname}.def \
+		${synthdir}/${rootname}_anno.blif >>& ${synthlog}
    set errcond = $status
    if ( ${errcond} != 0 ) then
-      echo "DEF2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
+      echo "blifanno.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
       echo "Premature exit." |& tee -a ${synthlog}
       echo "Synthesis flow stopped on error condition." >>& ${synthlog}
       exit 1
    endif
 
    #------------------------------------------------------------------
-   # Spot check:  Did DEF2Verilog produce an output file?
+   # Spot check:  Did blifanno.tcl produce an output file?
    #------------------------------------------------------------------
 
-   if ( !( -f ${synthdir}/${rootname}_anno.v )) then
-      echo "DEF2Verilog failure:  No file ${rootname}_anno.v." \
+   if ( !( -f ${synthdir}/${rootname}_anno.blif )) then
+      echo "blifanno.tcl failure:  No file ${rootname}_anno.blif." \
 		|& tee -a ${synthlog}
       echo "RTL verilog and SPICE netlists may be invalid if there" \
 		|& tee -a ${synthlog}
@@ -650,81 +800,46 @@ endif
       cp ${rootname}.rtlnopwr.v ${rootname}_synth.rtlnopwr.v
       cp ${rootname}.rtlbb.v ${rootname}_synth.rtlbb.v
 
-      echo "Running vlog2Verilog." |& tee -a ${synthlog}
-      echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${rootname}.rtl.v ${rootname}_anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtl.v ${rootname}_anno.v >>& ${synthlog}
+      echo "Running blif2Verilog." |& tee -a ${synthlog}
+      ${bindir}/blif2Verilog -c -v ${vddnet} -g ${gndnet} \
+		${rootname}_anno.blif > ${rootname}.rtl.v
 
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
+      ${bindir}/blif2Verilog -c -p -v ${vddnet} -g ${gndnet} \
+		${rootname}_anno.blif > ${rootname}.rtlnopwr.v
 
-      echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlnopwr.v ${rootname}_anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtlnopwr.v ${rootname}_anno.v >>& ${synthlog}
+      ${bindir}/blif2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} \
+		${rootname}_anno.blif > ${rootname}.rtlbb.v
 
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
-
-      echo "vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} -o ${rootname}.rtlbb.v ${rootname}_anno.v" |& tee -a ${synthlog}
-      ${bindir}/vlog2Verilog -c -b -p -n -v ${vddnet} -g ${gndnet} \
-		-o ${rootname}.rtlbb.v ${rootname}_anno.v >>& ${synthlog}
-
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
-
-      echo "Running vlog2Spice." |& tee -a ${synthlog}
-      echo "vlog2Spice -i -l ${spicepath} -o ${rootname}.spc ${rootname}.rtl.v" \
-		|& tee -a ${synthlog}
-      ${bindir}/vlog2Spice -i -l ${spicepath} -o ${rootname}.spc ${rootname}.rtl.v >>& ${synthlog}
-
-      set errcond = $status
-      if ( ${errcond} != 0 ) then
-         echo "vlog2Spice failed with exit status ${errcond}" |& tee -a ${synthlog}
-         echo "Premature exit." |& tee -a ${synthlog}
-         echo "Synthesis flow stopped on error condition." >>& ${synthlog}
-         exit 1
-      endif
+      echo "Running blif2BSpice." |& tee -a ${synthlog}
+      ${bindir}/blif2BSpice -i -p ${vddnet} -g ${gndnet} -l \
+		${spicepath} ${rootname}_anno.blif \
+		> ${rootname}.spc
 
       #------------------------------------------------------------------
-      # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
+      # Spot check:  Did blif2Verilog or blif2BSpice exit with an error?
       #------------------------------------------------------------------
 
       if ( !( -f ${rootname}.rtl.v || ( -f ${rootname}.rtl.v && \
-		-M ${rootname}.rtl.v < -M ${rootname}_anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtl.v created." \
+		-M ${rootname}.rtl.v < -M ${rootname}_anno.blif ))) then
+	 echo "blif2Verilog failure:  No file ${rootname}.rtl.v created." \
 		|& tee -a ${synthlog}
       endif
 
       if ( !( -f ${rootname}.rtlnopwr.v || ( -f ${rootname}.rtlnopwr.v && \
-		-M ${rootname}.rtlnopwr.v < -M ${rootname}_anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.v created." \
+		-M ${rootname}.rtlnopwr.v < -M ${rootname}_anno.blif ))) then
+	 echo "blif2Verilog failure:  No file ${rootname}.rtlnopwr.v created." \
 		|& tee -a ${synthlog}
       endif
 
       if ( !( -f ${rootname}.rtlbb.v || ( -f ${rootname}.rtlbb.v && \
-		-M ${rootname}.rtlbb.v < -M ${rootname}_anno.v ))) then
-	 echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.v created." \
+		-M ${rootname}.rtlbb.v < -M ${rootname}_anno.blif ))) then
+	 echo "blif2Verilog failure:  No file ${rootname}.rtlbb.v created." \
 		|& tee -a ${synthlog}
       endif
 
       if ( !( -f ${rootname}.spc || ( -f ${rootname}.spc && \
-		-M ${rootname}.spc < -M ${rootname}_anno.v ))) then
-	 echo "vlog2Spice failure:  No file ${rootname}.spc created." \
+		-M ${rootname}.spc < -M ${rootname}_anno.blif ))) then
+	 echo "blif2BSpice failure:  No file ${rootname}.spc created." \
 		|& tee -a ${synthlog}
       endif
 
@@ -732,6 +847,19 @@ endif
       cd ${layoutdir}
 
     endif
+endif
+
+#---------------------------------------------------
+# 4) Remove working files (except for the main
+#    output files .pin, .pl1, and .pl2
+#---------------------------------------------------
+
+if ($keep == 0) then
+   rm -f ${rootname}.blk ${rootname}.gen ${rootname}.gsav ${rootname}.history
+   rm -f ${rootname}.log ${rootname}.mcel ${rootname}.mdat ${rootname}.mgeo
+   rm -f ${rootname}.mout ${rootname}.mpin ${rootname}.mpth ${rootname}.msav
+   rm -f ${rootname}.mver ${rootname}.mvio ${rootname}.stat ${rootname}.out
+   rm -f ${rootname}.pth ${rootname}.sav ${rootname}.scel ${rootname}.txt
 endif
 
 #------------------------------------------------------------

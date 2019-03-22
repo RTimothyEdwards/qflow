@@ -126,7 +126,7 @@ while {[gets $flef line] >= 0} {
       parse_macro $flef $macroname
       if {[regexp "^$antennacell" $macroname] == 1} {
 	 # Check width against feedthrough width
-	 puts stdout "Diagnostic:  macro $macroname input [subst \$${macroname}(pin)]"
+	 # puts stdout "Diagnostic:  macro $macroname input [subst \$${macroname}(pin)]"
 	 set useantennacell $macroname
 	 set useantennapin [subst \$${macroname}(pin)]
       }

@@ -279,7 +279,7 @@ void ReadNetlistAndConvert(FILE *netfile, FILE *libfile, char *libname,
 	         CleanupString(MainSubcktName);
 		 fprintf(outfile, "*SPICE netlist created from BLIF module "
 			"%s by blif2BSpice\n", MainSubcktName);
-		 fprintf(outfile, "\n");
+		 fprintf(outfile, "");
 
 		 /* If doinclude == 1 then dump the contents of the	*/
 		 /* libraray.  If 0, then just write a .include line.	*/
@@ -291,7 +291,7 @@ void ReadNetlistAndConvert(FILE *netfile, FILE *libfile, char *libname,
 		       while (loc_getline(line, sizeof(line), libfile) > 0)
 		          fputs(line, outfile);
 		       fclose(libfile);
-		       fprintf(outfile, "\n");
+		       fprintf(outfile, "");
 		    }
 		 }
 		 else {

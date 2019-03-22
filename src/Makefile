@@ -3,43 +3,35 @@
 #
 
 # Main compiler arguments
-CFLAGS = -g
+CFLAGS = -g -O2
 LIBS = 
 LDFLAGS = 
 INSTALL = /bin/install -c
 
-DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"/home/tim/src/RePlAce/src/RePlAce\" -DQFLOW_NTUPLACE3_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace3\" -DQFLOW_NTUPLACE4_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace4h\" -DQFLOW_VERSION=\"1.4\" -DQFLOW_REVISION=\"1\"
+DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_VERSION=\"1.3\" -DQFLOW_REVISION=\"11\"
 
 QFLOW_LIB_DIR = /usr/local/share/qflow
-
 QFLOW_GRAYWOLF_PATH = /usr/local/bin/graywolf
-QFLOW_REPLACE_PATH = /home/tim/src/RePlAce/src/RePlAce
-QFLOW_NTUPLACE3_PATH = /home/tim/src/RePlAce/src/../ntuplace/ntuplace3
-QFLOW_NTUPLACE4_PATH = /home/tim/src/RePlAce/src/../ntuplace/ntuplace4h
 QFLOW_QROUTER_PATH = /usr/local/bin/qrouter
+QFLOW_ABC_PATH = @QFLOW_ABC_PATH@
+QFLOW_ODIN_PATH = @QFLOW_ODIN_PATH@
 QFLOW_MAGIC_PATH = /usr/local/bin/magic
 QFLOW_NETGEN_PATH = /usr/local/bin/netgen
 QFLOW_YOSYS_PATH = /usr/local/bin/yosys
 QFLOW_OPENTIMER_PATH = 
 QFLOW_OPENSTA_PATH = /usr/local/bin/sta
 
+HAVE_ABC = @HAVE_ABC@
 HAVE_YOSYS = 1
+HAVE_ODIN_II = @HAVE_ODIN_II@
 HAVE_MAGIC = 1
 HAVE_NETGEN = 1
 HAVE_OPENTIMER = 0
 HAVE_OPENSTA = 1
-HAVE_GRAYWOLF = 1
-HAVE_REPLACE = 1
 
-OBJECTS = vlog2Spice.o vlog2Verilog.o vlog2Def.o vlog2Cel.o vlogFanout.o
-OBJECTS += DEF2Verilog.o
-OBJECTS += vesta.o spice2delay.o rc2dly.o
-OBJECTS += blif2BSpice.o blif2Verilog.o blifFanout.o
+OBJECTS = blif2BSpice.o blif2Verilog.o blifFanout.o vesta.o spice2delay.o rc2dly.o
 HASHLIB = hash.o
 LIBERTYLIB = readliberty.o
-VERILOGLIB = readverilog.o
-LEFLIB = readlef.o
-DEFLIB = readdef.o
 SOURCES := $(patsubst %.o,%.c,$(OBJECTS))
 TARGETS := $(patsubst %.o,%$(EXEEXT),$(OBJECTS))
 
@@ -47,40 +39,16 @@ BININSTALL = ${QFLOW_LIB_DIR}/bin
 
 all: $(TARGETS)
 
-vlog2Spice$(EXEEXT): vlog2Spice.o $(HASHLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) vlog2Spice.o $(HASHLIB) $(VERILOGLIB) -o $@ $(LIBS)
-
-vlog2Verilog$(EXEEXT): vlog2Verilog.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) vlog2Verilog.o $(HASHLIB) $(VERILOGLIB) $(LEFLIB) \
-		-o $@ $(LIBS)
-
-vlog2Cel$(EXEEXT): vlog2Cel.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) vlog2Cel.o $(HASHLIB) $(VERILOGLIB) $(LEFLIB) \
-		-o $@ $(LIBS)
-
-vlog2Def$(EXEEXT): vlog2Def.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) vlog2Def.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB) -o $@ $(LIBS) -lm
-
-vlogFanout$(EXEEXT): vlogFanout.o $(HASHLIB) $(LIBERTYLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) vlogFanout.o $(HASHLIB) $(VERILOGLIB) $(LIBERTYLIB) \
-		-DQFLOW_VERSION=\"VERSION\" -DQFLOW_REVISION=\"REVISION\" \
-		$(DEPENDS) -o $@ $(LIBS) -lm
-
-DEF2Verilog$(EXEEXT): DEF2Verilog.o $(HASHLIB) $(VERILOGLIB) $(DEFLIB) $(LEFLIB)
-	$(CC) $(LDFLAGS) DEF2Verilog.o $(HASHLIB) $(VERILOGLIB) $(DEFLIB) $(LEFLIB) \
-		-DQFLOW_VERSION=\"VERSION\" -DQFLOW_REVISION=\"REVISION\" \
-		$(DEPENDS) -o $@ $(LIBS) -lm
-
 blif2BSpice$(EXEEXT): blif2BSpice.o
 	$(CC) $(LDFLAGS) blif2BSpice.o -o $@ $(LIBS)
-
-blif2Verilog$(EXEEXT): blif2Verilog.o
-	$(CC) $(LDFLAGS) blif2Verilog.o -o $@ $(LIBS)
 
 blifFanout$(EXEEXT): blifFanout.o $(HASHLIB) $(LIBERTYLIB)
 	$(CC) $(LDFLAGS) blifFanout.o $(HASHLIB) $(LIBERTYLIB) \
 		-DQFLOW_VERSION=\"VERSION\" -DQFLOW_REVISION=\"REVISION\" \
 		$(DEPENDS) -o $@ $(LIBS) -lm
+
+blif2Verilog$(EXEEXT): blif2Verilog.o
+	$(CC) $(LDFLAGS) blif2Verilog.o -o $@ $(LIBS)
 
 vesta$(EXEEXT): vesta.o $(HASHLIB)
 	$(CC) $(LDFLAGS) vesta.o $(HASHLIB) -o $@ $(LIBS)
@@ -88,29 +56,23 @@ vesta$(EXEEXT): vesta.o $(HASHLIB)
 spice2delay$(EXEEXT): spice2delay.o $(HASHLIB) $(LIBERTYLIB)
 	$(CC) $(LDFLAGS) spice2delay.o $(HASHLIB) $(LIBERTYLIB) -o $@ $(LIBS)
 
-rc2dly$(EXEEXT): rc2dly.o $(LIBERTYLIB) $(HASHLIB) $(VERILOGLIB)
-	$(CC) $(LDFLAGS) rc2dly.o $(LIBERTYLIB) $(HASHLIB) $(VERILOGLIB) -o $@ $(LIBS)
+rc2dly$(EXEEXT): rc2dly.o $(LIBERTYLIB)
+	$(CC) $(LDFLAGS) rc2dly.o $(LIBERTYLIB) -o $@ $(LIBS)
 
 install: $(TARGETS)
-	@echo "Installing verilog, SPICE, etc. file format handlers"
+	@echo "Installing verilog and BDNET file format handlers"
 	$(INSTALL) -d $(DESTDIR)${BININSTALL}
 	@for target in $(TARGETS); do \
 	   $(INSTALL) $$target $(DESTDIR)${BININSTALL} ;\
 	done
-	@echo "Installing links to third-party synthesis flow tool executables"
-	@if test "${HAVE_GRAYWOLF}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f graywolf;  ln -s $(QFLOW_GRAYWOLF_PATH) graywolf) ;\
-	fi
-	@if test "${HAVE_REPLACE}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f RePlAce;  ln -s $(QFLOW_REPLACE_PATH) RePlAce) ;\
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace3;  ln -s $(QFLOW_NTUPLACE3_PATH) ntuplace3) ;\
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f ntuplace4h;  ln -s $(QFLOW_NTUPLACE4_PATH) ntuplace4h) ;\
-	fi
-	@if test "${HAVE_QROUTER}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f qrouter;  ln -s $(QFLOW_QROUTER_PATH) qrouter) ;\
+	@echo "Installing links to graywolf, qrouter, odin_ii, and abc"
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f graywolf;  ln -s $(QFLOW_GRAYWOLF_PATH) graywolf)
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f qrouter;  ln -s $(QFLOW_QROUTER_PATH) qrouter)
+	@if test "${HAVE_ABC}" = "1"; then \
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f abc;  ln -s $(QFLOW_ABC_PATH) abc); \
 	fi
 	@if test "${HAVE_MAGIC}" = "1"; then \
-	(cd $(DESTDIR)${BININSTALL};  $(RM) -f magic;  ln -s $(QFLOW_MAGIC_PATH) magic) ;\
+	(cd $(DESTDIR)${BININSTALL};  $(RM) -f magic;  ln -s $(QFLOW_MAGIC_PATH) magic); \
 	fi
 	@if test "${HAVE_NETGEN}" = "1"; then \
 	(cd $(DESTDIR)${BININSTALL};  $(RM) -f netgen;  ln -s $(QFLOW_NETGEN_PATH) netgen); \
@@ -130,15 +92,15 @@ uninstall:
 	$(RM) -rf ${BININSTALL}
 
 clean:
-	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB) $(LEFLIB) $(DEFLIB) $(VERILOGLIB)
+	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB)
 	$(RM) -f $(TARGETS)
 
 veryclean:
-	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB) $(LEFLIB) $(DEFLIB) $(VERILOGLIB)
+	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB)
 	$(RM) -f $(TARGETS)
 
 distclean:
-	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB) $(LEFLIB) $(DEFLIB) $(VERILOGLIB)
+	$(RM) -f $(OBJECTS) $(HASHLIB) $(LIBERTYLIB)
 	$(RM) -f $(TARGETS)
 
 .c.o:

@@ -159,8 +159,6 @@ AC_ARG_WITH(opentimer,
    AC_PATH_PROG(QFLOW_OPENTIMER_PATH, ot-shell, , )])
 AC_DEFINE_UNQUOTED(QFLOW_OPENTIMER_PATH, "$QFLOW_OPENTIMER_PATH")
 
-dnl Path to abk-openroad OpenSTA
-
 AC_ARG_WITH(opensta,
 [  --with-opensta=DIR		path to sta], [
    if test -d "$withval"; then
@@ -175,34 +173,6 @@ AC_ARG_WITH(opensta,
 ], [
    AC_PATH_PROG(QFLOW_OPENSTA_PATH, sta, , )])
 AC_DEFINE_UNQUOTED(QFLOW_OPENSTA_PATH, "$QFLOW_OPENSTA_PATH")
-
-dnl Path to abk-openroad RePlAce and detail placement ntuplace3/ntuplace4h
-
-AC_ARG_WITH(replace,
-[  --with-replace=DIR		path to RePlAce], [
-   if test -d "$withval"; then
-      QFLOW_REPLACE_DIR=$withval
-   elif test -f "$withval"; then
-      # Path includes "/RePlAce";  remove it
-      QFLOW_REPLACE_DIR=${withval%/RePlAce}
-   else
-      QFLOW_REPLACE_DIR=${PATH}
-   fi
-   AC_PATH_PROG(QFLOW_REPLACE_PATH, RePlAce, , $QFLOW_REPLACE_DIR)
-   AC_PATH_PROG(QFLOW_NTUPLACE3_PATH, ntuplace3, , ${QFLOW_REPLACE_DIR}/../ntuplace)
-   AC_PATH_PROG(QFLOW_NTUPLACE4_PATH, ntuplace4h, , ${QFLOW_REPLACE_DIR}/../ntuplace)
-], [
-   AC_PATH_PROG(QFLOW_REPLACE_PATH, RePlAce, , )
-   AC_PATH_PROG(QFLOW_NTUPLACE3_PATH, ntuplace3, , )
-   AC_PATH_PROG(QFLOW_NTUPLACE4_PATH, ntuplace4h, , )
-])
-AC_DEFINE_UNQUOTED(QFLOW_REPLACE_PATH, "$QFLOW_REPLACE_PATH")
-dnl NOTE:  The following is based on the current source distribution of RePlAce and
-dnl is likely to change.  QFLOW_NTUPLACE_PATH is set to the common prefix "ntuplace"
-dnl of the actual tools, currently "ntuplace3" and "ntuplace4h".  Probably better to
-dnl write a custom autoconf script for this.
-AC_DEFINE_UNQUOTED(QFLOW_NTUPLACE3_PATH, "$QFLOW_NTUPLACE3_PATH")
-AC_DEFINE_UNQUOTED(QFLOW_NTUPLACE4_PATH, "$QFLOW_NTUPLACE4_PATH")
 
 dnl Expand the prefix variable
 if test "x$prefix" = xNONE ; then
@@ -227,9 +197,6 @@ AC_ARG_WITH(bindir,
 
 dnl AC_SUBST(QFLOW_YOSYS_PATH)
 dnl AC_SUBST(QFLOW_GRAYWOLF_PATH)
-dnl AC_SUBST(QFLOW_REPLACE_PATH)
-dnl AC_SUBST(QFLOW_NTUPLACE3_PATH)
-dnl AC_SUBST(QFLOW_NTUPLACE4_PATH)
 dnl AC_SUBST(QFLOW_QROUTER_PATH)
 dnl AC_SUBST(QFLOW_MAGIC_PATH)
 dnl AC_SUBST(QFLOW_NETGEN_PATH)
@@ -287,30 +254,6 @@ fi
 
 AC_SUBST(HAVE_OPENSTA)
 
-if test "x${ac_cv_path_QFLOW_GRAYWOLF_PATH}" == "x"; then
-   HAVE_GRAYWOLF=0
-else
-   HAVE_GRAYWOLF=1
-fi
-
-AC_SUBST(HAVE_GRAYWOLF)
-
-if test "x${ac_cv_path_QFLOW_REPLACE_PATH}" == "x"; then
-   HAVE_REPLACE=0
-else
-   HAVE_REPLACE=1
-fi
-
-AC_SUBST(HAVE_REPLACE)
-
-if test "x${ac_cv_path_QFLOW_QROUTER_PATH}" == "x"; then
-   HAVE_QROUTER=0
-else
-   HAVE_QROUTER=1
-fi
-
-AC_SUBST(HAVE_QROUTER)
-
 AC_OUTPUT(Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile)
 
 echo ""
@@ -318,93 +261,57 @@ echo "Configuration results:"
 echo "----------------------------------------------------"
 echo ""
 
-FATAL=0
-WARN=0
 if test "x${ac_cv_path_QFLOW_YOSYS_PATH}" == "x"; then
-   FATAL=1
    echo "ERROR: yosys not found.  Use --with-yosys=<DIR>"
 else
    echo "Using yosys verilog synthesis tool at: ${ac_cv_path_QFLOW_YOSYS_PATH}"
 fi
 
-# Make sure one placement tool exists
-if test "x${ac_cv_path_QFLOW_GRAYWOLF_PATH}" == "x" -a "x${ac_cv_path_QFLOW_REPLACE_PATH}" == "x"; then
-   FATAL=1
-   echo "ERROR: No placement tool found.  Need either graywolf or RePlAce."
-fi
-
 if test "x${ac_cv_path_QFLOW_GRAYWOLF_PATH}" == "x"; then
-   echo "GrayWolf not found.  Use --with-graywolf=<DIR> (optional)"
+   echo "ERROR: GrayWolf not found.  Use --with-graywolf=<DIR>"
 else
    echo "Using graywolf placement tool at: ${ac_cv_path_QFLOW_GRAYWOLF_PATH}"
 fi
 
-if test "x${ac_cv_path_QFLOW_REPLACE_PATH}" == "x"; then
-   echo "RePlAce not found.  Use --with-replace=<DIR> (optional)"
-else
-   echo "Using RePlAce placement tool at: ${ac_cv_path_QFLOW_REPLACE_PATH}"
-fi
-
 if test "x${ac_cv_path_QFLOW_QROUTER_PATH}" == "x"; then
    echo "ERROR: qrouter not found.  Use --with-qrouter=<DIR>"
-   FATAL=1
 else
    echo "Using qrouter detail route tool at: ${ac_cv_path_QFLOW_QROUTER_PATH}"
 fi
 
 if test "x${ac_cv_path_QFLOW_MAGIC_PATH}" == "x"; then
-   WARN=1
    echo "WARNING: Magic 8.X layout tool not found.  Use --with-magic=<DIR>"
 else
    echo "Using Magic layout tool at: ${ac_cv_path_QFLOW_MAGIC_PATH}"
 fi
 
 if test "x${ac_cv_path_QFLOW_NETGEN_PATH}" == "x"; then
-   WARN=1
    echo "WARNING: Netgen LVS tool not found.  Use --with-netgen=<DIR>"
 else
    echo "Using Netgen LVS tool at: ${ac_cv_path_QFLOW_NETGEN_PATH}"
 fi
 
-echo "Using Vesta STA tool (internal)"
-
 if test "x${ac_cv_path_QFLOW_OPENTIMER_PATH}" == "x"; then
-   echo "OpenTimer not found.  Use --with-opentimer=<DIR> (optional)"
+#  echo "INFO: OpenTimer not found.  Use --with-opentimer=<DIR>"
+   if test "x${ac_cv_path_QFLOW_OPENSTA_PATH}" == "x"; then
+       echo "Using Vesta STA tool (internal)"
+   fi
 else
-   echo "Using OpenTimer static timing analysys tool at: ${ac_cv_path_QFLOW_OPENTIMER_PATH}"
+   echo "EXPERIMENTAL: Using OpenTimer static timing analysys tool at: ${ac_cv_path_QFLOW_OPENTIMER_PATH}"
 fi
 
 if test "x${ac_cv_path_QFLOW_OPENSTA_PATH}" == "x"; then
-   echo "OpenSTA not found.  Use --with-opensta=<DIR> (optional)"
+#  echo "INFO: OpenSTA not found.  Use --with-opensta=<DIR>"
+   if test "x${ac_cv_path_QFLOW_OPENTIMER_PATH}" == "x"; then
+      echo "Using Vesta STA tool (internal)"
+   fi
 else
-   echo "Using OpenSTA static timing analysys tool at: ${ac_cv_path_QFLOW_OPENSTA_PATH}"
+   echo "EXPERIMENTAL: Using OpenSTA static timing analysys tool at: ${ac_cv_path_QFLOW_OPENSTA_PATH}"
 fi
 
 if test "x${HAVE_PYTHON3}" == "x"; then
-   WARN=1
    echo "No python3 on system, will not install qflow GUI or spi2xspice.py"
 fi
 
 echo "----------------------------------------------------"
 
-if test x$WARN = x1; then
-   echo "Some tools needed for a complete flow were not found.  This will result in"
-   echo "an incomplete synthesis flow."
-   echo ""
-fi
-
-if test x$FATAL = x1; then
-   echo "One or more mandatory tools needed for a basic synthesis flow were not found."
-   echo "This will result in an unusable synthesis flow.  Please check the configure"
-   echo "options with \"./configure --help\" and ensure that all tools are available"
-   echo "to qflow for a complete synthesis flow."
-   echo ""
-fi
-
-if test x$WARN = x0 -a x$FATAL = x0; then
-   echo "All tools needed for complete flow have been found."
-   echo "Run \"make\" followed by \"sudo make install\" to install qflow."
-   echo ""
-fi
-
-echo "----------------------------------------------------"

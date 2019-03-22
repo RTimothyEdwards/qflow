@@ -86,13 +86,11 @@ rm -f ${origname}_tmp.v
 
 cd ${synthdir}
 
-# rm -f ${origname}.v
-rm -f ${origname}_bak.v
-rm -f ${origname}_tmp.v
-rm -f ${rootname}_orig.v
-rm -f ${rootname}_sized.v
-rm -f ${rootname}_anno.v
-rm -f ${rootname}.anno.v
+# rm -f ${origname}.blif
+rm -f ${origname}_bak.blif
+rm -f ${origname}_tmp.blif
+rm -f ${rootname}_orig.blif
+rm -f ${rootname}_anno.blif
 rm -f ${rootname}_nofanout
 rm -f ${rootname}_powerground
 rm -f tmp.blif

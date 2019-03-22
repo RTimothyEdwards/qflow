@@ -1,12 +1,12 @@
 #!/bin/tcsh -f
 #----------------------------------------------------------
-# LVS comparison script using netgen
+# LVS comparison script using magic
 #----------------------------------------------------------
 # Tim Edwards, 8/20/18, for Open Circuit Design
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  netgen_lvs.sh [options] <project_path> <source_name>
+   echo Usage:  lvs.sh [options] <project_path> <source_name>
    exit 1
 endif
 
@@ -21,7 +21,7 @@ if ($argc >= 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  netgen_lvs.sh [options] <project_path> <source_name>
+   echo Usage:  lvs.sh [options] <project_path> <source_name>
    echo   where
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.

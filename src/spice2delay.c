@@ -169,7 +169,7 @@ void add_ritem (ritemptr *ritem_list_ptr, rptr r) {
     }
 
 }
-void process_subckt_inst(char **tokens, int num_toks, cell_io_ptr cell_io, struct hashtable *Nodehash, node_item_ptr **last_driver_ptr, int *numDrivers) {
+void process_subckt_inst(char **tokens, int num_toks, cell_io_ptr cell_io, struct hashlist **Nodehash, node_item_ptr **last_driver_ptr, int *numDrivers) {
 
     nodeptr curr_node = NULL;
     node_item_ptr next_src_item = NULL;
@@ -284,7 +284,7 @@ double spiceValtoD(char *string) {
     return rtrnVal;
 }
 
-void process_r(char **tokens, int num_toks, struct hashtable *Nodehash, ritemptr *fullrlist) {
+void process_r(char **tokens, int num_toks, struct hashlist **Nodehash, ritemptr *fullrlist) {
     // create ritem which captures the resistor and the connection between two nodes
     // for each node
     //      if node does not exist, create it
@@ -325,7 +325,7 @@ void process_r(char **tokens, int num_toks, struct hashtable *Nodehash, ritemptr
     add_ritem(fullrlist, curr_r);
 }
 
-void process_c(char **tokens, int num_toks, struct hashtable *Nodehash) {
+void process_c(char **tokens, int num_toks, struct hashlist **Nodehash) {
     //
     // change capacitance units to farads
     //
@@ -491,14 +491,14 @@ int main (int argc, char* argv[]) {
     // list of all Rs for debugging and to easily free them at end
     ritemptr allrs = NULL;
 
-    struct hashtable Nodehash;
+    struct hashlist *Nodehash[OBJHASHSIZE];
 
     /* See hash.c for these routines and variables */
     hashfunc = hash;
     matchfunc = match;
 
     /* Initialize net hash table */
-    InitializeHashTable(&Nodehash, LARGEHASHSIZE);
+    InitializeHashTable(Nodehash);
 
     // create first item in cell io list
     cell_io_ptr cell_io_list = NULL;
@@ -582,19 +582,19 @@ int main (int argc, char* argv[]) {
             if (!(strncmp(line, "R", 1))) {
 
                 printf("located resistor line\n");
-                process_r(tokens, num_toks, &Nodehash, &allrs);
+                process_r(tokens, num_toks, Nodehash, &allrs);
 
             } else if (!(strncmp(line, "C", 1))) {
 
                 printf("located capacitor line\n");
-                process_c(tokens, num_toks, &Nodehash);
+                process_c(tokens, num_toks, Nodehash);
 
             } else if (!(strncmp(line, "X", 1))) {
 
                 printf("located subckt instantiation line\n");
-                printf("number of hash entries %d\n", RecurseHashTable(&Nodehash, CountHashTableEntries));
-                process_subckt_inst(tokens, num_toks, cell_io_list, &Nodehash, &last_driver, &numDrivers);
-                printf("number of hash entries %d\n", RecurseHashTable(&Nodehash, CountHashTableEntries));
+                printf("number of hash entries %d\n", RecurseHashTable(Nodehash, CountHashTableEntries));
+                process_subckt_inst(tokens, num_toks, cell_io_list, Nodehash, &last_driver, &numDrivers);
+                printf("number of hash entries %d\n", RecurseHashTable(Nodehash, CountHashTableEntries));
 
             } else if (!(strncmp(line, ".subckt", 7))) {
                 printf("located subckt definition line\n");
@@ -652,11 +652,11 @@ int main (int argc, char* argv[]) {
         curr_node_item = curr_node_item->next;
     }
 
-    currnode = HashFirst(&Nodehash);
+    currnode = HashFirst(Nodehash);
 
     while (currnode != NULL) {
         printf("%s\t\t%f\t%f\n", currnode->name, currnode->nodeCap, currnode->totCapDownstream);
-        currnode = HashNext(&Nodehash);
+        currnode = HashNext(Nodehash);
     }
 
 
@@ -722,7 +722,7 @@ int main (int argc, char* argv[]) {
     }
     printf("Number of Rs: %d\n", numRs);
 
-    currnode = HashFirst(&Nodehash);
+    currnode = HashFirst(Nodehash);
     int numNodes = 0;
 
     while (currnode != NULL) {
@@ -739,7 +739,7 @@ int main (int argc, char* argv[]) {
         printf("Node %s had %d Rs attached\n", currnode->name, numRs);
         free(currnode->name);
         free(currnode);
-        currnode = HashNext(&Nodehash);
+        currnode = HashNext(Nodehash);
     }
     printf("Number of nodes: %d\n", numNodes);
 

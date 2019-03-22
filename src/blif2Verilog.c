@@ -31,12 +31,14 @@ extern	char	*optarg;
 
 #define INPUT	0
 #define OUTPUT	1
+#define UNKNOWN	2
 
 struct Vect {
 	struct Vect *next;
 	char *name;
 	char direction;		/* INPUT or OUTPUT */
 	int Max;
+	int Min;
 };
 
 void ReadNetlistAndConvert(FILE *, FILE *, unsigned char);
@@ -189,7 +191,6 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 
 	First = TRUE;
 	Vector = VectorAlloc();
-	Vector->next = NULL;
         while (loc_getline(line, sizeof(line), NETFILE) > 0) {
 	   lptr = line;
 	   while (isspace(*lptr)) lptr++;
@@ -219,6 +220,8 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 	                  if (strcmp(VectorPresent->name, InputName) == 0) {
 	                     VectorPresent->Max = (VectorPresent->Max > VectorIndex) ?
 					VectorPresent->Max : VectorIndex;
+	                     VectorPresent->Min = (VectorPresent->Min < VectorIndex) ?
+					VectorPresent->Min : VectorIndex;
 	                     Found = TRUE;
 	                  }
 	                  VectorPresent = VectorPresent->next; 
@@ -226,9 +229,8 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 	               if (!Found) {
 			  VectorPresent->name = strdup(InputName);
 			  VectorPresent->direction = INPUT;
-	                  VectorPresent->Max = VectorIndex;
+	                  VectorPresent->Max = VectorPresent->Min = VectorIndex;
 	                  VectorPresent->next = VectorAlloc();
-	                  VectorPresent->next->next = NULL;
 	               }
 	            }
 	            if (PrintIt || !Found) {	// Should print vectors in module statement
@@ -281,6 +283,8 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 	                  if (strcmp(VectorPresent->name, OutputName) == 0) {
 	                     VectorPresent->Max = (VectorPresent->Max > VectorIndex) ?
 					VectorPresent->Max : VectorIndex;
+	                     VectorPresent->Min = (VectorPresent->Min < VectorIndex) ?
+					VectorPresent->Min : VectorIndex;
 	                     Found = TRUE;
 	                  }
 	                  VectorPresent = VectorPresent->next; 
@@ -288,9 +292,8 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 	               if (!Found) {
 			  VectorPresent->name = strdup(OutputName);
 	                  VectorPresent->direction = OUTPUT;
-	                  VectorPresent->Max = VectorIndex;
+	                  VectorPresent->Max = VectorPresent->Min = VectorIndex;
 	                  VectorPresent->next = VectorAlloc();
-	                  VectorPresent->next->next = NULL;
 	               }
 	            }
 	            if (PrintIt || !Found) {
@@ -332,10 +335,11 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 
 	      VectorPresent = Vector;
 	      while (VectorPresent->next != NULL) {
-	         fprintf(OUT, "%s [%d:0] %s;\n",
+	         fprintf(OUT, "%s [%d:%d] %s;\n",
 				(VectorPresent->direction == INPUT) ?
 				"input" : "output",
 				VectorPresent->Max,
+				VectorPresent->Min,
 				VectorPresent->name);
 	         VectorPresent = VectorPresent->next;
 	      }
@@ -408,15 +412,12 @@ void ReadNetlistAndConvert(FILE *NETFILE, FILE *OUT, unsigned char Flags)
 	               }
 	            }
 	            if (!ItIsAnInput && !ItIsAnOutput) {
-	               if ((Weirdpnt = strchr(InstancePortWire,'[')) != NULL) {
+	               while ((Weirdpnt = strchr(InstancePortWire,'[')) != NULL)
 	                  *Weirdpnt = '_';
-	                  if ((Weirdpnt = strchr(InstancePortWire,']')) != NULL) 
-	                     *Weirdpnt = '_';
-	               }
-	               while ((Weirdpnt = strchr(InstancePortWire, '$')) != NULL) {
+	               while ((Weirdpnt = strchr(InstancePortWire,']')) != NULL) 
 	                  *Weirdpnt = '_';
-	                  Weirdpnt++;
-	               }
+	               while ((Weirdpnt = strchr(InstancePortWire, '$')) != NULL)
+	                  *Weirdpnt = '_';
 	            }
 
 	                 
@@ -616,7 +617,16 @@ int loc_getline( char s[], int lim, FILE *fp)
 
 struct Vect *VectorAlloc(void)
 {
-	return (struct Vect *) malloc(sizeof(struct Vect));
+    struct Vect *newvector;
+
+    newvector = (struct Vect *) malloc(sizeof(struct Vect));
+    newvector->next = NULL;
+    newvector->name = NULL;
+    newvector->direction = UNKNOWN;
+    newvector->Max = 0;
+    newvector->Min = 0;
+
+    return newvector;
 }
 
 

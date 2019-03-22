@@ -180,20 +180,16 @@ if ($dodelays == 1) then
 
        # Run rc2dly
        echo "Converting qrouter output to vesta delay format" |& tee -a ${synthlog}
-       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -V ${synthdir}/${rootname}.rtl.v" \
+       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -d ${rootname}.dly" \
 		|& tee -a ${synthlog}
-       echo "-d ${rootname}.dly" |& tee -a ${synthlog}
        ${bindir}/rc2dly -r ${rootname}.rc -l ${libertypath} \
-		-V ${synthdir}/${rootname}.rtl.v \
 		-d ${synthdir}/${rootname}.dly
 
        # Run rc2dly again to get SDF format file
        echo "Converting qrouter output to SDF delay format" |& tee -a ${synthlog}
-       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -V ${synthdir}/${rootname}.rtl.v" \
+       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -d ${rootname}.sdf" \
 		|& tee -a ${synthlog}
-       echo "-d ${rootname}.sdf" |& tee -a ${synthlog}
        ${bindir}/rc2dly -r ${rootname}.rc -l ${libertypath} \
-		-V ${synthdir}/${rootname}.rtl.v \
 		-d ${synthdir}/${rootname}.sdf
 
        # Translate <, > to [ ] to match the verilog, as SDF format does not have

@@ -42,9 +42,7 @@
 #include <getopt.h>
 #include <time.h>
 
-#include "hash.h"
 #include "readliberty.h"	/* liberty file database */
-#include "readverilog.h"	/* verilog netlist reader */
 
 #define SRC     0x01    // node is a driver
 #define SNK     0x02    // node is a receiver
@@ -57,10 +55,6 @@
 #define VISIT_CONN  0
 #define VISIT_CAP   1
 #define VISIT_RES   2
-
-/* Hash tables */
-struct hashtable LibHash;
-struct hashtable InstHash;
 
 typedef struct _r *rptr;
 typedef struct _node *nodeptr;
@@ -91,8 +85,6 @@ typedef struct _node {
     double      totCapDownstreamLessGates;
     short       visited;
 } node;
-
-/*----------------------------------------------------------*/
 
 void print_node (nodeptr node) {
     printf("Name: %s\n", node->name);
@@ -136,24 +128,16 @@ typedef struct _elmdly_item {
 
 void print_help () {
     printf("NAME\n");
-    printf("    rc2dly - convert qrouter RC output file to delay file\n\n");
+    printf("    rc2dly - convert qrouter RC output file to Vesta delay file\n\n");
     printf("SYNOPSIS\n");
-    printf("    rc2dly -r <rc_file_name> -l <stdcell_liberty_file_name> -d <output_delay_file_name>\n");
-    printf("		-V <verilog_netlist_name>\n");
+    printf("    rc2dly -r <rc_file_name> -l <stdcell_liberty_file_name> -o <output_delay_file_name>\n");
     printf("\n");
     printf("DESCRIPTION\n");
-    printf("    Converts output of qrouter to one of three different delay formats,\n");
-    printf("    depending on the file extension of the -d argument.  If the extension\n");
-    printf("    is .spef, then SPEF format is used.  If the extension is .sdf, then\n");
-    printf("    SDF format is used.  Otherwise, the input format used by vesta is\n");
-    printf("    generated.\n");
-    printf("\n");
+    printf("    TBD\n");
     printf("Required Arguments\n");
     printf("    -r <rc_file_name>\n");
     printf("    -l <stdcell_liberty_file_name\n");
-    printf("    -V <verilog_netlist_name\n");
-    printf("\n");
-    printf("Optional Arguments\n");
+    printf("OPTIONS\n");
     printf("    -d <output_delay_file_name>\n");
     printf("    -c <module_pin_capacitance_in_pF>\n");
     printf("\n");
@@ -490,8 +474,6 @@ int main (int argc, char* argv[]) {
     FILE* libfile = NULL;
     FILE* rcfile = NULL;
 
-    struct cellrec *topcell = NULL;
-
     int verbose = 0;
 
     double modulePinCapacitance = 0;
@@ -533,7 +515,6 @@ int main (int argc, char* argv[]) {
         static struct option long_options[] = {
             {"rc-file"      , required_argument , 0, 'r'},
             {"liberty-file" , required_argument , 0, 'l'},
-            {"verilog-file" , required_argument , 0, 'V'},
             {"delay-file"   , required_argument , 0, 'd'},
             {"pin-capacitance"   , required_argument , 0, 'c'},
             {"delimiter"    , required_argument , 0, 'D'},
@@ -545,7 +526,7 @@ int main (int argc, char* argv[]) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "hv:r:l:d:D:V:", long_options, &option_index);
+        c = getopt_long (argc, argv, "hv:r:l:d:D:", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -578,10 +559,6 @@ int main (int argc, char* argv[]) {
 		    fprintf(stderr, "ERROR: Delimiter \"%s\" must be one character: %s\n",
 				optarg, strerror(errno));
                 break;
-
-	    case 'V':
-		topcell = ReadVerilog(optarg);
-		break;
 
             case 'l':
                 libfile = fopen(optarg, "r");
@@ -654,11 +631,6 @@ int main (int argc, char* argv[]) {
         return 1;
     }
 
-    if (topcell == NULL) {
-	fprintf(stderr, "ERROR: Must specify input verilog netlist.\n");
-	return 1;
-    }
-
     if (cells == NULL) {
         fprintf(stderr, "ERROR: No cells were read from Liberty timing files.\n");
 	return 5;
@@ -686,25 +658,6 @@ int main (int argc, char* argv[]) {
 
     char **tokens;
     int num_toks = 0;
-    struct instance *inst;
-
-    InitializeHashTable(&LibHash, SMALLHASHSIZE);
-    InitializeHashTable(&InstHash, LARGEHASHSIZE);
-
-    /* Hash the liberty cell records */
-
-    for (newcell = cells; newcell; newcell = newcell->next)
-	HashPtrInstall(newcell->name, newcell, &LibHash);
-
-    /* Hash the verilog instances by liberty cell record */
-
-    for (inst = topcell->instlist; inst; inst = inst->next) {
-	newcell = (Cell *)HashLookup(inst->cellname, &LibHash);
-	HashPtrInstall(inst->instname, newcell, &InstHash);
-    }
-
-    /* LibHash is no longer needed */
-    HashKill(&LibHash);
 
     if (format == FORMAT_SPEF) {
 	char outstr[200];
@@ -915,14 +868,14 @@ int main (int argc, char* argv[]) {
 			if (!strncmp(tokens[2], "PIN/", 4))
 			    snprintf(currnode->mapped, 12, "*%d", net_idx);
 			else {
-			    pname = strrchr(tokens[2], '/') + 1;
+			    pname = strrchr(tokens[2], '/');
 			    if (pname)
 				snprintf(currnode->mapped, 12, "*%d%c%s", nid++,
-						delimiter, pname);
+					delimiter, ++pname);
 			    else
-				/* Node name is hosed but don't crash the program */
+				/* Node name is probably hosed, but don't crash */
 				snprintf(currnode->mapped, 12, "*%d%c%s", nid++,
-						delimiter, tokens[2]);
+					delimiter, tokens[2]);
 			}
 
                         if (verbose > 1) print_node(currnode);
@@ -1026,7 +979,7 @@ int main (int argc, char* argv[]) {
 			    snprintf(currnode->mapped, 12, "*%d%c%s", nid++,
 					delimiter, ++pname);
 			else
-			    /* Node name is hosed but don't crash the program */
+			    /* Node name is probably hosed, but don't crash */
 			    snprintf(currnode->mapped, 12, "*%d%c%s", nid++,
 					delimiter, tokens[t]);
 		    }
@@ -1074,7 +1027,7 @@ int main (int argc, char* argv[]) {
                         //fprintf(stdout, "Found pin as receiver: %s\n", tokens[t]);
                     } else {
 
-			cell = (Cell *)HashLookup(cellName, &InstHash);
+                        cell = get_cell_by_name(cells, cellName);
                         Pin *tmpPin = NULL;
 
                         if (cell != NULL) {

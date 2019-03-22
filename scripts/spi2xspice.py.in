@@ -140,21 +140,13 @@ def write_models(cellsused, celldefs, ofile, timing):
                         psubs = psubs.replace(bchar, bval)
 
                     # Handle the awkward syntax where, e.g., (A B) means (A & B)
-                    # Must be done in a loop because re.sub does not work on
-                    # overlapping matches.
-
-                    while True:
-                        psubbed = imprex.sub('\g<1>&\g<2>', psubs)
-                        if psubbed == psubs:
-                            break
-                        psubs = psubbed
+                    psubs = imprex.sub('\g<1>&\g<2>', psubs)
 
                     try:
                         tval = eval('(' + psubs + ')&1')
                     except (SyntaxError, NameError):
                         tabstr = ''
                         print("Could not evaluate function " + cellrec['function'][k])
-                        print("(Evaluated as " + psubs + ")")
                         break
 
                     if tval:
@@ -493,12 +485,9 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                                 i = cellrec['spicepins'].index(subpin)
                                 # "pins[i]" is the name of the connecting net
                                 # on the top level
-                                if len(pins) > i:
-                                    inlist.append(pins[i])
-                                    if pins[i] in pindefs:
-                                        pindefs[pins[i]] = 'input'
-                                else:
-                                    print('Pin ' + subpin + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
+                                inlist.append(pins[i])
+                                if pins[i] in pindefs:
+                                    pindefs[pins[i]] = 'input'
 
                     if 'outputs' in cellrec:
                         for subpin in cellrec['outputs']:
@@ -506,12 +495,9 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                                 i = cellrec['spicepins'].index(subpin)
                                 # "pins[i]" is the name of the connecting net
                                 # on the top level
-                                if len(pins) > i:
-                                    outlist.append(pins[i])
-                                    if pins[i] in pindefs:
-                                        pindefs[pins[i]] = 'output'
-                                else:
-                                    print('Pin ' + subpin + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
+                                outlist.append(pins[i])
+                                if pins[i] in pindefs:
+                                    pindefs[pins[i]] = 'output'
 
                     intext = ' '.join(inlist)
                     outtext = ' '.join(outlist)

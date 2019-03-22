@@ -117,12 +117,12 @@ set dieyhigh 0
 
 if [catch {open $lefname r} flef] {
     puts stderr "Error: can't open LEF file $lefname for input"
-    exit 1
+    return
 }
 
 if [catch {open $defname r} fdef] {
     puts stderr "Error: can't open DEF file $defname for input"
-    exit 1
+    return
 }
 
 if {$techlef != ""} {
@@ -639,6 +639,7 @@ if {[llength $fillcells] == 0} {
 
 set testpitch 0
 foreach layer $layers {
+    if {![dict exists $layer type]} {continue}
     if {[dict get $layer type] != "ROUTING"} {continue}
     set layerpitch [dict get $layer xpitch]
     if {$layerpitch > 0} {
@@ -1363,8 +1364,6 @@ while {[gets $fdef line] >= 0} {
 	    incr matches
 	} elseif [regexp {[ \t]*TRACKS} $line lmatch] {
 	    incr matches
-	} elseif [regexp {[ \t]*ROW} $line lmatch] {
-	    incr matches
 	} else {
 	    puts stderr "Unexpected input in DEF file:"
 	    puts stdout "Line is: $line"
@@ -1562,7 +1561,7 @@ set fdef [open $defname r]
 
 if [catch {open $defoutname w} fanno] {
     puts stderr "Error: can't open file $defoutname for output"
-    exit 1
+    return
 }
 
 #-----------------------------------------------------------------
@@ -1613,11 +1612,11 @@ if {$dostripes && $dostretch} {
     if [catch {open ${topname}.obs r} infobs] {
 	# No .obs file, no action needed.
 	puts stdout "No file ${topname}.obs, so no adjustment required."
-	exit 0
+	return
     }
     if [catch {open ${topname}.obsx w} outfobs] {
 	puts stout "Error:  Cannot open file ${topname}.obsx for writing!"
-	exit 1
+	return
     }
     puts stdout "Adjusting obstructions for power striping"
     # puts stdout "numstripes = $numstripes"

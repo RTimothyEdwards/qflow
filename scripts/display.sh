@@ -1,12 +1,12 @@
 #!/bin/tcsh -f
 #----------------------------------------------------------
-# Qflow layout display script using magic-8.X
+# Qflow layout display script using magic-8.0
 #----------------------------------------------------------
 # Tim Edwards, April 2013
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  magic_view.sh [options] <project_path> <source_name>
+   echo Usage:  display.sh [options] <project_path> <source_name>
    echo	Options:
    echo		-g	Use GDS view of standard cells (default auto-detect)
    echo		-l	Use LEF view of standard cells
@@ -24,7 +24,7 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  magic_view.sh [options] <project_path> <source_name>
+   echo Usage:  display.sh [options] <project_path> <source_name>
    echo   where
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.

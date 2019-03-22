@@ -158,20 +158,16 @@ if ($dodelays == 1) then
 
        # Run rc2dly
        echo "Converting qrouter output to vesta delay format" |& tee -a ${synthlog}
-       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -V ${synthdir}/${rootname}.rtl.v" \
+       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -d ${rootname}.dly" \
 		|& tee -a ${synthlog}
-       echo "-d ${rootname}.dly" |& tee -a ${synthlog}
        ${bindir}/rc2dly -r ${rootname}.rc -l ${libertypath} \
-		-V ${synthdir}/${rootname}.rtl.v \
 		-d ${synthdir}/${rootname}.dly
 
        # Run rc2dly again to get SPEF format file
        echo "Converting qrouter output to SPEF delay format" |& tee -a ${synthlog}
-       echo "Running rc2dly -D : -r ${rootname}.rc -l ${libertypath} -V ${synthdir}/${rootname}.rtl.v" \
+       echo "Running rc2dly -D : -r ${rootname}.rc -l ${libertypath} -d ${rootname}.spef" \
 		|& tee -a ${synthlog}
-       echo "-d ${rootname}.spef" |& tee -a ${synthlog}
        ${bindir}/rc2dly -D : -r ${rootname}.rc -l ${libertypath} \
-		-V ${synthdir}/${rootname}.rtl.v \
 		-d ${synthdir}/${rootname}.spef
 
        # Translate <, >, and $ in file to _ to match the verilog.  Make translations
@@ -188,11 +184,9 @@ if ($dodelays == 1) then
 
        # Run rc2dly again to get SDF format file
        echo "Converting qrouter output to SDF delay format" |& tee -a ${synthlog}
-       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -V ${synthdir}/${rootname}.rtl.v" \
+       echo "Running rc2dly -r ${rootname}.rc -l ${libertypath} -d ${rootname}.sdf" \
 		|& tee -a ${synthlog}
-       echo "-d ${rootname}.sdf" |& tee -a ${synthlog}
        ${bindir}/rc2dly -r ${rootname}.rc -l ${libertypath} \
-		-V ${synthdir}/${rootname}.rtl.v \
 		-d ${synthdir}/${rootname}.sdf
 
        # Translate <, >, in file to [, ] to match the verilog (rtl.nopwr.v version).

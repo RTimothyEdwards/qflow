@@ -125,7 +125,7 @@ struct Gatelist {
    double strength;
 } Gatelist_;
 
-struct hashtable Gatehash;
+struct hashlist *Gatehash[OBJHASHSIZE];
 
 struct Nodelist {
    char	  ignore;
@@ -142,7 +142,7 @@ struct Nodelist {
    int	  curcount;		// Active count for fanout buffering trees
 } Nodelist_;
 
-struct hashtable Nodehash;
+struct hashlist *Nodehash[OBJHASHSIZE];
 
 struct Drivelist {
    char *Separator;	// Separator (e.g., "X")
@@ -151,7 +151,7 @@ struct Drivelist {
    int NgatesOut;	// Number of gates with this suffix in output
 } Drivelist_;
 
-struct hashtable Drivehash;
+struct hashlist *Drivehash[OBJHASHSIZE];
 
 struct Baselist {
    char *BaseName;	// gate base name (e.g., "INV")
@@ -159,7 +159,7 @@ struct Baselist {
    struct Gatelist **gates;	// list of pointers to gates with
 } Baselist_;
 
-struct hashtable Basehash;
+struct hashlist *Basehash[OBJHASHSIZE];
 
 enum states_ {NONE, INPUTS, OUTPUTS, GATENAME, PINNAME, INPUTNODE, CLOCKNODE,
 	OUTPUTNODE, ENDMODEL, ERROR};
@@ -288,10 +288,10 @@ int main (int argc, char *argv[])
    hashfunc = hash;
    matchfunc = match;
 
-   InitializeHashTable(&Nodehash, LARGEHASHSIZE);
-   InitializeHashTable(&Drivehash, LARGEHASHSIZE);
-   InitializeHashTable(&Gatehash, LARGEHASHSIZE);
-   InitializeHashTable(&Basehash, LARGEHASHSIZE);
+   InitializeHashTable(Nodehash);
+   InitializeHashTable(Drivehash);
+   InitializeHashTable(Gatehash);
+   InitializeHashTable(Basehash);
 
    fprintf(stdout, "blifFanout for qflow " QFLOW_VERSION "." QFLOW_REVISION "\n");
 
@@ -440,9 +440,9 @@ int main (int argc, char *argv[])
    // Determine if suffix is numeric or alphabetic
    if (gatecount > 0) {
       char *suffix;
-      gl = (struct Gatelist *)HashFirst(&Gatehash);
+      gl = (struct Gatelist *)HashFirst(Gatehash);
       while (gl && gl->suffix == NULL)
-	  gl = (struct Gatelist *)HashNext(&Gatehash);
+	  gl = (struct Gatelist *)HashNext(Gatehash);
       if (gl && gl->suffix && !isdigit(*gl->suffix))
 	    SuffixIsNumeric = FALSE;
    }
@@ -462,7 +462,7 @@ int main (int argc, char *argv[])
       gl = (struct Gatelist *)NULL;
 
       if (Buffername != NULL) {
-	 gl = (struct Gatelist *)HashLookup(Buffername, &Gatehash);
+	 gl = (struct Gatelist *)HashLookup(Buffername, Gatehash);
 	 if (gl == NULL) {
 	    fprintf(stderr, "No buffer \"%s\" found in gate list\n", Buffername);
 	    fprintf(stderr, "Searching gate list for suitable buffer.\n");
@@ -471,7 +471,7 @@ int main (int argc, char *argv[])
 
       if ((gl == NULL) || (Buffername == NULL)) {
 	 // Find a suitable buffer
-	 gl = (struct Gatelist *)HashFirst(&Gatehash);
+	 gl = (struct Gatelist *)HashFirst(Gatehash);
 	 while (gl != NULL) {
 	    Cell *ctest;
 
@@ -501,11 +501,11 @@ int main (int argc, char *argv[])
 		    }
 		}
 	    }
-	    gl = (struct Gatelist *)HashNext(&Gatehash);
+	    gl = (struct Gatelist *)HashNext(Gatehash);
 	 }
       }
       else
-	 gl = (struct Gatelist *)HashLookup(Buffername, &Gatehash);
+	 gl = (struct Gatelist *)HashLookup(Buffername, Gatehash);
 
       if (gl == NULL) {
 	 if (Buffername == NULL)
@@ -553,7 +553,7 @@ int main (int argc, char *argv[])
       while (t) {
 	 switch (state) {
 	    case GATENAME:
-	       gl = (struct Gatelist *)HashLookup(t, &Gatehash);
+	       gl = (struct Gatelist *)HashLookup(t, Gatehash);
 	       if (gl != NULL) {
 		  if (VerboseFlag) printf("\n\n%s", t);
 		  gateinputs = gl->num_inputs;
@@ -650,7 +650,7 @@ int main (int argc, char *argv[])
    /* Show top fanout gate */
    nlmax = NULL;
    nlimax = NULL;
-   nl = (struct Nodelist *)HashFirst(&Nodehash);
+   nl = (struct Nodelist *)HashFirst(Nodehash);
    while (nl != NULL) {
       if (nl->outputgatestrength != 0.0) {
 	 nl->ratio = nl->total_load / nl->outputgatestrength;
@@ -674,7 +674,7 @@ int main (int argc, char *argv[])
 	    Inputload = nl->total_load;
 	 }
       }
-      nl = (struct Nodelist *)HashNext(&Nodehash);
+      nl = (struct Nodelist *)HashNext(Nodehash);
    }
 
    if (VerboseFlag) printf("\n");
@@ -699,7 +699,7 @@ int main (int argc, char *argv[])
    if (doFanout && ((Topfanout > MaxFanout) || (Inputfanout > MaxFanout))) {
 
       /* Insert buffer trees */
-      nl = (struct Nodelist *)HashFirst(&Nodehash);
+      nl = (struct Nodelist *)HashFirst(Nodehash);
       while (nl != NULL) {
          if (nl->ignore == FALSE) {
 
@@ -735,7 +735,7 @@ int main (int argc, char *argv[])
 	       Buffer_count += n;
 	    }
 	 }
-         nl = (struct Nodelist *)HashNext(&Nodehash);
+         nl = (struct Nodelist *)HashNext(Nodehash);
       }
    }
    write_output(doLoadBalance, infptr, outfptr);
@@ -745,14 +745,14 @@ int main (int argc, char *argv[])
    fprintf(stderr, "%d gates were changed.\n", Changed_count);
 
    fprintf(stderr, "\nGate counts by drive strength:\n\n");
-   dl = (struct Drivelist *)HashFirst(&Drivehash);
+   dl = (struct Drivelist *)HashFirst(Drivehash);
    while (dl != NULL) {
       if (dl->NgatesIn > 0) {
 	 fprintf(stderr, "\t\"%s%s\" gates\tIn: %d    \tOut: %d    \t%+d\n",
 		dl->Separator, dl->DriveType, dl->NgatesIn,
 		dl->NgatesOut, (dl->NgatesOut - dl->NgatesIn));
       }
-      dl = (struct Drivelist *)HashNext(&Drivehash);
+      dl = (struct Drivelist *)HashNext(Drivehash);
    }
    fprintf(stderr, "\n");
 
@@ -795,7 +795,7 @@ void read_ignore_file(char *ignore_file_name)
       while (*sp != '\0' && *sp != '\n' && !isspace(*sp)) sp++;
       *sp = '\0';
 
-      nl = (struct Nodelist *)HashLookup(s, &Nodehash);
+      nl = (struct Nodelist *)HashLookup(s, Nodehash);
       if (nl != NULL) {
 	 nl->ignore = (char)1;
       }
@@ -853,7 +853,7 @@ int read_gate_file(char *gate_file_name, char *separator)
 	//	gl->gatename, gl->gatecell->name, gl->gatecell->function);
 
 	gl->strength = MaxLatency / gl->delay;
- 	HashPtrInstall(gl->gatename, gl, &Gatehash);
+ 	HashPtrInstall(gl->gatename, gl, Gatehash);
 	gatecount++;
 
 	/* Install prefix in Basehash.  Note that prefix contains the	*/
@@ -866,10 +866,10 @@ int read_gate_file(char *gate_file_name, char *separator)
 
 	ssave = gl->gatename[ind];
 	gl->gatename[ind] = '\0';
-	bl = (struct Baselist *)HashLookup(gl->gatename, &Basehash);
+	bl = (struct Baselist *)HashLookup(gl->gatename, Basehash);
 	if (bl == NULL) {
 	    bl = BaselistAlloc();
-	    HashPtrInstall(gl->gatename, bl, &Basehash);
+	    HashPtrInstall(gl->gatename, bl, Basehash);
 	    bl->BaseName = strdup(gl->gatename);
 	}
 	gl->gatename[ind] = ssave;
@@ -975,7 +975,7 @@ void showgatelist(void)
    Pin *curpin;
    double pincap;
 
-   gl = (struct Gatelist *)HashFirst(&Gatehash);
+   gl = (struct Gatelist *)HashFirst(Gatehash);
    while (gl != NULL) {
 
       printf("\n\ngate: %s with %d inputs and %g drive strength\n",
@@ -989,7 +989,7 @@ void showgatelist(void)
 	    printf("%g   ", pincap);
  	 }
       }
-      gl = (struct Gatelist *)HashNext(&Gatehash);
+      gl = (struct Gatelist *)HashNext(Gatehash);
    }
 }
 
@@ -1003,13 +1003,13 @@ void registernode(char *nodename, int type, struct Gatelist *gl, char *pinname)
    struct Nodelist *nl;
    double pincap;
 
-   nl = (struct Nodelist *)HashLookup(nodename, &Nodehash);
+   nl = (struct Nodelist *)HashLookup(nodename, Nodehash);
    
    if (nl == NULL) {
       nl = NodelistAlloc();
       nl->nodename = strdup(nodename);
       if (type == OUTPUT) nl->outputgate = NULL;
-      HashPtrInstall(nodename, nl, &Nodehash);
+      HashPtrInstall(nodename, nl, Nodehash);
       nl->type = type;
    }
 
@@ -1050,13 +1050,13 @@ void count_gatetype(struct Gatelist *gl, int num_in, int num_out)
    if ((s = gl->suffix) == NULL)
       return;
 
-   dl = (struct Drivelist *)HashLookup(s, &Drivehash);
+   dl = (struct Drivelist *)HashLookup(s, Drivehash);
    if (dl == NULL) {
 
       // New drive type found
 
       dl = DrivelistAlloc();
-      HashPtrInstall(s, dl, &Drivehash);
+      HashPtrInstall(s, dl, Drivehash);
       dl->DriveType = strdup(s);
       dl->Separator = gl->separator;
    }
@@ -1075,13 +1075,13 @@ void shownodes(void)
    struct Nodelist *nl;
    int i;
 
-   nl = (struct Nodelist *)HashFirst(&Nodehash);
+   nl = (struct Nodelist *)HashFirst(Nodehash);
    while (nl != NULL) {
       printf("\n\nnode: %s with %d fanout and %g fF cap",
 		nl->nodename, nl->num_inputs, nl->total_load);
       printf("\ndriven by %s, with %g strength.\n",
 		nl->outputgate->gatename, nl->outputgatestrength);
-      nl = (struct Nodelist *)HashNext(&Nodehash);
+      nl = (struct Nodelist *)HashNext(Nodehash);
    }
 }
 
@@ -1124,7 +1124,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
    hasended = 0;
 
    // Find the gate record corresponding to the buffer name
-   glbuf = (struct Gatelist *)HashLookup(Buffername, &Gatehash);
+   glbuf = (struct Gatelist *)HashLookup(Buffername, Gatehash);
 
    rewind(infptr);
 
@@ -1155,7 +1155,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 
 		  /* Insert any added buffers (before 1st gate) */
 
-		  nl = (struct Nodelist *)HashFirst(&Nodehash);
+		  nl = (struct Nodelist *)HashFirst(Nodehash);
 		  while (nl != NULL) {
 		     for (i = nl->num_buf - 1; i >= 0; i--) {
 			hier = 0;
@@ -1189,7 +1189,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 			   /* the buffer tree is even deeper, incrementing  */
 			   /* M until the name is unique.		    */
 
-			   nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
+			   nltest = (struct Nodelist *)HashLookup(nodename, Nodehash);
 			   if (nltest != NULL) {
 			      sprintf(nodename, "%s_hier%d", nl->nodename, hier);
 			      hier++;
@@ -1206,11 +1206,11 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 					nl->nodename, buf_out_pin,
 					nodename);
 		     }
-		     nl = (struct Nodelist *)HashNext(&Nodehash);
+		     nl = (struct Nodelist *)HashNext(Nodehash);
 		  }
 		  firstseen = 1;
 	       }
-	       gl = (struct Gatelist *)HashLookup(t, &Gatehash);
+	       gl = (struct Gatelist *)HashLookup(t, Gatehash);
 	       if (gl == NULL) {
 		  fprintf(stderr, "Error:  Gate \"%s\" is used in source "
 			"but has no liberty file definition.\n", t);
@@ -1249,7 +1249,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 
 	    case INPUTNODE: case CLOCKNODE:
 	       if (VerboseFlag) printf("\nInput node %s", t);
-	       nl = (struct Nodelist *)HashLookup(t, &Nodehash);
+	       nl = (struct Nodelist *)HashLookup(t, Nodehash);
 	       if (nl->num_buf > 0) {
 		  hier = 0;
 		  nltest = nl;
@@ -1282,7 +1282,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 		     /* the buffer tree is even deeper, incrementing M	*/
 		     /* until the name is unique.			*/
 
-	             nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
+	             nltest = (struct Nodelist *)HashLookup(nodename, Nodehash);
 		     if (nltest != NULL) {
 			sprintf(nodename, "%s_hier%d", nl->nodename, hier);
 		 	hier++;
@@ -1307,7 +1307,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 	    case OUTPUTNODE:
 	       if (VerboseFlag) printf("\nOutput node %s", t);
 
-	       nl = (struct Nodelist *)HashLookup(t, &Nodehash);
+	       nl = (struct Nodelist *)HashLookup(t, Nodehash);
 	       if (doLoadBalance && (nl != NULL)) {
 		  if ((nl->ignore == FALSE) && (nl->ratio > 1.0)) {
 		     if (VerboseFlag)
@@ -1394,7 +1394,7 @@ void write_output(int doLoadBalance, FILE *infptr, FILE *outfptr)
 		     fprintf(stderr, "May need to add information to gate.cfg file\n");
 		  }
 
-		  dl = (struct Drivelist *)HashLookup(bbest->suffix, &Drivehash);
+		  dl = (struct Drivelist *)HashLookup(bbest->suffix, Drivehash);
 		  if (dl != NULL) dl->NgatesOut++;
 
 		  /* Recompute size of the gate driving the buffer */
@@ -1499,7 +1499,7 @@ struct Gatelist *best_size(struct Gatelist *gl, double amount, char *overload)
    ssave = gl->gatename[ind];
    gl->gatename[ind] = '\0';
 
-   bl = (struct Baselist *)HashLookup(gl->gatename, &Basehash);
+   bl = (struct Baselist *)HashLookup(gl->gatename, Basehash);
    gl->gatename[ind] = ssave;
 
    for (i = 0; bl && (i < bl->Ndrives); i++) {

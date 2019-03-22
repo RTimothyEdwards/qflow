@@ -81,7 +81,7 @@
 
 #define LIB_LINE_MAX  65535
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__OpenBSD__)
 // Linux defines a comparison function prototype, the Mac doesn't. . .
 typedef int (*__compar_fn_t)(const void *, const void *);
 #endif
@@ -531,7 +531,7 @@ advancetoken(FILE *flib, char delimiter)
 
     // Final:  Remove trailing whitespace
     tptr = token + strlen(token) - 1;
-    while (isblank(*tptr)) {
+    while ((tptr >= token) && isblank(*tptr)) {
         *tptr = '\0';
         tptr--;
     }
@@ -2687,7 +2687,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 
 void
 verilogRead(FILE *fsrc, cell *cells, net **netlist, instance **instlist,
-                connect **inputlist, connect **outputlist, struct hashtable *Nethash)
+                connect **inputlist, connect **outputlist, struct hashlist **Nethash)
 {
     char *token;
     char *modname = NULL;
@@ -3012,8 +3012,6 @@ int assign_net_types(netptr netlist, connlistptr *clockedlist)
     numterms = 0;
 
     for (testnet = netlist; testnet; testnet = testnet->next) {
-	/* Nets with no fanout are by definition module outputs */
-	if (testnet->fanout == 0) testnet->type |= OUTTERM;
         for (i = 0; i < testnet->fanout; i++) {
             testrcvr = testnet->receivers[i];
             testpin = testrcvr->refpin;
@@ -3141,17 +3139,17 @@ compdelay(ddataptr *a, ddataptr *b)
 }
 
 void
-delayRead(FILE *fdly, struct hashtable *Nethash)
+delayRead(FILE *fdly, struct hashlist **Nethash)
 {
     char c[128];
     char d[128];
     char *token;
-    char *result;
 
     netptr newnet, testnet;
     connptr testconn;
     pinptr testpin;
     int i;
+    char *result;
     int numRxers;
 
     if (debug == 1)
@@ -3272,20 +3270,18 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 	    if (result == NULL) break;
             numRxers += 1;
         }
-	if (result == NULL) break;
+	if (result == NULL) break; 
 
         if (numRxers != testnet->fanout) {
-	    if (numRxers != 1 || testnet->fanout > 0 || testnet->type != OUTTERM)
-		fprintf(stderr, "ERROR: Net %s had %d receiver%s in delay file, "
+            fprintf(stderr, "ERROR: Net %s only had %d receivers in delay file, "
 			" but expected a fanout of %d\n", testnet->name,
-			numRxers, (numRxers == 1) ? "" : "s",
-			testnet->fanout);
+			numRxers, testnet->fanout);
         }
 
         token = advancetoken(fdly, '\n');
     }
     if (result == NULL) {
-	fprintf(stderr, "ERROR: Unexpected end-of-file while reading delay file.\n");
+	fprintf(stderr, "ERROR:  Unexpected end-of-file while reading delay file.\n");
     }
 }
 
@@ -3706,7 +3702,7 @@ main(int objc, char *argv[])
     double      slack;
 
     // Net name hash table
-    struct hashtable Nethash;
+    struct hashlist *Nethash[OBJHASHSIZE];
 
     verbose = 0;
     exhaustive = 0;
@@ -3889,11 +3885,11 @@ main(int objc, char *argv[])
     matchfunc = match;
 
     /* Initialize net hash table */
-    InitializeHashTable(&Nethash, LARGEHASHSIZE);
+    InitializeHashTable(Nethash);
 
     fileCurrentLine = 0;
 
-    verilogRead(fsrc, cells, &netlist, &instlist, &inputlist, &outputlist, &Nethash);
+    verilogRead(fsrc, cells, &netlist, &instlist, &inputlist, &outputlist, Nethash);
 
     if (delayfile != NULL) {
         fdly = fopen(delayfile, "r");
@@ -3967,12 +3963,12 @@ main(int objc, char *argv[])
     /*--------------------------------------------------*/
 
     if (fdly != NULL) {
-        delayRead(fdly, &Nethash);
+        delayRead(fdly, Nethash);
         fclose(fdly);
     }
 
     /* Hash table no longer needed */
-    HashKill(&Nethash);
+    HashKill(Nethash);
 
     computeLoads(netlist, instlist, outLoad);
 

@@ -89,7 +89,7 @@ class TextReport(tkinter.Toplevel):
 
     def add_text_from_file(self, filename):
         print('Loading text text from file ' + filename)
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, 'r') as f:
             self.text = f.read()
         self.title = filename
         self.display()

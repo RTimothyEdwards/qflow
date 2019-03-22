@@ -130,7 +130,7 @@ while {[gets $flef line] >= 0} {
       parse_macro $flef $macroname
       if {[regexp "^$fillcell" $macroname] == 1} {
 	 # Check width against feedthrough width
-	 puts stdout "Diagnostic:  macro $macroname width = [subst \$${macroname}(w)]"
+	 # puts stdout "Diagnostic:  macro $macroname width = [subst \$${macroname}(w)]"
 	 if {[subst \$${macroname}(w)] == $fwidth} {
 	    set usefillcell $macroname
 	 }

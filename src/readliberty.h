@@ -17,8 +17,6 @@
 #define PIN_INPUT	0
 #define PIN_CLOCK	1
 #define PIN_OUTPUT	2
-#define PIN_POWER	3
-#define PIN_GROUND	4
 
 // Function translation
 #define GROUPBEGIN	1
