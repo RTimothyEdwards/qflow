@@ -635,6 +635,17 @@ class QflowManager(ttk.Frame):
 		command = self.qflow_swap_drc_lvs)
         window.swap.check.pack(side = 'left')
 
+        window.drcgdsview = ttk.Frame(window)
+        window.drcgdsview.pack(side = 'top', fill = 'x')
+        window.drcgdsview.title = ttk.Label(window.drcgdsview, style = 'normal.TLabel',
+		text = 'Use GDS view of standard cells:')
+        window.drcgdsview.title.pack(side = 'left')
+        self.drcgdsview = tkinter.BooleanVar(window.drcgdsview)
+        self.drcgdsview.set(0)
+
+        window.drcgdsview.check = ttk.Checkbutton(window.drcgdsview, variable = self.drcgdsview)
+        window.drcgdsview.check.pack(side = 'left')
+
         window.stop = ttk.Frame(window)
         window.stop.pack(side = 'top', fill = 'x')
         window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
@@ -674,6 +685,9 @@ class QflowManager(ttk.Frame):
         self.gdsview = tkinter.BooleanVar(window.gdsview)
         self.gdsview.set(0)
 
+        window.gdsview.check = ttk.Checkbutton(window.gdsview, variable = self.gdsview)
+        window.gdsview.check.pack(side = 'left')
+
         window.stop = ttk.Frame(window)
         window.stop.pack(side = 'top', fill = 'x')
         window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
@@ -683,9 +697,6 @@ class QflowManager(ttk.Frame):
         self.gds_stop.set(0)
         window.stop.check = ttk.Checkbutton(window.stop, variable = self.gds_stop)
         window.stop.check.pack(side = 'left')
-
-        window.gdsview.check = ttk.Checkbutton(window.gdsview, variable = self.gdsview)
-        window.gdsview.check.pack(side = 'left')
 
         self.toppane.settings.test_settings = ttk.Frame(self.toppane.settings)
         window = self.toppane.settings.test_settings
@@ -1093,8 +1104,13 @@ class QflowManager(ttk.Frame):
             self.print('Displaying the completed routed layout, abstract view')
             laystate = 'route1'
         elif  status == 'lvs' or status == 'drc':
-            self.print('Displaying the completed routed layout, abstract view')
-            laystate = 'route2'
+            # Variable gdsview overrides state
+            if self.drcgdsview.get() == 1:
+                self.print('Displaying the completed routed layout, full view')
+                laystate = 'drcgds'
+            else:
+                self.print('Displaying the completed routed layout, abstract view')
+                laystate = 'route2'
         elif status == 'gds' or status == 'clean' or status == 'done':
             self.print('Displaying the completed routed layout, full view')
             laystate = 'gds'
@@ -1106,7 +1122,7 @@ class QflowManager(ttk.Frame):
 
         # Pick up GDS files from the technology .sh file
         gdsfiles = []
-        if laystate == 'gds':
+        if laystate == 'gds' or laystate == 'drcgds':
             gdsfiles = self.get_project_gdsfiles()
 
         # Make a copy of the .magicrc file for startup with some
@@ -2011,6 +2027,8 @@ class QflowManager(ttk.Frame):
         runvstarex = re.compile('[ \t]*set run_vesta =[ \t]*(.*)$')
         runostarex = re.compile('[ \t]*set run_opensta =[ \t]*(.*)$')
         runotimerex = re.compile('[ \t]*set run_opentimer =[ \t]*(.*)$')
+        gdsrex = re.compile('[ \t]*set gds_options =[ \t]*(.*)$')
+        drcgdsrex = re.compile('[ \t]*set drc_gdsview =[ \t]*(.*)$')
 
         # Power stripe defaults may be overridden, but we need to
         # grab the defaults from the file instead of setting
@@ -2033,6 +2051,8 @@ class QflowManager(ttk.Frame):
             self.route_graphics.set(1)
             self.purge.set(0)
             self.route_layers.set('max')
+            self.gdsview.set(0)
+            self.drcgdsview.set(0)
 
             for line in varslines:
                 dmatch = densrex.match(line)
@@ -2056,8 +2076,18 @@ class QflowManager(ttk.Frame):
 
                 smatch = showrex.match(line)
                 if smatch:
-                    if smatch.group(1) == 'false':
+                    if smatch.group(1) == 'false' or smatch.group(1) == '0':
                         self.route_graphics.set(0)
+
+                gmatch = gdsrex.match(line)
+                if gmatch:
+                    if gmatch.group(1) == '"-g"':
+                        self.gdsview.set(1)
+
+                dmatch = drcgdsrex.match(line)
+                if dmatch:
+                    if dmatch.group(1) == 'true' or dmatch.group(1) == '1':
+                        self.drcgdsview.set(1)
 
                 lmatch = lyerrex.match(line)
                 if lmatch:
@@ -2139,6 +2169,14 @@ class QflowManager(ttk.Frame):
             except ValueError:
                 do_layers = False
 
+        do_drcgdsview = False
+        if (self.drcgdsview.get() == 1):
+            do_drcgdsview = True
+
+        do_gdsview = False
+        if (self.gdsview.get() == 1):
+            do_gdsview = True
+
         run_vesta = False
         if (self.run_vesta.get() == 1):
             run_vesta = True
@@ -2160,6 +2198,8 @@ class QflowManager(ttk.Frame):
         rvstarex = re.compile('#?[ \t]*set run_vesta =')
         rostarex = re.compile('#?[ \t]*set run_opensta =')
         rotimerex = re.compile('#?[ \t]*set run_opentimer =')
+        gdsrex = re.compile('#?[ \t]*set gds_options =')
+        drcrex = re.compile('#?[ \t]*set drc_gdsview =')
 
         with open(pvars, 'r') as ifile:
             vartext = ifile.read()
@@ -2191,6 +2231,18 @@ class QflowManager(ttk.Frame):
                         # can be found and the values read back.
                         newlines.append(linesub)
                         linesub = 'set addspacers_options = ""'
+
+                if gdsrex.match(line):
+                    if do_gdsview:
+                        linesub = 'set gds_options = "-g"'
+                    elif not is_comment:
+                        linesub = '# set gds_options = "-g"'
+
+                if drcrex.match(line):
+                    if do_drcgdsview:
+                        linesub = 'set drc_gdsview = 1'
+                    elif not is_comment:
+                        linesub = '# set drc_gdsview = 0'
 
                 if vstarex.match(line):
                     if do_long:
@@ -3399,7 +3451,8 @@ class QflowManager(ttk.Frame):
         # Check if log/lvs.log shows an error occurring
         logfile = self.logdir + '/lvs.log'
         if os.path.exists(logfile):
-            with open(logfile, 'r', encoding='utf-8') as ifile:
+            # File may contain non-ASCII characters, so assume ISO-8859-1.
+            with open(logfile, 'r', encoding='ISO-8859-1') as ifile:
                 for line in ifile:
                     if 'Synthesis flow stopped' in line:
                         self.print("LVS failed with error condition (see log file).")
@@ -3763,9 +3816,15 @@ class QflowManager(ttk.Frame):
                     self.print("qflow forced stop, status " + str(qflow_status), file=sys.stderr)
                 else:
                     for line in output[0].splitlines():
-                        self.print(line.decode('utf-8'))
+                        try:
+                            self.print(line.decode('utf-8'))
+                        except:
+                            pass
                     for line in output[1].splitlines():
-                        self.print(line.decode('utf-8'), file=sys.stderr)
+                        try:
+                            self.print(line.decode('utf-8'), file=sys.stderr)
+                        except:
+                            pass
                     self.print("qflow exited with status " + str(qflow_status))
                 break
             else:

@@ -53,6 +53,10 @@ if (! ${?drc_options} ) then
    set drc_options = ${options}
 endif
 
+if ( ! ${?drc_gdsview} ) then
+   set drc_gdsview = ""
+endif
+
 set rundrcfile="${layoutdir}/run_drc_${rootname}.tcl"
 
 if (!($?logdir)) then
@@ -142,11 +146,11 @@ set subv=`echo $version | cut -d. -f3`
 rm -f ${rundrcfile}
 touch ${rundrcfile}
 
-if (! ($?gdsview)) then
-   set gdsview=0
+if (! ($?drc_gdsview)) then
+   set drc_gdsview=0
 endif
 
-if ( $gdsview == 1 ) then
+if ( $drc_gdsview == 1 ) then
 cat >> ${rundrcfile} << EOF
 gds readonly true
 gds rescale false
