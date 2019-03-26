@@ -732,6 +732,10 @@ if ( ! -f ${userfile} ) then
       echo \# set qrouter_options = >> ${userfile}
    endif
 
+   echo "" >> ${userfile}
+   echo "# STA command options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
+
    echo ""
    echo "" >> ${userfile}
    echo \# Minimum period of the clock use \"--period value\" \(value in ps\) \
@@ -756,6 +760,11 @@ if ( ! -f ${userfile} ) then
    else
       echo \# set vesta_options = >> ${userfile}
    endif
+
+   echo "" >> ${userfile}
+   echo "# Other options:" >> ${userfile}
+   echo "# -------------------------------------------" >> ${userfile}
+
    if ( ${?migrate_options} ) then
       echo \# set migrate_options = \"${migrate_options}\" >> ${userfile}
    else
@@ -765,6 +774,24 @@ if ( ! -f ${userfile} ) then
       echo \# set lef_options = \"${lef_options}\" >> ${userfile}
    else
       echo \# set lef_options = >> ${userfile}
+   endif
+
+   if ( ${?drc_gdsview} ) then
+      echo \# set drc_gdsview = \"${drc_gdsview}\" >> ${userfile}
+   else
+      echo \# set drc_gdsview = >> ${userfile}
+   endif
+
+   if ( ${?drc_options} ) then
+      echo \# set drc_options = \"${drc_options}\" >> ${userfile}
+   else
+      echo \# set drc_options = >> ${userfile}
+   endif
+
+   if ( ${?gds_options} ) then
+      echo \# set gds_options = \"${gds_options}\" >> ${userfile}
+   else
+      echo \# set gds_options = >> ${userfile}
    endif
 
    echo "" >> ${userfile}
