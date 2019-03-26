@@ -2422,13 +2422,13 @@ class QflowManager(ttk.Frame):
                         newlines.append(linesub)
                         linesub = 'set addspacers_options = ""'
 
-                if gdsrex.match(line);
+                if gdsrex.match(line):
                     if do_gdsview:
                         linesub = 'set gds_options = "-g"'
                     elif not is_comment:
                         linesub = '# set gds_options = "-g"'
 
-                if drcrex.match(line);
+                if drcrex.match(line):
                     if do_drcgdsview:
                         linesub = 'set drc_gdsview = 1'
                     elif not is_comment:
