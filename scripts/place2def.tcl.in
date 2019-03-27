@@ -376,7 +376,7 @@ set height [expr $dieytop - $dieybot]
 for {set i 1} {$i <= $numlayers} {incr i} {
    set mname [subst \$metal${i}(name)]
    set mpitch [expr $scale * [subst \$metal${i}(pitch)]]
-   set outmpitch [expr int($mpitch * $multiplier)]
+   set outmpitch [expr int(0.5 + ($mpitch * $multiplier))]
    if {[subst \$metal${i}(orient)] == "vertical"} {
       set xtracks [expr 1 + int($width / $mpitch)];
       puts $fdef "TRACKS X $outdiexbot DO $xtracks STEP $outmpitch LAYER $mname ;"
