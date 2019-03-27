@@ -50,6 +50,10 @@ proc skip_section {leffile sectionname} {
 
 #----------------------------------------------------------------
 # Parse the pin contents of the LEF file macro
+#
+# To cope with LEF macro sets where a signal pin may not have a
+# use declared, return the pin name of any pin not having a USE
+# instead of true/false.
 #----------------------------------------------------------------
 
 proc parse_pin {leffile pinname} {
@@ -69,6 +73,9 @@ proc parse_pin {leffile pinname} {
             }
         }
     }
+    if {$portuse == ""} {
+        set retval $pinname	;# special case
+    }
     return $retval
 }
 
@@ -80,6 +87,7 @@ proc parse_pin {leffile pinname} {
 proc parse_macro {leffile macroname} {
    global $macroname units
 
+   set savepin ""
    while {[gets $leffile line] >= 0} {
       if [regexp {[ \t]*SYMMETRY[ \t]+(.+)[ \t]*;} $line lmatch symmetry] {
          set ${macroname}(symmetry) $symmetry
@@ -97,15 +105,27 @@ proc parse_macro {leffile macroname} {
 
       } elseif [regexp {[ \t]*PIN[ \t]+(.+)[ \t]*$} $line lmatch pinname] {
          # Antenna cell has only one pin, so just set a record "pin" for each macro
-	 if {[parse_pin $leffile $pinname]} {
-	     set ${macroname}(pin) $pinname
- 	 }
+	 set presult [parse_pin $leffile $pinname]
+	 if {$presult == true} {
+	    set ${macroname}(pin) $pinname
+	 } elseif {$presult != false} {
+	    set savepin $pinname
+	 }
       } elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch macrotest] {
          if {"$macrotest" == "$macroname"} {
             break
          } else {
             puts stderr "Unexpected END statement $line while reading macro $macroname"
          }
+      }
+   }
+
+   # Check for unmarked signal pin.
+   if [catch {set ${macroname}(pin)}] {
+      if {$savepin != ""} {
+	 set ${macroname}(pin) $savepin
+      } else {
+	 set ${macroname}(pin) ERROR	    ;# Flag this
       }
    }
 }
@@ -119,16 +139,21 @@ flush stdout
 
 set useantennacell {}
 set useantennapin {}
+set useantennaw 0
 
 while {[gets $flef line] >= 0} {
    if [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
       # Parse the "macro" statement
       parse_macro $flef $macroname
       if {[regexp "^$antennacell" $macroname] == 1} {
-	 # Check width against feedthrough width
-	 puts stdout "Diagnostic:  macro $macroname input [subst \$${macroname}(pin)]"
-	 set useantennacell $macroname
-	 set useantennapin [subst \$${macroname}(pin)]
+         set w [subst \$${macroname}(w)]
+	 if {($useantennacell == "") || ($w < $useantennaw)} {
+	    # To do:  Check width against feedthrough width
+	    puts stdout "Diagnostic:  macro $macroname input [subst \$${macroname}(pin)]"
+	    set useantennacell $macroname
+	    set useantennapin [subst \$${macroname}(pin)]
+	    set useantennaw $w
+	 }
       }
    } elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
       skip_section $flef $layername

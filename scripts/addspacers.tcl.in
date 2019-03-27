@@ -266,6 +266,9 @@ proc parse_layer {leffile layername layernum} {
     dict set layerrec name $layername
     dict set layerrec number 0
 
+    # Diagnostic
+    puts stdout "Reading layer name $layername"
+
     while {[gets $leffile line] >= 0} {
 	if [regexp {[ \t]*TYPE[ \t]+([^ \t]+)[ \t]*;} $line lmatch type] {
 	    dict set layerrec type $type
@@ -486,6 +489,21 @@ proc skip_section {leffile sectionname} {
 }
 
 #----------------------------------------------------------------
+# Read through a NONDEFAULTRULE section, which can have layers
+# and vias which should be ignored.
+#----------------------------------------------------------------
+
+proc skip_nondefaultrule {leffile sectionname} {
+    while {[gets $leffile line] >= 0} {
+	if [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch sectiontest] {
+	    if {"$sectiontest" == "$sectionname"} {
+	        return
+	    }
+	}
+    }
+}
+
+#----------------------------------------------------------------
 # Parse the macro contents of the LEF file and retain the information
 # about cell size and pin positions.
 #----------------------------------------------------------------
@@ -552,6 +570,8 @@ proc read_lef {flef fillcell} {
 	    if {$newnum != 0} {set layernum $newnum}
 	} elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
 	    lappend vias [parse_via $flef $vianame]
+	} elseif [regexp {[ \t]*NONDEFAULTRULE[ \t]+([^ \t]+)} $line lmatch rulename] {
+	    skip_nondefaultrule $flef $rulename
 	} elseif [regexp {[ \t]*VIARULE[ \t]+([^ \t]+)} $line lmatch viarulename] {
 	    set result [parse_viarule $flef $viarulename]
 	    if {$result != ""} {
@@ -639,6 +659,10 @@ if {[llength $fillcells] == 0} {
 
 set testpitch 0
 foreach layer $layers {
+    if [catch {dict get $layer type}] {
+	puts stderr "Warning:  Layer {dict get $layer name} in techLEF file does not declare a type!"
+	continue
+    }
     if {[dict get $layer type] != "ROUTING"} {continue}
     set layerpitch [dict get $layer xpitch]
     if {$layerpitch > 0} {

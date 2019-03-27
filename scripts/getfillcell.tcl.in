@@ -124,15 +124,21 @@ flush stdout
 puts stdout "Diagnostic:  fill cell width from .par file is $fwidth"
 set usefillcell {}
 
+set feedcellw 0
+set feedcellmin {}
 while {[gets $flef line] >= 0} {
    if [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
       # Parse the "macro" statement
       parse_macro $flef $macroname
       if {[regexp "^$fillcell" $macroname] == 1} {
 	 # Check width against feedthrough width
-	 puts stdout "Diagnostic:  macro $macroname width = [subst \$${macroname}(w)]"
-	 if {[subst \$${macroname}(w)] == $fwidth} {
+	 set w [subst \$${macroname}(w)]
+	 puts stdout "Diagnostic:  macro $macroname width = $w"
+	 if {$w == $fwidth} {
 	    set usefillcell $macroname
+	 } elseif {($w < $feedcellw) || ($feedcellw == 0)} {
+	    set feedcellw $w
+	    set feedcellmin $macroname
 	 }
       }
    } elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
@@ -174,6 +180,16 @@ while {[gets $flef line] >= 0} {
 	 flush stdout
       }
    }
+}
+
+if {$usefillcell == {}} {
+    if {$feedcellmin != {}} {
+	puts stderr "Warning:  No fill cells correspond to cell width in the .par file."
+	puts stderr "Using smallest matching fill macro $feedcellmin"
+	set usefillcell $feedcellmin
+    } else {
+	puts stderr "Error:  No matching fill cells found in LEF macro file."
+    }
 }
 
 close $flef
