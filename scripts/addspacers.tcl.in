@@ -31,6 +31,7 @@ if {$argc < 3} {
     puts stdout "Usage:  addspacers \[<options>\] <project_name> <lef_file> <fill_cell>"
     puts stdout "Options:"
     puts stdout "  -stripe <width> <pitch> <pattern> \[-nostretch\] \[-techlef <tech.lef>\]"
+    puts stdout "  \[-v <pwr_name>\] \[-g <gnd_name>\]"
     exit 0
 }
 
@@ -153,8 +154,8 @@ close $fdef
 set fdef [open $defname r]
 
 # Multiply stripe width and pitch values by units to get output values
-set stripewidth [* $units $stripewidth]
-set stripepitch [* $units $stripepitch]
+set stripewidth [expr {round($units * $stripewidth)}]
+set stripepitch [expr {round($units * $stripepitch)}]
 
 #----------------------------------------------------------------------
 # Parse a viarule section for generating power bus connections
@@ -182,25 +183,25 @@ proc parse_viarule {leffile viarulename} {
 	    # Pick up layername
 	    continue
 	} elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch llx lly urx ury] {
-	    set llx [* $llx $units]
-	    set lly [* $lly $units]
-	    set urx [* $urx $units]
-	    set ury [* $ury $units]
+	    set llx [expr {round($llx * $units)}]
+	    set lly [expr {round($lly * $units)}]
+	    set urx [expr {round($urx * $units)}]
+	    set ury [expr {round($ury * $units)}]
 	    dict set viarulerec ${layername} [list $llx $lly $urx $ury $xspace $yspace]
 	} elseif [regexp {[ \t]*SPACING[ \t]+([^ \t]+)[ \t]+BY[ \t]+([^ \t]+)[ \t]*;} $line lmatch xspace yspace] {
-            set xspace [* $xspace $units]
-            set yspace [* $yspace $units]
+            set xspace [expr {round($xspace * $units)}]
+            set yspace [expr {round($yspace * $units)}]
 	    dict set viarulerec ${layername} [list $llx $lly $urx $ury $xspace $yspace]
 	} elseif [regexp {[ \t]*METALOVERHANG[ \t]+([^ \t]+)[ \t]*;} $line lmatch overhang] {
             # Ignore this.
             continue
 	} elseif [regexp {[ \t]*OVERHANG[ \t]+([^ \t]+)[ \t]*;} $line lmatch overhang] {
             # NOTE:  Assuming METALOVERHANG is 0 and OVERHANG is on all sides.
-            set overhang [* $overhang $units]
+            set overhang [expr {round($overhang * $units)}]
 	    dict set viarulerec ${layername} [list $overhang $overhang]
 	} elseif [regexp {[ \t]*ENCLOSURE[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch xencl yencl] {
-            set xencl [* $xencl $units]
-            set yencl [* $yencl $units]
+            set xencl [expr {round($xencl * $units)}]
+            set yencl [expr {round($yencl * $units)}]
 	    dict set viarulerec ${layername} [list $xencl $yencl]
 	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch viaruletest] {
 	    if {"$viaruletest" != "$viarulename"} {
@@ -237,10 +238,10 @@ proc parse_via {leffile vianame} {
 	if [regexp {[ \t]*LAYER[ \t]+([^ \t]+)[ \t]*;} $line lmatch layername] {
 	    continue
 	} elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line lmatch llx lly urx ury] {
-	    set llx [* $llx $units]
-	    set lly [* $lly $units]
-	    set urx [* $urx $units]
-	    set ury [* $ury $units]
+	    set llx [expr {round($llx * $units)}]
+	    set lly [expr {round($lly * $units)}]
+	    set urx [expr {round($urx * $units)}]
+	    set ury [expr {round($ury * $units)}]
 	    dict set viarec ${layername} [list $llx $lly $urx $ury]
 	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch viatest] {
 	    if {"$viatest" != "$vianame"} {
@@ -282,15 +283,15 @@ proc parse_layer {leffile layername layernum} {
 	} elseif [regexp {[ \t]*DIRECTION[ \t]+([^ \t]+)[ \t]*;} $line lmatch direc] {
 	    dict set layerrec direction $direc
 	} elseif [regexp {[ \t]*WIDTH[ \t]+([^ \t]+)[ \t]*;} $line lmatch width] {
-	    dict set layerrec width [* $width $units]
+	    dict set layerrec width [expr {round($width * $units)}]
 	} elseif [regexp {[ \t]*SPACING[ \t]+([^ \t]+)[ \t]*;} $line lmatch space] {
 	    dict set layerrec spacing [* $space $units]
 	} elseif [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} $line \
 		lmatch xpitch ypitch] {
-	    dict set layerrec xpitch [* $xpitch $units]
-	    dict set layerrec ypitch [* $ypitch $units]
+	    dict set layerrec xpitch [expr {round($xpitch * $units)}]
+	    dict set layerrec ypitch [expr {round($ypitch * $units)}]
 	} elseif [regexp {[ \t]*PITCH[ \t]+([^ \t]+)[ \t]*;} $line lmatch pitch] {
-	    set pitch [* $pitch $units]
+	    set pitch [expr {round($pitch * $units)}]
 	    continue
 	} elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch layertest] {
 	    if {"$layertest" != "$layername"} {
@@ -335,10 +336,10 @@ proc parse_port {pinname macroname leffile ox oy} {
             set ${macroname}(${pinname},layer) $layernum
         } elseif [regexp {[ \t]*RECT[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*;} \
                         $line lmatch llx lly urx ury] {
-	    set llx [* $llx $units]
-	    set lly [* $lly $units]
-	    set urx [* $urx $units]
-	    set ury [* $ury $units]
+	    set llx [expr {round($llx * $units)}]
+	    set lly [expr {round($lly * $units)}]
+	    set urx [expr {round($urx * $units)}]
+	    set ury [expr {round($ury * $units)}]
 	    if {$llx < $ox} {set llx $ox}
 	    if {$urx > $x2} {set urx $x2}
 	    if {($llx == $ox) && ($urx == $x2)} {
@@ -426,10 +427,10 @@ proc parse_port {pinname macroname leffile ox oy} {
 		if {$testy > $ymax} {set ymax $testy}
 	    }
 	    
-	    set llx [* $minx $units]
-	    set lly [* $ymin $units]
-	    set urx [* $maxx $units]
-	    set ury [* $ymax $units]
+	    set llx [expr {round($minx * $units)}]
+	    set lly [expr {round($ymin * $units)}]
+	    set urx [expr {round($maxx * $units)}]
+	    set ury [expr {round($ymax * $units)}]
 
 	    set ${macroname}(${pinname},llx) $llx
 	    set ${macroname}(${pinname},lly) $lly
@@ -515,14 +516,14 @@ proc parse_macro {leffile macroname} {
 	if [regexp {[ \t]*SYMMETRY[ \t]+([^ \t]+)[ \t]*;} $line lmatch symmetry] {
 	    set ${macroname}(symmetry) $symmetry
 	} elseif [regexp {[ \t]*ORIGIN[ \t]+(.+)[ \t]+(.+)[ \t]*;} $line lmatch x y] {
-	    set x [expr {int($x * $units)}]
-	    set y [expr {int($y * $units)}]
+	    set x [expr {round($x * $units)}]
+	    set y [expr {round($y * $units)}]
 	    set ${macroname}(x) $x
 	    set ${macroname}(y) $y
 	} elseif [regexp {[ \t]*SIZE[ \t]+(.+)[ \t]+BY[ \t]+(.+)[ \t]*;} \
                         $line lmatch w h] {
-	    set w [expr {int($w * $units)}]
-	    set h [expr {int($h * $units)}]
+	    set w [expr {round($w * $units)}]
+	    set h [expr {round($h * $units)}]
 	    set ${macroname}(w) $w
 	    set ${macroname}(h) $h
 
@@ -1407,6 +1408,8 @@ foreach macro $fillcells {
 }
 set fillwidths [lsort -decreasing -index 1 $fillwidths]
 
+# puts stdout "Here are the fill cell widths:  $fillwidths"
+
 # For each row, add the width of the last cell in that row
 # to get the row end X value
 
@@ -1494,8 +1497,9 @@ if {$dostripes} {
 	}
 	lappend stripefills [lindex [lindex $fillwidths $fidx] 0]
 	set xtot [+ $xtot $fmax]
-	# puts stdout "Added to stripe filler [lindex [lindex $fillwidths $fidx] 0]"
-	# puts stdout "Total stripe width now $xtot"
+
+	puts stdout "Added to stripe filler [lindex [lindex $fillwidths $fidx] 0]"
+	puts stdout "Total stripe width now $xtot"
     }     
     # Reduce final stripe width to xtot so that it is equal to the
     # best compatible fill size and is a multiple of the unit cell
@@ -1648,6 +1652,7 @@ if {$dostripes && $dostretch} {
     # puts stdout "stripewidth = $gwidth um"
     # puts stdout "stripepitch = $gpitch um"
     # puts stdout "stripeoffset = $goffset um"
+
     while {[gets $infobs line] >= 0} {
 	if [regexp {[ \t]*obstruction[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]*$} $line \
 			lmatch xlow ylow xhigh yhigh layer] {
@@ -1691,10 +1696,10 @@ foreach obs $obslist {
     set yhigh [lindex $obs 3]
     if {($xlow != [lindex $obslast 0]) || ($ylow != [lindex $obslist 1]) ||
 		($xhigh == [lindex $obslast 2]) || ($yhigh != [lindex $obslist 3])} {
-	set xlow [expr $xlow * $units]
-	set ylow [expr $ylow * $units]
-	set xhigh [expr $xhigh * $units]
-	set yhigh [expr $yhigh * $units]
+	set xlow [expr {round($xlow * $units)}]
+	set ylow [expr {round($ylow * $units)}]
+	set xhigh [expr {round($xhigh * $units)}]
+	set yhigh [expr {round($yhigh * $units)}]
 	lappend newlist [list $xlow $ylow $xhigh $yhigh]
         set obslast $obs
     }

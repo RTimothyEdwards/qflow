@@ -585,6 +585,9 @@ if ($makedef == 1) then
          set addspacers_options = "${addsoptions} ${addspacers_options}"
       endif
 
+      # Specify default power and ground names, if not present in the LEF file.
+      # set addspacers_options = "${addspacers_options} -v $vddnet -g $gndnet"
+
       echo "Running addspacers to generate power stripes and align cell right edge" \
 		|& tee -a ${synthlog}
       echo "addspacers.tcl ${addspacers_options} ${rootname} ${lefpath} ${fillcell}" \

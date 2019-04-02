@@ -248,19 +248,19 @@ puts $fdef ""
 # used by placement.
 
 if {$metal1(orient) == "horizontal"} {
-   set pitchx [expr $scale * $metal2(pitch)]
-   set pitchy [expr $scale * $metal1(pitch)]
-   set offsetx [expr $scale * $metal2(offset)]
-   set offsety [expr $scale * $metal1(offset)]
-   set widthx [expr $scale * $metal2(width)]
-   set widthy [expr $scale * $metal1(width)]
+   set pitchx [expr round($scale * $metal2(pitch))]
+   set pitchy [expr round($scale * $metal1(pitch))]
+   set offsetx [expr round($scale * $metal2(offset))]
+   set offsety [expr round($scale * $metal1(offset))]
+   set widthx [expr round($scale * $metal2(width))]
+   set widthy [expr round($scale * $metal1(width))]
 } else {
-   set pitchx [expr $scale * $metal1(pitch)]
-   set pitchy [expr $scale * $metal2(pitch)]
-   set offsetx [expr $scale * $metal1(offset)]
-   set offsety [expr $scale * $metal2(offset)]
-   set widthx [expr $scale * $metal1(width)]
-   set widthy [expr $scale * $metal2(width)]
+   set pitchx [expr round($scale * $metal1(pitch))]
+   set pitchy [expr round($scale * $metal2(pitch))]
+   set offsetx [expr round($scale * $metal1(offset))]
+   set offsety [expr round($scale * $metal2(offset))]
+   set widthx [expr round($scale * $metal1(width))]
+   set widthy [expr round($scale * $metal2(width))]
 }
 
 # Add numlayers to the configuration file now that we know it
@@ -333,10 +333,10 @@ set coreytop [expr $offsety + $coreytop - $coreybot]
 set corexbot $offsetx
 set coreybot $offsety
 
-set outcorextop [expr int($corextop * $multiplier)]
-set outcoreytop [expr int($coreytop * $multiplier)]
-set outcorexbot [expr int($corexbot * $multiplier)]
-set outcoreybot [expr int($coreybot * $multiplier)]
+set outcorextop [expr round($corextop * $multiplier)]
+set outcoreytop [expr round($coreytop * $multiplier)]
+set outcorexbot [expr round($corexbot * $multiplier)]
+set outcoreybot [expr round($coreybot * $multiplier)]
 
 puts stdout "Core values: $corexbot $coreybot $corextop $coreytop"
 puts stdout "Offsets: $offsetx $offsety"
@@ -358,10 +358,10 @@ set dieytop [expr $ytop - $cellybot + $halfpitchy]
 set ygrid [expr floor($dieytop / $pitchy)]
 set dieytop [expr $ygrid * $pitchy]
 
-set outdiexbot [expr int($diexbot * $multiplier)]
-set outdieybot [expr int($dieybot * $multiplier)]
-set outdiextop [expr int($diextop * $multiplier)]
-set outdieytop [expr int($dieytop * $multiplier)]
+set outdiexbot [expr round($diexbot * $multiplier)]
+set outdieybot [expr round($dieybot * $multiplier)]
+set outdiextop [expr round($diextop * $multiplier)]
+set outdieytop [expr round($dieytop * $multiplier)]
 
 puts $fdef "DIEAREA ( $outdiexbot $outdieybot ) ( $outdiextop $outdieytop ) ;"
 puts $fdef ""
@@ -376,7 +376,7 @@ set height [expr $dieytop - $dieybot]
 for {set i 1} {$i <= $numlayers} {incr i} {
    set mname [subst \$metal${i}(name)]
    set mpitch [expr $scale * [subst \$metal${i}(pitch)]]
-   set outmpitch [expr int(0.5 + ($mpitch * $multiplier))]
+   set outmpitch [expr round($mpitch * $multiplier)]
    if {[subst \$metal${i}(orient)] == "vertical"} {
       set xtracks [expr 1 + int($width / $mpitch)];
       puts $fdef "TRACKS X $outdiexbot DO $xtracks STEP $outmpitch LAYER $mname ;"
@@ -649,8 +649,8 @@ while {[gets $fpl1 line] >= 0} {
       }
       set posused(${llx},${lly}) $labname
 
-      set outllx [expr int($llx * $multiplier)]
-      set outlly [expr int($lly * $multiplier)]
+      set outllx [expr round($llx * $multiplier)]
+      set outlly [expr round($lly * $multiplier)]
 
       puts $fdef "- $labname + NET $labname"
       puts $fdef "  + LAYER $labtype ( 0 0 ) ( 1 1 )"
@@ -686,8 +686,8 @@ while {[gets $fpl1 line] >= 0} {
 	    for {set j 0} {$j < $fmult} {incr j} {
 	       set llxoff [expr $llx - $cellxbot]
 
-	       set outllxoff [expr int($llxoff * $multiplier)]
-	       set outllyoff [expr int($llyoff * $multiplier)]
+	       set outllxoff [expr round($llxoff * $multiplier)]
+	       set outllyoff [expr round($llyoff * $multiplier)]
 	       incr numcomps -1
 	       set instname ${fillcell}_${i}_$thisinst
 	       puts $fdef "- $instname $fillcell + PLACED ( $outllxoff $outllyoff ) $ostr ;"
@@ -705,8 +705,8 @@ while {[gets $fpl1 line] >= 0} {
       set llxoff [expr $llx - $cellxbot]
       set llyoff [expr $lly - $cellybot]
 	
-      set outllxoff [expr int($llxoff * $multiplier)]
-      set outllyoff [expr int($llyoff * $multiplier)]
+      set outllxoff [expr round($llxoff * $multiplier)]
+      set outllyoff [expr round($llyoff * $multiplier)]
 
       puts $fdef "- $instance $cellname + PLACED ( $outllxoff $outllyoff ) $ostr ;"
 
