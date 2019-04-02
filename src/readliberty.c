@@ -1390,7 +1390,12 @@ get_values(Cell *curcell, double *retdelay, double *retcap)
     // Calculate delay per load.  Note that cap at this point should be
     // in fF, and trise should be in ps.
     // So the value of loaddelay is in ps/fF.
-    loaddelay = (maxtrise - mintrise) / (maxcap - mincap);
+    // If there is only one cap value, then nothing can be calculated; set
+    // loaddelay to zero so it does not blow up to infinity.
+    if (maxcap == mincap)
+        loaddelay = 0.0;
+    else
+        loaddelay = (maxtrise - mintrise) / (maxcap - mincap);
     curcell->slope = loaddelay;
     curcell->mintrans = mintrise;
 
