@@ -1226,11 +1226,6 @@ read_liberty(char *libfile, char *pattern)
 		        else if (!strcasecmp(token, "index_2")) {
 			    char dnum = ',';
 
-			    // Check if table is comma or space separated
-			    if (strchr(iptr, dnum) == NULL)
-				if (strchr(iptr, ' ') != NULL)
-				    dnum = ' ';
-
 			    // Local index values override those in the template
 
 			    token = advancetoken(flib, 0);	// Open parens
@@ -1241,6 +1236,11 @@ read_liberty(char *libfile, char *pattern)
 			    //-------------------------
 
 			    iptr = token;
+
+			    // Check if table is comma or space separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
 
 			    if (reftable && (reftable->invert == 1)) {
 				// Entries had better match the ref table
