@@ -1191,10 +1191,10 @@ class QflowManager(ttk.Frame):
     def runpinmanager(self):
         sdir = self.synthdir
         ldir = self.layoutdir
-        vlogfile = sdir + '/' + self.project + '.v'
+        spcfile = sdir + '/' + self.project + '.spc'
         cel2file = ldir + '/' + self.project + '.cel2'
 
-        self.pinmanager.readpads(cel2file, vlogfile)
+        self.pinmanager.readpads(cel2file, spcfile)
         self.pinmanager.populate()
         self.pinmanager.open()
 

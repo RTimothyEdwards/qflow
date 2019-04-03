@@ -797,6 +797,8 @@ lef
 
  obs obsm1 VIA1
 
+ bound boundary BOUND
+
 end
 
 #-----------------------------------------------------

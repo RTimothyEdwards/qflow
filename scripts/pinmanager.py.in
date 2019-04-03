@@ -549,34 +549,66 @@ class PinManager(tkinter.Toplevel):
                 # Make the pin draggable
                 self.add_draggable(pinframe, pinname)
 
-    # Read a file of pads.  Either cel2file or bliffile may be specified as the source.
+    # Read a file of pads.  Either cel2file or fnetlist may be specified as the source.
     # If both are specified, then cel2file takes precedence if both files exist.
 
-    def readpads(self, cel2file, bliffile):
+    def readpads(self, cel2file, fnetlist):
         # Save these references
         self.cel2file = cel2file
-        self.bliffile = bliffile
+        self.fnetlist = fnetlist
 
         self.padgroups = []
 
-        iorex = re.compile('^[ \t]*\.(?:inputs|outputs)[ \t]+(.+)$')
+        blifiorex = re.compile('^[ \t]*\.(?:inputs|outputs)[ \t]+(.+)$')
+        spciorex = re.compile('^\.subckt[ \t]+([^ \t]+)[ \t]+(.+)$', re.IGNORECASE)
         grprex = re.compile('^[ \t]*padgroup[ \t]+([^ \t]+)[ \t]+([permute|nopermute]+)')
         pinrex = re.compile('^[ \t]*twpin_([^ \t]+)[ \t]+([fixed|nonfixed]+)')
         sidrex = re.compile('^[ \t]*restrict[ \t]+side[ \t]+([^ \t]+)')
         spcrex = re.compile('^[ \t]*sidespace[ \t]+([^ \t]+)[ \t]+([^ \t]+)')
 
-        # Always read the .blif file to get the full set of pins
+        # Read the verilog netlist to get the full set of pins.
+        # If the verilog netlist does not exist, see if there is a .blif file
+        # (this works for qflow-1.3 and earlier only)
+
         fullpinlist = []
-        if bliffile != None:
-            if os.path.exists(bliffile):
-                with open(bliffile, 'r') as ifile:
-                    for line in ifile:
-                        iomatch = iorex.match(line)
-                        if iomatch:
-                            iopins = iomatch.group(1).split()
-                            fullpinlist.extend(iopins)
+        if fnetlist != None:
+            if os.path.exists(fnetlist):
+                fileext = os.path.splitext(fnetlist)[1]
+                if fileext == '.blif':
+                    with open(fnetlist, 'r') as ifile:
+                        for line in ifile:
+                            iomatch = blifiorex.match(line)
+                            if iomatch:
+                                iopins = iomatch.group(1).split()
+                                fullpinlist.extend(iopins)
+                elif fileext == '.spc':
+                    iopins = []
+                    modname = os.path.splitext(os.path.split(fnetlist)[1])[0]
+                    with open(fnetlist, 'r') as ifile:
+                        nettext = ifile.read()
+                        netlines = nettext.replace('\n+', ' ').splitlines()
+                        for line in netlines:
+                            iomatch = spciorex.match(line)
+                            if iomatch:
+                                subckt = iomatch.group(1)
+                                if subckt == modname:
+                                    iopins = iomatch.group(2).split()
+                    fpath = os.path.split(fnetlist)[0]
+                    pgfile = os.path.join(fpath, modname + '_powerground')
+                    if os.path.exists(pgfile):
+                        with open(pgfile, 'r') as ifile:
+                            for line in ifile:
+                                pwrname = line.split('=')[1].strip().strip('"')        
+                                try:
+                                    iopins.remove(pwrname)
+                                except:
+                                    print('Power pin ' + pwrname + ' is not in the pin list, ignoring.')
+                    fullpinlist.extend(iopins)
+ 
+                elif fileext == '.v':
+                    print("Don't know how to parse a verilog file. . . TBD. . . ") 
         else:
-            print('Missing BLIF file name, cannot check for unassigned pins.', file=sys.stderr)
+            print('Missing BLIF or verilog netlist file name, cannot check for unassigned pins.', file=sys.stderr)
 
         loaded = False
         if cel2file != None:
@@ -632,8 +664,8 @@ class PinManager(tkinter.Toplevel):
                         group['compressed'] = True
 
         if not loaded:
-            if bliffile == None:
-                print("No BLIF or .cel2 file, cannot continue with pin assignment!", file=sys.stderr)
+            if fnetlist == None:
+                print("No Verilog, BLIF, or .cel2 file, cannot continue with pin assignment!", file=sys.stderr)
                 return
 
         # Convert any pins in the full pin list that were not in the .cel2 file
