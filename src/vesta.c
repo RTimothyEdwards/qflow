@@ -1787,16 +1787,24 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 newtable->invert = 1;
                         }
                         else if (!strcasecmp(token, "index_1")) {
+			    char dnum = ',';
+
                             token = advancetoken(flib, 0);      // Open parens
                             token = advancetoken(flib, 0);      // Quote
                             if (!strcmp(token, "\""))
                                 token = advancetoken(flib, '\"');
 
+                            iptr = token;
+
+			    // Check if table is space or comma separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
                             if (newtable->invert == 1) {
                                 // Count entries
-                                iptr = token;
                                 newtable->size2 = 1;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size2++;
                                 }
@@ -1810,7 +1818,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 else
                                     newtable->idx2.caps[0] *= time_unit;
 
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size2++;
                                     sscanf(iptr, "%lg",
@@ -1824,9 +1832,8 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             }
                             else {      // newtable->invert = 0
                                 // Count entries
-                                iptr = token;
                                 newtable->size1 = 1;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size1++;
                                 }
@@ -1836,7 +1843,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 iptr = token;
                                 sscanf(iptr, "%lg", &newtable->idx1.times[0]);
                                 newtable->idx1.times[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size1++;
                                     sscanf(iptr, "%lg",
@@ -1849,16 +1856,24 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             token = advancetoken(flib, ';'); // EOL semicolon
                         }
                         else if (!strcasecmp(token, "index_2")) {
+			    char dnum = ',';
+
                             token = advancetoken(flib, 0);      // Open parens
                             token = advancetoken(flib, 0);      // Quote
                             if (!strcmp(token, "\""))
                                 token = advancetoken(flib, '\"');
 
+                            iptr = token;
+
+			    // Check if table is space or comma separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
                             if (newtable->invert == 0) {
                                 // Count entries
-                                iptr = token;
                                 newtable->size2 = 1;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size2++;
                                 }
@@ -1871,7 +1886,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                     newtable->idx2.caps[0] *= cap_unit;
                                 else
                                     newtable->idx2.cons[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size2++;
                                     sscanf(iptr, "%lg",
@@ -1885,9 +1900,8 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             }
                             else {      // newtable->invert == 1
                                 // Count entries
-                                iptr = token;
                                 newtable->size1 = 1;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size1++;
                                 }
@@ -1897,7 +1911,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 iptr = token;
                                 sscanf(iptr, "%lg", &newtable->idx1.times[0]);
                                 newtable->idx1.times[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     newtable->size1++;
                                     sscanf(iptr, "%lg",
@@ -2487,6 +2501,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     while (*token != '}') {
                         token = advancetoken(flib, 0);
                         if (!strcasecmp(token, "index_1")) {
+			    char dnum = ',';
 
                             // Local index values override those in the template
 
@@ -2495,18 +2510,24 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             if (!strcmp(token, "\""))
                                 token = advancetoken(flib, '\"');
 
+                            iptr = token;
+
+			    // Check if table is space or comma separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
                             //-------------------------
 
                             if (reftable && (reftable->invert == 1)) {
                                 // Entries had better match the ref table
-                                iptr = token;
                                 i = 0;
                                 sscanf(iptr, "%lg", &tableptr->idx2.caps[0]);
                                 if (tableptr->var2 == OUTPUT_CAP)
                                     tableptr->idx2.caps[0] *= cap_unit;
                                 else
                                     tableptr->idx2.cons[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     i++;
                                     sscanf(iptr, "%lg", &tableptr->idx2.caps[i]);
@@ -2521,7 +2542,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 i = 0;
                                 sscanf(iptr, "%lg", &tableptr->idx1.times[0]);
                                 tableptr->idx1.times[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     i++;
                                     sscanf(iptr, "%lg", &tableptr->idx1.times[i]);
@@ -2533,6 +2554,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             token = advancetoken(flib, ';');    // EOL semicolon
                         }
                         else if (!strcasecmp(token, "index_2")) {
+			    char dnum = ',';
 
                             // Local index values override those in the template
 
@@ -2541,15 +2563,21 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             if (!strcmp(token, "\""))
                                 token = advancetoken(flib, '\"');
 
+                            iptr = token;
+
+			    // Check if table is space or comma separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
                             //-------------------------
 
                             if (reftable && (reftable->invert == 1)) {
                                 // Entries had better match the ref table
-                                iptr = token;
                                 i = 0;
                                 sscanf(iptr, "%lg", &tableptr->idx1.times[0]);
                                 tableptr->idx1.times[0] *= time_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     i++;
                                     sscanf(iptr, "%lg", &tableptr->idx1.times[i]);
@@ -2561,7 +2589,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                                 i = 0;
                                 sscanf(iptr, "%lg", &tableptr->idx2.caps[0]);
                                 tableptr->idx2.caps[0] *= cap_unit;
-                                while ((iptr = strchr(iptr, ',')) != NULL) {
+                                while ((iptr = strchr(iptr, dnum)) != NULL) {
                                     iptr++;
                                     i++;
                                     sscanf(iptr, "%lg", &tableptr->idx2.caps[i]);

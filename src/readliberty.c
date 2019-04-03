@@ -650,16 +650,24 @@ read_liberty(char *libfile, char *pattern)
 				newtable->invert = 1;
 			}
 			else if (!strcasecmp(token, "index_1")) {
+			    char dnum = ',';
+
 			    token = advancetoken(flib, 0);	// Open parens
 			    token = advancetoken(flib, 0);	// Quote
 			    if (!strcmp(token, "\""))
 				token = advancetoken(flib, '\"');
 
+			    iptr = token;
+
+			    // Check if table is comma or space separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
 			    if (newtable->invert == 1) {
 				// Count entries
-				iptr = token;
 				newtable->csize = 1;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->csize++;
 				}
@@ -669,7 +677,7 @@ read_liberty(char *libfile, char *pattern)
 				iptr = token;
 				sscanf(iptr, "%lg", &newtable->caps[0]);
 				newtable->caps[0] *= cap_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->csize++;
 				    sscanf(iptr, "%lg",
@@ -679,10 +687,10 @@ read_liberty(char *libfile, char *pattern)
 				newtable->csize++;
 			    }
 			    else {	// newtable->invert = 0
+
 				// Count entries
-				iptr = token;
 				newtable->tsize = 1;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->tsize++;
 				}
@@ -692,7 +700,7 @@ read_liberty(char *libfile, char *pattern)
 				iptr = token;
 				sscanf(iptr, "%lg", &newtable->times[0]);
 				newtable->times[0] *= time_unit; 
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->tsize++;
 				    sscanf(iptr, "%lg",
@@ -705,16 +713,26 @@ read_liberty(char *libfile, char *pattern)
 			    token = advancetoken(flib, ';'); // EOL semicolon
 			}
 			else if (!strcasecmp(token, "index_2")) {
+			    char dnum = ',';
+
 			    token = advancetoken(flib, 0);	// Open parens
 			    token = advancetoken(flib, 0);	// Quote
 			    if (!strcmp(token, "\""))
 				token = advancetoken(flib, '\"');
 
+			    // Determine if array tokens are comma or space separated.
+			    iptr = token;
+
+			    // Check if table is comma or space separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
 			    if (newtable->invert == 0) {
+
 				// Count entries
-				iptr = token;
 				newtable->csize = 1;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->csize++;
 				}
@@ -724,7 +742,7 @@ read_liberty(char *libfile, char *pattern)
 				iptr = token;
 				sscanf(iptr, "%lg", &newtable->caps[0]);
 				newtable->caps[0] *= cap_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->csize++;
 				    sscanf(iptr, "%lg",
@@ -735,9 +753,8 @@ read_liberty(char *libfile, char *pattern)
 			    }
 			    else { 	// newtable->invert == 1
 				// Count entries
-				iptr = token;
 				newtable->tsize = 1;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->tsize++;
 				}
@@ -747,7 +764,7 @@ read_liberty(char *libfile, char *pattern)
 				iptr = token;
 				sscanf(iptr, "%lg", &newtable->times[0]);
 				newtable->times[0] *= time_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    newtable->tsize++;
 				    sscanf(iptr, "%lg",
@@ -1152,6 +1169,7 @@ read_liberty(char *libfile, char *pattern)
 		    while (*token != '}') {
 		        token = advancetoken(flib, 0);
 		        if (!strcasecmp(token, "index_1")) {
+			    char dnum = ',';
 
 			    // Local index values override those in the template
 
@@ -1162,15 +1180,21 @@ read_liberty(char *libfile, char *pattern)
 
 			    //-------------------------
 
+			    iptr = token;
+
+			    // Check if table is comma or space separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
+
 			    if (reftable && (reftable->invert == 1)) {
 				// Entries had better match the ref table
-				iptr = token;
 				i = 0;
 				newcell->caps = (double *)malloc(reftable->csize *
 					sizeof(double));
 				sscanf(iptr, "%lg", &newcell->caps[0]);
 				newcell->caps[0] *= cap_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    i++;
 				    sscanf(iptr, "%lg", &newcell->caps[i]);
@@ -1178,13 +1202,12 @@ read_liberty(char *libfile, char *pattern)
 				}
 			    }
 			    else if (reftable && (reftable->invert == 0)) {
-				iptr = token;
 				i = 0;
 				newcell->times = (double *)malloc(reftable->tsize *
 					sizeof(double));
 				sscanf(iptr, "%lg", &newcell->times[0]);
 				newcell->times[0] *= time_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    i++;
 				    if (i < reftable->tsize) {
@@ -1201,6 +1224,12 @@ read_liberty(char *libfile, char *pattern)
 			    token = advancetoken(flib, ';');	// EOL semicolon
 			}
 		        else if (!strcasecmp(token, "index_2")) {
+			    char dnum = ',';
+
+			    // Check if table is comma or space separated
+			    if (strchr(iptr, dnum) == NULL)
+				if (strchr(iptr, ' ') != NULL)
+				    dnum = ' ';
 
 			    // Local index values override those in the template
 
@@ -1211,15 +1240,16 @@ read_liberty(char *libfile, char *pattern)
 
 			    //-------------------------
 
+			    iptr = token;
+
 			    if (reftable && (reftable->invert == 1)) {
 				// Entries had better match the ref table
-				iptr = token;
 				i = 0;
 				newcell->times = (double *)malloc(reftable->tsize *
 					sizeof(double));
 				sscanf(iptr, "%lg", &newcell->times[0]);
 				newcell->times[0] *= time_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    i++;
 				    sscanf(iptr, "%lg", &newcell->times[i]);
@@ -1227,13 +1257,12 @@ read_liberty(char *libfile, char *pattern)
 				}
 			    }
 			    else if (reftable && (reftable->invert == 0)) {
-				iptr = token;
 				i = 0;
 				newcell->caps = (double *)malloc(reftable->csize *
 					sizeof(double));
 				sscanf(iptr, "%lg", &newcell->caps[0]);
 				newcell->caps[0] *= cap_unit;
-				while ((iptr = strchr(iptr, ',')) != NULL) {
+				while ((iptr = strchr(iptr, dnum)) != NULL) {
 				    iptr++;
 				    i++;
 				    if (i < reftable->csize) {
