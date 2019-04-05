@@ -816,11 +816,11 @@ echo "   Spice:   ${synthdir}/${modulename}.spc" |& tee -a ${synthlog}
 echo "" >> ${synthlog}
 
 echo "Running vlog2Verilog." |& tee -a ${synthlog}
-echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${modulename}.rtl.v" \
-	|& tee -a ${synthlog}
+echo "vlog2Verilog -c -v ${vddnet} -g ${gndnet} ${postproclefpath} \
+	-o ${modulename}.rtl.v" |& tee -a ${synthlog}
 echo "   ${modulename}.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} -o ${modulename}.rtl.v \
-	${modulename}.v >>& ${synthlog}
+${bindir}/vlog2Verilog -c -v ${vddnet} -g ${gndnet} ${postproclefpath} \
+	-o ${modulename}.rtl.v ${modulename}.v >>& ${synthlog}
 
 set errcond = ${status}
 if ( ${errcond} != 0 ) then
@@ -832,11 +832,11 @@ if ( ${errcond} != 0 ) then
 endif
 
 # Version without explicit power and ground
-echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlnopwr.v" \
-	|& tee -a ${synthlog}
+echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproclefpath} \
+	-o ${modulename}.rtlnopwr.v" |& tee -a ${synthlog}
 echo "   ${modulename}.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlnopwr.v \
-	${modulename}.v >>& ${synthlog}
+${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproclefpath} \
+	-o ${modulename}.rtlnopwr.v ${modulename}.v >>& ${synthlog}
 
 set errcond = ${status}
 if ( ${errcond} != 0 ) then
@@ -848,11 +848,11 @@ if ( ${errcond} != 0 ) then
 endif
 
 # Version without vectors
-echo "${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} " \
+echo "${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} ${postproclefpath}" \
 	|& tee -a ${synthlog}
 echo "   -o ${modulename}.rtlbb.v" |& tee -a ${synthlog}
-${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} -o ${modulename}.rtlbb.v \
-	${modulename}.v >>& ${synthlog}
+${bindir}/vlog2Verilog -c -p -b -n -v ${vddnet} -g ${gndnet} ${postproclefpath} \
+	-o ${modulename}.rtlbb.v ${modulename}.v >>& ${synthlog}
 
 set errcond = ${status}
 if ( ${errcond} != 0 ) then

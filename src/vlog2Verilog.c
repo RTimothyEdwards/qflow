@@ -201,11 +201,11 @@ char *hex2binary(char *uval, int bits)
     char binhex[5];
 
     first = bits % 4;
-    hexc = ((first == 0) ? 0 : 1) + bits >> 2;	/* Number of hex characters */
-    hstring = (char *)malloc(1 + hexc);
+    hexc = ((first == 0) ? 0 : 1) + (bits / 4);	    /* Number of hex characters */
 
     hstring = (char *)malloc(hexc + 1);
     strncpy(hstring, uval, hexc);
+    *(hstring + hexc) = '\0';
     for (hptr = hstring; *hptr != '\0'; hptr++) {
 
 	/* Catch 'x', 'X', etc., and convert to zero.	*/
@@ -273,6 +273,7 @@ char *hex2binary(char *uval, int bits)
 	}
 	if (first > 0) {
 	    strncpy(bptr, binhex + (4 - first), first);
+            *(bptr + first) = '\0';
 	    bptr += first;
 	    first = 0;
 	}
@@ -300,6 +301,7 @@ char *oct2binary(char *uval, int bits)
 
     ostring = (char *)malloc(octc + 1);
     strncpy(ostring, uval, octc);
+    *(ostring + octc) = '\0';
     for (optr = ostring; *optr != '\0'; optr++) {
 
 	/* Catch 'x', 'X', etc., and convert to zero.	*/
@@ -343,6 +345,7 @@ char *oct2binary(char *uval, int bits)
 	}
 	if (first > 0) {
 	    strncpy(bptr, binoct + (3 - first), first);
+            *(bptr + first) = '\0';
 	    bptr += first;
 	    first = 0;
 	}
@@ -536,6 +539,8 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
     int nunconn = 0;
     int arrayidx = -1;
 
+    GATE gate = (GATE)NULL;
+
     struct netrec *net;
     struct portrec *port;
     struct instance *inst;
@@ -628,35 +633,32 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 	}
 	fprintf(outfptr, " (\n");
 
+	// If there is a gate record read from LEF, keep a pointer to it.
+	if (GateInfo != NULL)
+	    gate = (GATE)HashLookup(inst->cellname, &Lefhash);
+
 	if (Flags & IMPLICIT_POWER) {
 
 	    /* If any LEF files were read, then get the power and	*/
 	    /* ground net names from the LEF file definition.		*/
 
-	    if (GateInfo != NULL) {
-		GATE gate = (GATE)HashLookup(inst->cellname, &Lefhash);
-		if (gate) {
-		    int n;
-		    u_char found = 0;
-		    for (n = 0; n < gate->nodes; n++) {
-			if (gate->use[n] == PORT_USE_POWER) {
-			    fprintf(outfptr, "    .%s(%s),\n", gate->node[n], VddNet);
-			    found++;
-			}
-			else if (gate->use[n] == PORT_USE_GROUND) {
-			    fprintf(outfptr, "    .%s(%s),\n", gate->node[n], GndNet);
-			    found++;
-			}
-			if (found == 2) break;
+	    if (gate) {
+		int n;
+		u_char found = 0;
+		for (n = 0; n < gate->nodes; n++) {
+		    if (gate->use[n] == PORT_USE_POWER) {
+			fprintf(outfptr, "    .%s(%s),\n", gate->node[n], VddNet);
+			found++;
 		    }
-		}
-		else {
-		    /* Fall back on VddNet and GndNet names */
-		    fprintf(outfptr, "    .%s(%s),\n", GndNet, GndNet);
-		    fprintf(outfptr, "    .%s(%s),\n", VddNet, VddNet);
+		    else if (gate->use[n] == PORT_USE_GROUND) {
+			fprintf(outfptr, "    .%s(%s),\n", gate->node[n], GndNet);
+			found++;
+		    }
+		    if (found == 2) break;
 		}
 	    }
 	    else {
+		/* Fall back on VddNet and GndNet names */
 		fprintf(outfptr, "    .%s(%s),\n", GndNet, GndNet);
 		fprintf(outfptr, "    .%s(%s),\n", VddNet, VddNet);
 	    }
@@ -711,6 +713,32 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 			    /* Important note:  Need to check if 'x' is	*/
 			    /* on an output, in which case it should be	*/
 			    /* treated like 'z' (unconnected).		*/
+
+			    /* Ports in verilog instances have no	*/
+			    /* direction information so it is necessary	*/
+			    /* to pull the information from the LEF	*/
+			    /* record of the cell.			*/
+
+			    if (gate) {
+				int n;
+				for (n = 0; n < gate->nodes; n++) {
+				    if (!strcmp(gate->node[n], port->name)) {
+					switch (gate->direction[n]) {
+					    case PORT_CLASS_INPUT:
+						port->direction = PORT_INPUT;
+						break;
+					    case PORT_CLASS_OUTPUT:
+						port->direction = PORT_OUTPUT;
+						break;
+					    default:
+						port->direction = PORT_INOUT;
+						break;
+					}
+					break;
+				    }
+				}
+			    }
+
 			    if (port->direction != PORT_INPUT) {
 				char *xptr;
 				for (xptr = bptr; *xptr != '\0'; xptr++) {
@@ -750,7 +778,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 						strlen(VddNet) + 2);
 				    strcat(expand, VddNet);
 				}
-				else if (*bptr == 'Z') {
+				else if (tolower(*bptr) == 'z') {
 				    char unconnect[20];
 				    /* Unconnected node:  Make a new node name. */
 				    /* This is a single bit, so it can be	*/
@@ -773,8 +801,11 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 				bptr++;
 				if (brepeat <= 0) break;
 			    }
+			    if (bptr == bitstring) {
+				fprintf(stderr, "Warning: Cannot parse \"%s\"\n", sptr);
+			    }
 			    while (brepeat > 0) {
-				if (*(bptr - 1) == '1') {
+				if ((bptr > bitstring) && (*(bptr - 1) == '1')) {
 				    expand = (char *)realloc(expand,
 						strlen(expand) +
 						strlen(VddNet) + 2);
