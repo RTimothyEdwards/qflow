@@ -889,7 +889,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 
     if (Flags & ADD_ANTENNA) {
 	char *antennapin = NULL;
-	GATE gate, acell;
+	GATE gate, acell = NULL;
 	double asize;
 
 	/* Find the cell name that matches the antenna cell	*/
