@@ -1,4 +1,3 @@
-NEW
 qflow v.1.4
 ---------------------------------------------------------------
 Tim Edwards
@@ -9,11 +8,21 @@ v1.2 May      2018
 v1.3 December 2018
 v1.4 December 2018
 ---------------------------------------------------------------
-GPL Copyright (c) 2018
+GPL Copyright (c) 2019
 ---------------------------------------------------------------
 Default technology uses OSU open source digital cell libraries
 See http://vlsiarch.ecen.okstate.edu/flows/
 ---------------------------------------------------------------
+
+NOTE:  If obtaining sources through git, then first do:
+
+	git checkout qflow-1.4
+
+    for the development version, or
+
+	git checkout qflow-1.3
+
+    for the stable version.
 
 To compile and install:
 
