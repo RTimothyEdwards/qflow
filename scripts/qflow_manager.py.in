@@ -1273,9 +1273,12 @@ class QflowManager(ttk.Frame):
             else:
                 self.print('Displaying the completed routed layout, abstract view')
                 laystate = 'route2'
-        elif status == 'gds' or status == 'clean' or status == 'done':
+        elif status == 'gds':
             self.print('Displaying the completed routed layout, full view')
             laystate = 'gds'
+        elif status == 'clean' or status == 'done':
+            self.print('Displaying the completed routed layout, full view')
+            laystate = 'gds2'
 
         # Pick up LEF files from the project .cfg file
         leffiles = []
@@ -1284,7 +1287,7 @@ class QflowManager(ttk.Frame):
 
         # Pick up GDS files from the technology .sh file
         gdsfiles = []
-        if laystate == 'gds' or laystate == 'drcgds':
+        if laystate == 'gds' or laystate == 'drcgds' or laystate == 'gds2':
             gdsfiles = self.get_project_gdsfiles()
 
         # Make a copy of the .magicrc file for startup with some
@@ -1310,7 +1313,7 @@ class QflowManager(ttk.Frame):
                     print('lef read ' + leffile, file=ofile)
                 for gdsfile in gdsfiles:
                     print('gds read ' + gdsfile, file=ofile)
-                if laystate == 'gds':
+                if laystate == 'gds2':
                     print('load gds_top', file=ofile)
                     print('gds read ' + self.project, file=ofile)
                 else:
