@@ -143,7 +143,7 @@ endif
 
 # Add hard macros
 
-hardmacrolibs = ""
+set hardmacrolibs=""
 if ( ${?hard_macros} ) then
    foreach macro_path ( $hard_macros )
       foreach file ( `ls ${sourcedir}/${macro_path}` )
@@ -246,7 +246,7 @@ read_liberty -max ${libertymaxpath}
 EOF
 
 foreach libpath ( $hardmacrolibs )
-   cat >> ${rootname}.conf << EOF
+cat >> ${rootname}.conf << EOF
 read_celllib ${libpath}
 EOF
 end
