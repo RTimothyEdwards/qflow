@@ -83,8 +83,8 @@ blifFanout$(EXEEXT): blifFanout.o $(HASHLIB) $(LIBERTYLIB)
 		-DQFLOW_VERSION=\"VERSION\" -DQFLOW_REVISION=\"REVISION\" \
 		$(DEPENDS) -o $@ $(LIBS) -lm
 
-vesta$(EXEEXT): vesta.o $(HASHLIB)
-	$(CC) $(LDFLAGS) vesta.o $(HASHLIB) -o $@ $(LIBS)
+vesta$(EXEEXT): vesta.o $(HASHLIB) $(VERILOGLIB)
+	$(CC) $(LDFLAGS) vesta.o $(HASHLIB) $(VERILOGLIB) -o $@ $(LIBS)
 
 spice2delay$(EXEEXT): spice2delay.o $(HASHLIB) $(LIBERTYLIB)
 	$(CC) $(LDFLAGS) spice2delay.o $(HASHLIB) $(LIBERTYLIB) -o $@ $(LIBS)

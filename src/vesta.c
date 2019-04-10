@@ -47,7 +47,7 @@
 /*		3: Report on verilog source file		*/
 /*		4: Report on liberty file			*/
 /*--------------------------------------------------------------*/
-/*	(c) 2013-2018 Tim Edwards, Open Circuit Design		*/
+/*	(c) 2013-2019 Tim Edwards, Open Circuit Design		*/
 /*	Released under GPL as part of the qflow package		*/
 /*--------------------------------------------------------------*/
 
@@ -78,6 +78,7 @@
 #include <sys/stat.h>	// For mkdir()
 #include <math.h>       // Temporary, for fabs()
 #include "hash.h"       // For net hash table
+#include "readverilog.h"
 
 #define LIB_LINE_MAX  65535
 
@@ -112,11 +113,12 @@ int fileCurrentLine;
 
 // Sections of verilog file
 #define MODULE          0
-#define IOLIST          1
-#define GATELIST        2
-#define INSTANCE        3
-#define INSTPIN         4
-#define PINCONN         5
+#define IOINLINE        1
+#define IOLIST          2
+#define GATELIST        3
+#define INSTANCE        4
+#define INSTPIN         5
+#define PINCONN         6
 
 // Pin types (these are masks---e.g., a pin can be an INPUT and a CLOCK)
 #define INPUT           0x01    // The default
@@ -531,7 +533,7 @@ advancetoken(FILE *flib, char delimiter)
 
     // Final:  Remove trailing whitespace
     tptr = token + strlen(token) - 1;
-    while (isblank(*tptr)) {
+    while ((tptr > token) && isblank(*tptr)) {
         *tptr = '\0';
         tptr--;
     }
@@ -665,8 +667,8 @@ double *table_collapse(lutableptr tableptr, double load)
 
         // Interpolate value at cap load for each transition value
 
-        vlow = *(tableptr->values + i * tableptr->size1 + (j - 1));
-        vhigh = *(tableptr->values + i * tableptr->size1 + j);
+        vlow = *(tableptr->values + i * tableptr->size2 + (j - 1));
+        vhigh = *(tableptr->values + i * tableptr->size2 + j);
         *(vector + i) = vlow + (vhigh - vlow) * cfrac;
     }
     return vector;
@@ -855,12 +857,14 @@ double calc_prop_delay(double trans, connptr testconn, short sense, char minmax)
     if (sense != SENSE_NEGATIVE) {
         if (testconn->prvector)
             propdelayr = vector_get_value(testpin->propdelr, testconn->prvector, trans);
+	if (propdelayr < 0.0) propdelayr = 0.0;
         if (sense == SENSE_POSITIVE) return propdelayr;
     }
 
     if (sense != SENSE_POSITIVE) {
         if (testconn->pfvector)
             propdelayf = vector_get_value(testpin->propdelf, testconn->pfvector, trans);
+	if (propdelayf < 0.0) propdelayf = 0.0;
         if (sense == SENSE_NEGATIVE) return propdelayf;
     }
 
@@ -891,12 +895,14 @@ double calc_transition(double trans, connptr testconn, short sense, char minmax)
     if (sense != SENSE_NEGATIVE) {
         if (testconn->trvector)
             transr = vector_get_value(testpin->transr, testconn->trvector, trans);
+	if (transr < 0.0) transr = 0.0;
         if (sense == SENSE_POSITIVE) return transr;
     }
 
     if (sense != SENSE_POSITIVE) {
         if (testconn->tfvector)
             transf = vector_get_value(testpin->transf, testconn->tfvector, trans);
+	if (transf < 0.0) transf = 0.0;
         if (sense == SENSE_NEGATIVE) return transf;
     }
 
@@ -2714,244 +2720,161 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 /*--------------------------------------------------------------*/
 
 void
-verilogRead(FILE *fsrc, cell *cells, net **netlist, instance **instlist,
+verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
                 connect **inputlist, connect **outputlist, struct hashtable *Nethash)
 {
-    char *token;
-    char *modname = NULL;
-    int section = MODULE;
+    struct portrec  *port;
+    struct instance *inst;
+    struct cellrec  *topcell;
+    struct netrec   *net;
 
+    connptr newconn, testconn;
     instptr newinst;
+    pinptr testpin;
     netptr newnet, testnet;
     cellptr testcell;
-    connptr newconn, testconn;
-    pinptr testpin;
 
-    int vstart, vend, vtarget, isinput;
+    int vstart, vtarget;
 
-    /* Read tokens off of the line */
-    token = advancetoken(fsrc, 0);
+    /* Get verilog netlist structure using routines in readverilog.c */
+    topcell = ReadVerilog(filename);
+    if (topcell && topcell->name) {
+	fprintf(stdout, "Parsing module \"%s\"\n", topcell->name);
+    }
 
-    while (token != NULL) {
+    /* Build local connection lists from returned netlist structure */
 
-        switch (section) {
-            case MODULE:
-                if (!strcasecmp(token, "module")) {
-                    token = advancetoken(fsrc, 0);
-                    fprintf(stderr, "Parsing module \"%s\"\n", token);
+    for (port = topcell->portlist; port; port = port->next) {
+	testconn = NULL;
 
-                    token = advancetoken(fsrc, 0);
-                    if (strcmp(token, "("))
-                        fprintf(stderr, "Module not followed by pin list\n");
-                    else
-                        token = advancetoken(fsrc, ')');
-                    token = advancetoken(fsrc, ';');    // Get end-of-line
+	// Create a net entry for the input or output, add to the list of nets
 
-                    // Ignore the pin list, go straight to the input/output declarations
-                    section = IOLIST;
-                }
+	net = HashLookup(port->name, &topcell->nets);
+	if (net->start == 0 && net->end == 0) {
+	    newnet = create_net(netlist);
+	    newnet->name = strdup(port->name);
+	    HashPtrInstall(newnet->name, newnet, Nethash);
+
+	    testconn = (connptr)malloc(sizeof(connect));
+	    testconn->refnet = newnet;
+	    testconn->refpin = NULL;        // No associated pin
+	    testconn->refinst = NULL;       // No associated instance
+	    testconn->tag = NULL;
+	    testconn->metric = -1.0;
+	    testconn->visited = (unsigned char)0;
+	    testconn->prvector = NULL;
+	    testconn->pfvector = NULL;
+	    testconn->trvector = NULL;
+	    testconn->tfvector = NULL;
+
+            if (port->direction == PORT_INPUT) {    // driver (input)
+		testconn->next = *inputlist;
+		*inputlist = testconn;
+            }
+            else {				    // receiver (output)
+		testconn->next = *outputlist;
+		*outputlist = testconn;
+            }
+	}
+	else {
+	    vtarget = net->end + ((net->start < net->end) ? 1 : -1);
+	    vstart = net->start;
+	    while (vstart != vtarget) {
+		newnet = create_net(netlist);
+		newnet->name = (char *)malloc(strlen(port->name) + 6);
+		sprintf(newnet->name, "%s[%d]", port->name, vstart);
+		HashPtrInstall(newnet->name, newnet, Nethash);
+
+		vstart += (vtarget > net->end) ? 1 : -1;
+
+		testconn = (connptr)malloc(sizeof(connect));
+		testconn->refnet = newnet;
+		testconn->refpin = NULL;    // No associated pin
+		testconn->refinst = NULL;   // No associated instance
+		testconn->tag = NULL;
+		testconn->metric = -1.0;
+		testconn->visited = (unsigned char)0;
+		testconn->prvector = NULL;
+		testconn->pfvector = NULL;
+		testconn->trvector = NULL;
+		testconn->tfvector = NULL;
+
+		if (port->direction == PORT_INPUT) {    // driver (input)
+		    testconn->next = *inputlist;
+		    *inputlist = testconn;
+		}
+		else {                      // receiver (output)
+		    testconn->next = *outputlist;
+		    *outputlist = testconn;
+		}
+	    }
+	}
+    }
+
+    for (inst = topcell->instlist; inst; inst = inst->next) {
+        for (testcell = cells; testcell; testcell = testcell->next)
+            if (!strcasecmp(testcell->name, inst->cellname))
                 break;
 
-            case IOLIST:
-                if (!strcasecmp(token, "input") || !strcasecmp(token, "output")) {
+        if (testcell == NULL) {
+	    fprintf(stderr, "Cell \"%s\" was not in the liberty database!\n",
+		    inst->cellname);
+	    continue;
+	}
 
-                    testconn = NULL;
-                    vstart = vend = 0;
+        newinst = (instptr)malloc(sizeof(instance));
+        newinst->next = *instlist;
+        *instlist = newinst;
+        newinst->refcell = testcell;
+        newinst->in_connects = NULL;
+        newinst->out_connects = NULL;
+        newinst->name = strdup(inst->instname);
 
-                    if (!strcasecmp(token, "input")) {
-                        isinput = 1;
-                    }
-                    else {      // output
-                        isinput = 0;
-                    }
-
-                    token = advancetoken(fsrc, 0);
-                    if (*token == '[') {
-                        sscanf(token + 1, "%d", &vstart);
-                        token = advancetoken(fsrc, ':');
-                        token = advancetoken(fsrc, ']');        // Read to end of vector
-                        sscanf(token, "%d", &vend);
-                        token = advancetoken(fsrc, 0);          // Read signal name
-                    }
-
-                    // Create a net entry for the input or output, add to the list of nets
-
-                    if (vstart == 0 && vend == 0) {
-                        newnet = create_net(netlist);
-                        newnet->name = strdup(token);
-                        HashPtrInstall(newnet->name, newnet, Nethash);
-
-                        testconn = (connptr)malloc(sizeof(connect));
-                        testconn->refnet = newnet;
-                        testconn->refpin = NULL;        // No associated pin
-                        testconn->refinst = NULL;       // No associated instance
-                        testconn->tag = NULL;
-                        testconn->metric = -1.0;
-                        testconn->visited = (unsigned char)0;
-                        testconn->prvector = NULL;
-                        testconn->pfvector = NULL;
-                        testconn->trvector = NULL;
-                        testconn->tfvector = NULL;
-
-                        if (isinput) {                  // driver (input)
-                            testconn->next = *inputlist;
-                            *inputlist = testconn;
-                        }
-                        else {                          // receiver (output)
-                            testconn->next = *outputlist;
-                            *outputlist = testconn;
-                        }
-                    }
-                    else {
-                        vtarget = vend + ((vstart < vend) ? 1 : -1);
-                        while (vstart != vtarget) {
-                            newnet = create_net(netlist);
-                            newnet->name = (char *)malloc(strlen(token) + 6);
-                            sprintf(newnet->name, "%s[%d]", token, vstart);
-                            HashPtrInstall(newnet->name, newnet, Nethash);
-
-                            vstart += (vtarget > vend) ? 1 : -1;
-
-                            testconn = (connptr)malloc(sizeof(connect));
-                            testconn->refnet = newnet;
-                            testconn->refpin = NULL;    // No associated pin
-                            testconn->refinst = NULL;   // No associated instance
-                            testconn->tag = NULL;
-                            testconn->metric = -1.0;
-			    testconn->visited = (unsigned char)0;
-                            testconn->prvector = NULL;
-                            testconn->pfvector = NULL;
-                            testconn->trvector = NULL;
-                            testconn->tfvector = NULL;
-
-                            if (isinput) {              // driver (input)
-                                testconn->next = *inputlist;
-                                *inputlist = testconn;
-                            }
-                            else {                      // receiver (output)
-                                testconn->next = *outputlist;
-                                *outputlist = testconn;
-                            }
-                        }
-                    }
-                    token = advancetoken(fsrc, ';');    // Get rest of input/output entry
+	for (port = inst->portlist; port; port = port->next) {
+            newconn = (connptr)malloc(sizeof(connect));
+            for (testpin = testcell->pins; testpin; testpin = testpin->next) {
+                if (!strcmp(testpin->name, port->name))
                     break;
-                }
-
-                /* Drop through on anything that isn't an input, output, or blank line */
-
-            case GATELIST:
-
-                if (!strcasecmp(token, "endmodule")) {
-                    section = MODULE;
-                    break;
-                }
-
-                /* Confirm that the token is a known cell, and continue parsing line if so */
-                /* Otherwise, parse to semicolon line end and continue */
-
-                for (testcell = cells; testcell; testcell = testcell->next)
-                    if (!strcasecmp(testcell->name, token))
-                        break;
-
-                if (testcell != NULL) {
-                    section = INSTANCE;
-                    newinst = (instptr)malloc(sizeof(instance));
-                    newinst->next = *instlist;
-                    *instlist = newinst;
-                    newinst->refcell = testcell;
-                    newinst->in_connects = NULL;
-                    newinst->out_connects = NULL;
+            }
+            // Sanity check
+            if (testpin == NULL) {
+                fprintf(stderr, "No such pin \"%s\" in cell \"%s\"!\n",
+                        port->name, testcell->name);
+            }
+            else {
+                if (testpin->type & OUTPUT) {
+                    newconn->next = newinst->out_connects;
+                    newinst->out_connects = newconn;
                 }
                 else {
-                    /* Ignore all wire and assign statements    */
-                    /* Qflow does not generate these, but other */
-                    /* synthesis tools may.                     */
+                    newconn->next = newinst->in_connects;
+                    newinst->in_connects = newconn;
+                }
+            }
+            newconn->refinst = newinst;
+            newconn->refpin = testpin;
+            newconn->refnet = NULL;
+            newconn->tag = NULL;
+            newconn->metric = -1.0;
+	    newconn->visited = (unsigned char)0;
+            newconn->prvector = NULL;
+            newconn->pfvector = NULL;
+            newconn->trvector = NULL;
+            newconn->tfvector = NULL;
 
-                    if (!strcasecmp(token, "assign") && (verbose > 1)) {
-                        fprintf(stdout, "Wire assignments are not handled!\n");
-                    }
-                    else if (strcasecmp(token, "wire") && (verbose > 1)) {
-                        fprintf(stdout, "Unknown cell \"%s\" instanced.\n",
-                                token);
-                    }
-                    token = advancetoken(fsrc, ';');    // Get rest of entry, and ignore
-                }
-                break;
-
-            case INSTANCE:
-                newinst->name = strdup(token);
-                token = advancetoken(fsrc, '(');        // Find beginning of pin list
-                section = INSTPIN;
-                break;
-
-            case INSTPIN:
-                if (*token == '.') {
-                    newconn = (connptr)malloc(sizeof(connect));
-                    // Pin name is in (token + 1)
-                    for (testpin = testcell->pins; testpin; testpin = testpin->next) {
-                        if (!strcmp(testpin->name, token + 1))
-                            break;
-                    }
-                    // Sanity check
-                    if (testpin == NULL) {
-                        fprintf(stderr, "No such pin \"%s\" in cell \"%s\"!\n",
-                                token + 1, testcell->name);
-                    }
-                    else {
-                        if (testpin->type & OUTPUT) {
-                            newconn->next = newinst->out_connects;
-                            newinst->out_connects = newconn;
-                        }
-                        else {
-                            newconn->next = newinst->in_connects;
-                            newinst->in_connects = newconn;
-                        }
-                    }
-                    newconn->refinst = newinst;
-                    newconn->refpin = testpin;
-                    newconn->refnet = NULL;
-                    newconn->tag = NULL;
-                    newconn->metric = -1.0;
-		    newconn->visited = (unsigned char)0;
-                    newconn->prvector = NULL;
-                    newconn->pfvector = NULL;
-                    newconn->trvector = NULL;
-                    newconn->tfvector = NULL;
-                    token = advancetoken(fsrc, '(');    // Read to beginning of pin name
-                    section = PINCONN;
-                }
-                else if (*token == ';') {
-                    // End of instance record
-                    section = GATELIST;
-                }
-                else if (*token != ',' && *token != ')') {
-                    fprintf(stderr, "Unexpected entry in instance pin connection list!\n");
-                    token = advancetoken(fsrc, ';');    // Read to end-of-line
-                    section = GATELIST;
-                }
-                break;
-
-            case PINCONN:
-                // Token is net name
-                testnet = (netptr)HashLookup(token, Nethash);
-                if (testnet == NULL) {
-                    // This is a new net, and we need to record it
-                    newnet = create_net(netlist);
-                    newnet->name = strdup(token);
-                    HashPtrInstall(newnet->name, newnet, Nethash);
-                    newconn->refnet = newnet;
-                }
-                else
-                    newconn->refnet = testnet;
-                section = INSTPIN;
-                break;
-        }
-        if (section == PINCONN)
-            token = advancetoken(fsrc, ')');    // Name token parsing
-        else
-            token = advancetoken(fsrc, 0);
+            testnet = (netptr)HashLookup(port->net, Nethash);
+            if (testnet == NULL) {
+                // This is a new net, and we need to record it
+                newnet = create_net(netlist);
+                newnet->name = strdup(port->net);
+                HashPtrInstall(newnet->name, newnet, Nethash);
+                newconn->refnet = newnet;
+            }
+            else
+                newconn->refnet = testnet;
+	}
     }
+    FreeVerilog(topcell);   // All structures transferred
 }
 
 /*--------------------------------------------------------------*/
@@ -3835,6 +3758,7 @@ main(int objc, char *argv[])
         fprintf(stderr, "Cannot open %s for reading\n", argv[firstarg]);
         exit (1);
     }
+    fclose(fsrc);
 
     /*------------------------------------------------------------------*/
     /* Generate one table template for the "scalar" case                */
@@ -3921,7 +3845,8 @@ main(int objc, char *argv[])
 
     fileCurrentLine = 0;
 
-    verilogRead(fsrc, cells, &netlist, &instlist, &inputlist, &outputlist, &Nethash);
+    verilogRead(argv[firstarg], cells, &netlist, &instlist, &inputlist, &outputlist,
+		&Nethash);
 
     if (delayfile != NULL) {
         fdly = fopen(delayfile, "r");
@@ -3935,8 +3860,7 @@ main(int objc, char *argv[])
 	fdly = NULL;
 
     fflush(stdout);
-    fprintf(stdout, "Verilog netlist read:  Processed %d lines.\n", fileCurrentLine);
-    if (fsrc != NULL) fclose(fsrc);
+    fprintf(stdout, "Verilog netlist read:  Processed %d lines.\n", vlinenum);
 
     /*--------------------------------------------------*/
     /* Debug:  Print summary of verilog source          */
@@ -4133,7 +4057,7 @@ main(int objc, char *argv[])
             if (fsum) fprintf(fsum, "Design meets timing requirements.\n");
         }
     }
-    else if (orderedpaths[0] != NULL) {
+    else if ((numpaths > 0) && (orderedpaths[0] != NULL)) {
         fprintf(stdout, "Computed maximum clock frequency (zero margin) = %g MHz\n",
                 (1.0E6 / orderedpaths[0]->delay));
         if (fsum) fprintf(fsum, "Computed maximum clock frequency "
@@ -4243,6 +4167,7 @@ main(int objc, char *argv[])
         if (longFormat) print_path(testddata->backtrace, stdout);
         if (fsum) print_path(testddata->backtrace, fsum);
 
+	/* Print skew and hold unless destination is a pin */
         if (testddata->backtrace->receiver->refinst != NULL) {
 	    if (longFormat) {
 		fprintf(stdout, "   clock skew at destination = %g\n", testddata->skew);

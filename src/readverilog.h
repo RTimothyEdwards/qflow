@@ -97,11 +97,18 @@ struct filestack {
 };
 
 /*------------------------------------------------------*/
+/* External variable declarations			*/
+/*------------------------------------------------------*/
+
+extern int vlinenum;
+
+/*------------------------------------------------------*/
 /* External function declarations 			*/
 /*------------------------------------------------------*/
 
 extern void IncludeVerilog(char *, struct cellstack **, int);
 extern struct cellrec *ReadVerilog(char *);
+extern void FreeVerilog(struct cellrec *);
 extern struct instance *AppendInstance(struct cellrec *cell, char *cellname);
 extern struct instance *PrependInstance(struct cellrec *cell, char *cellname);
 extern struct portrec *InstPort(struct instance *inst, char *portname, char *netname);
