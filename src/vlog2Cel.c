@@ -113,9 +113,10 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 
     GATE gateginfo;
 
-    int i, j, layers, lvert, feedx, cellidx, kidx;
+    int i, j, layers, feedx, cellidx, kidx;
     int llx, lly, cllx, clly, urx, ury, width, height, px, py;
     int *pitchx, *pitchy;
+    int lvert = -1;
 
     if (outfile != NULL) {
 	outfptr = fopen(outfile, "w");
@@ -148,7 +149,11 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
     }
 
     /* If X pitch on layer lvert is zero, then infinite loops happen */
-    if (pitchx[lvert] <= 0) {
+    if (lvert < 0) {
+	fprintf(stderr, "Error:  Failed to get layer information; cannot continue.\n");
+	return 1;
+    }
+    else if (pitchx[lvert] <= 0) {
 	fprintf(stderr, "Error:  Bad value %d for X pitch on vertical route"
 			" layer %d;  cannot continue.\n",
 			pitchx[lvert], lvert);
