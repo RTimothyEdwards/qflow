@@ -493,6 +493,7 @@ if ( ${?abc_script} ) then
       cat >> ${modulename}.ys << EOF
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath} -script ${abc_script}
 flatten
+setundef -zero
 
 EOF
    else
