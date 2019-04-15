@@ -1374,6 +1374,10 @@ int main (int argc, char *argv[])
 		    if (separg) free(separg);
 		    separg = NULL;
 		}
+		else if (!strcasecmp(optarg, "nullstring")) {
+		    if (separg) free(separg);
+		    separg = strdup("");
+		}
 		else
 		    separg = strdup(optarg);
 		break;

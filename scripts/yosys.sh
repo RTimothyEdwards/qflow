@@ -716,7 +716,7 @@ else
       if (! $?separator) then
 	 set sepoption=""
       else if ("x$separator" == "x") then
-	 set sepoption='-s ""'
+	 set sepoption='-s nullstring'
       else
 	 set sepoption="-s ${separator}"
       endif
