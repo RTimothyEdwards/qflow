@@ -145,11 +145,10 @@ if ( ! ${?yosys_options} ) then
 endif
 set usescript = `echo ${yosys_options} | grep -- -s | wc -l`
 
+cd ${sourcedir}
 
 # Only generate yosys script if none is specified in the yosys options
 if ( ${usescript} == 0 ) then
-
-cd ${sourcedir}
 
 # Check for filelists variable overriding the default.  If it is set,
 # use the value as the filename to get all the verilog source files
