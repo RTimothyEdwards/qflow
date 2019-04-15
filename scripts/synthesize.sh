@@ -821,7 +821,7 @@ else
       while ($nchanged > 0)
          mv ${modulename}.blif tmp.blif
          set nchanged = `${bindir}/blifFanout ${fanout_options} \
-		-I ${modulename}_nofanout ${libertyoption} ${sepoption} \
+		-I ${modulename}_nofanout ${sepoption} ${libertyoption} \
 		${bufoption} tmp.blif ${modulename}.blif |& tee -a ${synthlog} | \
 		grep "changed:" | cut -f5 -d' '`
 
