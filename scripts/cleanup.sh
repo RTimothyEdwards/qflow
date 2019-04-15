@@ -77,6 +77,9 @@ rm -f ${origname}_mapped_tmp.blif
 rm -f ${origname}.clk
 rm -f ${origname}.enc
 rm -f ${origname}.init
+
+rm -f ${origname}_mapped.v.orig
+rm -f ${origname}_mapped.v
 rm -f ${origname}_tmp.v
 
 #----------------------------------------------------------
@@ -91,6 +94,7 @@ rm -f ${origname}_bak.v
 rm -f ${origname}_tmp.v
 rm -f ${rootname}_orig.v
 rm -f ${rootname}_sized.v
+rm -f ${rootname}_mapped.v
 rm -f ${rootname}_anno.v
 rm -f ${rootname}.anno.v
 rm -f ${rootname}_nofanout
