@@ -758,11 +758,11 @@ else
       endif
 
       echo "Running vlogFanout" |& tee -a ${synthlog}
-      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${libertyoption} ${sepoption} ${bufoption} ${modulename}_mapped.v ${modulename}_sized.v" |& tee -a ${synthlog}
+      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} ${modulename}_mapped.v ${modulename}_sized.v" |& tee -a ${synthlog}
       echo "" >> ${synthlog}
 
       ${bindir}/vlogFanout ${fanout_options} \
-		-I ${modulename}_nofanout ${libertyoption} ${sepoption} \
+		-I ${modulename}_nofanout ${sepoption} ${libertyoption} \
 		${bufoption} ${modulename}_mapped.v ${modulename}_sized.v |& tee -a ${synthlog}
 
       set errcond = ${status}
