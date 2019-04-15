@@ -414,7 +414,6 @@ EOF
 
 cat >> ${modulename}.ys << EOF
 read_liberty -lib -ignore_miss_dir -setattr blackbox ${libertypath}
-setundef -zero
 EOF
 
 if ( ${?hard_macros} ) then
@@ -512,6 +511,7 @@ if ( ${?abc_script} ) then
       cat >> ${modulename}.ys << EOF
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath} -script ${abc_script}
 flatten
+setundef -zero
 
 EOF
    else
