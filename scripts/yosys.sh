@@ -165,11 +165,10 @@ if ( ! ${?yosys_options} ) then
 endif
 set usescript = `echo ${yosys_options} | grep -- -s | wc -l`
 
+cd ${sourcedir}
 
 # Only generate yosys script if none is specified in the yosys options
 if ( ${usescript} == 0 ) then
-
-cd ${sourcedir}
 
 # If there is a file ${modulename}_mapped.v, move it to a temporary
 # place so we can see if yosys generates a new one or not.  Make
