@@ -1058,6 +1058,10 @@ void resize_gates(struct cellrec *topcell, int doLoadBalance, int doFanout)
 	    /* Reassign the instance's cell */
 	    free(inst->cellname);
 	    inst->cellname = strdup(glbest->gatename);
+
+	    /* Adjust the gate count for "in" and "out" types */
+	    count_gatetype(gl, 0, -1);
+	    count_gatetype(glbest, 0, 1);
 	}
     }
 }
