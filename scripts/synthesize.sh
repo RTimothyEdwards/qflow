@@ -772,7 +772,7 @@ else
 
    if (-f ${libertypath} && -f ${bindir}/blifFanout ) then
 
-      if ($?separator) then
+      if (! $?separator) then
 	 set sepoption=""
       else if ("x${separator}" == "x") then
 	 set sepoption="-s nullstring"
