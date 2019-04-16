@@ -501,6 +501,7 @@ EOF
       cat >> ${modulename}.ys << EOF
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath}
 flatten
+setundef -zero
 
 EOF
    endif
@@ -509,6 +510,7 @@ else
 # Map combinatorial cells, standard script
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath} -script +strash;scorr;ifraig;retime,{D};strash;dch,-f;map,-M,1,{D}
 flatten
+setundef -zero
 
 EOF
 endif
