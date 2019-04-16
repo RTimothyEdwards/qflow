@@ -165,11 +165,21 @@ if ( ! ${?yosys_options} ) then
 endif
 set usescript = `echo ${yosys_options} | grep -- -s | wc -l`
 
+cd ${sourcedir}
 
 # Only generate yosys script if none is specified in the yosys options
 if ( ${usescript} == 0 ) then
 
-cd ${sourcedir}
+# If there is a file ${modulename}_mapped.v, move it to a temporary
+# place so we can see if yosys generates a new one or not.  Make
+# sure it does *not* have a .v suffix, or else the scripts that
+# search for a file containing the module may pick it up in favor
+# of the actual source file.
+
+rm -f ${modulename}_mapped.v.orig
+if ( -f ${modulename}_mapped.v ) then
+   mv ${modulename}_mapped.v ${modulename}_mapped.v.orig
+endif
 
 # Check for filelists variable overriding the default.  If it is set,
 # use the value as the filename to get all the verilog source files
@@ -414,7 +424,6 @@ EOF
 
 cat >> ${modulename}.ys << EOF
 read_liberty -lib -ignore_miss_dir -setattr blackbox ${libertypath}
-setundef -zero
 EOF
 
 if ( ${?hard_macros} ) then
@@ -512,6 +521,7 @@ if ( ${?abc_script} ) then
       cat >> ${modulename}.ys << EOF
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath} -script ${abc_script}
 flatten
+setundef -zero
 
 EOF
    else
@@ -520,6 +530,7 @@ EOF
       cat >> ${modulename}.ys << EOF
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath}
 flatten
+setundef -zero
 
 EOF
    endif
@@ -528,6 +539,7 @@ else
 # Map combinatorial cells, standard script
 abc -exe ${bindir}/yosys-abc -liberty ${libertypath} -script +strash;scorr;ifraig;retime,{D};strash;dch,-f;map,-M,1,{D}
 flatten
+setundef -zero
 
 EOF
 endif
@@ -589,13 +601,6 @@ endif # Generation of yosys script if ${usescript} == 0
 # Yosys synthesis
 #---------------------------------------------------------------------
 
-# If there is a file ${modulename}_mapped.v, move it to a temporary
-# place so we can see if yosys generates a new one or not.
-
-if ( -f ${modulename}_mapped.v ) then
-   mv ${modulename}_mapped.v ${modulename}_mapped_orig.v
-endif
-
 echo "Running yosys for verilog parsing and synthesis" |& tee -a ${synthlog}
 # If provided own script yosys call that, otherwise call yosys with generated script.
 if ( ${usescript} == 1 ) then
@@ -616,14 +621,14 @@ if ( !( -f ${modulename}_mapped.v )) then
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
    # Replace the old verilog file, if we had moved it
-   if ( -f ${modulename}_mapped_orig.v ) then
-      mv ${modulename}_mapped_orig.v ${modulename}_mapped.v
+   if ( -f ${modulename}_mapped.v.orig ) then
+      mv ${modulename}_mapped.v.orig ${modulename}_mapped.v
    endif
    exit 1
 else
    # Remove the old verilog file, if we had moved it
-   if ( -f ${modulename}_mapped_orig.v ) then
-      rm ${modulename}_mapped_orig.v
+   if ( -f ${modulename}_mapped.v.orig ) then
+      rm ${modulename}_mapped.v.orig
    endif
 endif
 
@@ -678,7 +683,7 @@ endif
 set postproc_options="${postproclefpath} ${postproc_options}"
 
 # Switch to synthdir for processing of the RTL verilog netlist
-cp ${modulename}_mapped.v ${synthdir}/${modulename}.v
+mv ${modulename}_mapped.v ${synthdir}
 cd ${synthdir}
 
 #---------------------------------------------------------------------
@@ -688,13 +693,6 @@ cd ${synthdir}
 if ($?nofanout) then
    set nchanged=0
 else
-
-#---------------------------------------------------------------------
-# Make a copy of the original verilog file, as this will be overwritten
-# by the fanout handling process
-#---------------------------------------------------------------------
-
-   cp ${modulename}.v ${modulename}_bak.v
 
 #---------------------------------------------------------------------
 # Check all gates for fanout load, and adjust gate strengths as
@@ -720,7 +718,7 @@ else
       if (! $?separator) then
 	 set sepoption=""
       else if ("x$separator" == "x") then
-	 set sepoption='-s ""'
+	 set sepoption='-s nullstring'
       else
 	 set sepoption="-s ${separator}"
       endif
@@ -762,13 +760,12 @@ else
       endif
 
       echo "Running vlogFanout" |& tee -a ${synthlog}
-      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} tmp.v ${modulename}_sized.v" |& tee -a ${synthlog}
+      echo "vlogFanout ${fanout_options} -I ${modulename}_nofanout ${sepoption} ${libertyoption} ${bufoption} ${modulename}_mapped.v ${modulename}_sized.v" |& tee -a ${synthlog}
       echo "" >> ${synthlog}
 
-      mv ${modulename}.v tmp.v
       ${bindir}/vlogFanout ${fanout_options} \
-		-I ${modulename}_nofanout ${libertyoption} ${sepoption} \
-		${bufoption} tmp.v ${modulename}_sized.v |& tee -a ${synthlog}
+		-I ${modulename}_nofanout ${sepoption} ${libertyoption} \
+		${bufoption} ${modulename}_mapped.v ${modulename}_sized.v |& tee -a ${synthlog}
 
       set errcond = ${status}
       if ( ${errcond} != 0 ) then
@@ -783,21 +780,35 @@ else
    endif
 endif
 
+#---------------------------------------------------------------------
+# Spot check:  Did vlogFanout produce an error?
+#---------------------------------------------------------------------
+
+if ( !( -f ${modulename}_sized.v || \
+        ( -M ${modulename}_sized.v < -M ${modulename}_mapped.v ))) then
+   echo "vlogFanout failure.  See file ${synthlog} for error messages." \
+	|& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped due to error condition." >> ${synthlog}
+   exit 1
+endif
+
 echo "Running vlog2Verilog for antenna cell mapping." |& tee -a ${synthlog}
 echo "vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options}" \
 	 |& tee -a ${synthlog}
 echo "   -o ${modulename}.v ${modulename}_sized.v" |& tee -a ${synthlog}
 
+rm -f ${modulename}.v
 ${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options} \
 	-o ${modulename}.v ${modulename}_sized.v >>& ${synthlog}
 
 #---------------------------------------------------------------------
-# Spot check:  Did vlogFanout produce an error?
+# Spot check:  Did vlog2Verilog produce an error?
 #---------------------------------------------------------------------
 
 if ( !( -f ${modulename}.v || \
-        ( -M ${modulename}.v < -M tmp.v ))) then
-   echo "vlogFanout failure.  See file ${synthlog} for error messages." \
+        ( -M ${modulename}.v < -M ${modulename}_sized.v ))) then
+   echo "vlog2Verilog failure.  See file ${synthlog} for error messages." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
