@@ -1601,7 +1601,7 @@ int freeprop(struct hashlist *p)
 
 struct cellrec *ReadVerilogTop(char *fname, int blackbox)
 {
-    struct cellstack *CellStackPtr;
+    struct cellstack *CellStackPtr = NULL;
     struct cellrec *top;
   
     if ((OpenParseFile(fname)) < 0) {
@@ -1646,6 +1646,8 @@ void IncludeVerilog(char *fname, struct cellstack **CellStackPtr, int blackbox)
     int filenum = -1;
     char name[256];
 
+    name[0] = '\0';
+
     /* If fname does not begin with "/", then assume that it is	*/
     /* in the same relative path as its parent.			*/
   
@@ -1669,7 +1671,8 @@ void IncludeVerilog(char *fname, struct cellstack **CellStackPtr, int blackbox)
     if (filenum < 0) {
 	if ((filenum = OpenParseFile(fname)) < 0) {
 	    if (filenum < 0) {
-		fprintf(stderr,"Error in Verilog file include: No file %s\n", name);
+		fprintf(stderr,"Error in Verilog file include: No file %s\n",
+			    (*name == '\0') ? fname : name);
 		return;
 	    }    
 	}
