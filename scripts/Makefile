@@ -4,13 +4,13 @@
 
 # Main compiler arguments
 CFLAGS = -g -O2
-DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"/home/tim/src/RePlAce/src/RePlAce\" -DQFLOW_NTUPLACE3_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace3\" -DQFLOW_NTUPLACE4_PATH=\"/home/tim/src/RePlAce/src/../ntuplace/ntuplace4h\"
+DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"\" -DQFLOW_NTUPLACE3_PATH=\"\" -DQFLOW_NTUPLACE4_PATH=\"\"
 LIBS = 
 LDFLAGS = 
 INSTALL = /bin/install -c
 
 VERSION = 1.4
-REVISION = 1
+REVISION = 31
 
 QFLOW_LIB_DIR = /usr/local/share/qflow
 QFLOW_BIN_DIR = /usr/local/bin
@@ -23,7 +23,7 @@ HAVE_YOSYS = 1
 HAVE_OPENTIMER = 0
 HAVE_OPENSTA = 1
 HAVE_GRAYWOLF = 1
-HAVE_REPLACE = 1
+HAVE_REPLACE = 0
 HAVE_QROUTER = 1
 HAVE_MAGIC = 1
 HAVE_NETGEN = 1

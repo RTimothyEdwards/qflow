@@ -1162,16 +1162,17 @@ class QflowManager(ttk.Frame):
         pane.add(self.botpane)
         pane.paneconfig(self.toppane, stretch='first')
 
-    def print(self, message, file=None):
+    def print(self, message, file=None, end='\n', flush=False):
         # Local print routine.  
         if not file:
             file = ConsoleText.StdoutRedirector(self.text_box)
         if self.stdout:
-            print(message, file=file)
+            print(message, file=file, end=end)
+            if flush:
+                self.stdout.flush()
         else:
             self.init_messages.append(message)
         
-
     def text_to_console(self):
         # Redirect stdout and stderr to the console as the last thing to do. . .
         # Otherwise errors in the GUI get sucked into the void.
@@ -4097,8 +4098,7 @@ class QflowManager(ttk.Frame):
                 break
             else:
 
-                self.update_idletasks()
-
+                self.update()
                 sresult = select.select([self.qflowproc.stdout, self.qflowproc.stderr], [], [], 0)[0]
 
                 if not self.qflowproc.stdout in sresult and not self.qflowproc.stderr in sresult:
