@@ -210,12 +210,12 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 		nlink->pinname = strdup(portnet);
 	    }
 	    nlink->next = NULL;
-	    if ((nsrch = HashLookup(portnet, &Nodehash)) != NULL) {
+	    if ((nsrch = HashLookup(nlink->pinname, &Nodehash)) != NULL) {
 		while (nsrch->next) nsrch = nsrch->next;
 		nsrch->next = nlink;
 	    }
 	    else {
-		HashPtrInstall(portnet, nlink, &Nodehash);
+		HashPtrInstall(nlink->pinname, nlink, &Nodehash);
 		nnet++;
 	    }
 	}
