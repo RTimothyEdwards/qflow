@@ -248,6 +248,19 @@ if ( ${?hard_macros} ) then
     end
 endif
 
+#------------------------------------------------------------------
+# Check for placement being re-run;  in that case we want to restore
+# the pre-placement netlist.
+#------------------------------------------------------------------
+
+if ( -f ${synthdir}/${rootname}_synth.rtl.v && ( -M ${synthdir}/${rootname}_synth.rtl.v \
+	> -M ${synthdir}/${rootname}_soc_sized.v )) then
+    echo "Restoring ${rootname}.rtl.v, ${rootname}.rtlnopwr.v, and ${rootname}.rtlbb.v from pre-placement backups"
+    cp ${synthdir}/${rootname}_synth.rtl.v ${synthdir}/${rootname}.rtl.v
+    cp ${synthdir}/${rootname}_synth.rtlnopwr.v ${synthdir}/${rootname}.rtlnopwr.v
+    cp ${synthdir}/${rootname}_synth.rtlbb.v ${synthdir}/${rootname}.rtlbb.v
+endif
+
 echo "Running vlog2Cel to generate input files for graywolf" |& tee -a ${synthlog}
 echo "vlog2Cel ${lefoptions} -u $units -o ${layoutdir}/${rootname}.cel ${synthdir}/${rootname}.rtlnopwr.v" |& tee -a ${synthlog}
 
