@@ -3363,6 +3363,11 @@ class QflowManager(ttk.Frame):
         if os.path.exists('project_vars.sh'):
             os.remove('project_vars.sh')
 
+        # self.print('Diagnostic:  Removing magic startup script.')
+        ldir = self.layoutdir
+        if os.path.exists(ldir + '/.magicrc'):
+            os.remove(ldir + '/.magicrc')
+
         # Set the PDK directory path to match the PDK name
         for testname, testdir in zip(self.allpdknodes, self.allpdkdirs):
             if testname == newpdk:
