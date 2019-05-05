@@ -17,6 +17,8 @@
 // Update 1/21/2019:  Note that the DEF format does not preserve
 // verilog backslash escape names, so ensure that backslash names
 // include a space at the end of the name.
+//
+// Update 5/4/2019:  Fixed handling of 2-dimensional arrays
 //----------------------------------------------------------------
 
 #include <stdio.h>
@@ -124,8 +126,8 @@ struct nlist *hash_nets(struct hashlist *p, void *cptr)
     /* Get gate from hash record */
     net = (NET)(p->ptr);
 
-    /* Check for array delimiters */
-    dptr = strchr(net->netname, '[');
+    /* Check for array delimiters. */
+    dptr = strrchr(net->netname, '[');
     if (dptr != NULL) {
 	*dptr = '\0';    
 	sscanf(dptr + 1, "%d", &aidx);
