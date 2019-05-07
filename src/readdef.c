@@ -600,6 +600,19 @@ DefReadNets(FILE *f, char *sname, float oscale, char special, int total)
 		    net->netname = strdup(token);
 		    net->netnodes = (NODE)NULL;
 
+		    /* Check for backslash-escape names modified by other tools */
+		    /* (e.g., vlog2Cel) which replace the trailing space with a */
+		    /* backslash, making the name verilog-incompatible.         */
+
+		    if (*net->netname == '\\') {
+			char *sptr, *bptr;
+		        sptr = strchr(net->netname, ' ');
+		        if (sptr == NULL) {
+		            bptr = strrchr(net->netname + 1, '\\');
+		            if (bptr != NULL) *bptr = ' ';
+		        }
+		    }
+
 		    net->netnum = netidx++;
 		    DefHashNet(net);
 
