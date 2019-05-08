@@ -226,11 +226,14 @@ cd ${projectpath}
 if ( "$techleffile" == "" ) then
     set lefoptions=""
     set addsoptions=""
+    set reploptions=""
 else
     set lefoptions="-l ${techlefpath}"
     set addsoptions="-techlef ${techlefpath}"
+    set reploptions="-lef ${techlefpath}"
 endif
 set lefoptions="${lefoptions} -l ${lefpath}"
+set reploptions="${reploptions} -lef ${lefpath}"
 
 # Pass additional .lef files to vlog2Def and DEF2Verilog from the hard macros list
 
@@ -245,10 +248,16 @@ if ( ${?hard_macros} ) then
     end
 endif
 
-echo "Running vlog2Def to generate input files for graywolf" |& tee -a ${synthlog}
-echo "vlog2Def ${lefoptions} -u $units -o ${layoutdir}/${rootname}_preplace.def ${synthdir}/${rootname}.rtlnopwr.v" |& tee -a ${synthlog}
+if ( ${?initial_density} ) then
+   set vlog2defopts = "-d ${initial_density}"
+else
+   set vlog2defopts = ""
+endif
 
-${bindir}/vlog2Def ${lefoptions} -u $units -o ${layoutdir}/${rootname}_preplace.def \
+echo "Running vlog2Def to generate input files for graywolf" |& tee -a ${synthlog}
+echo "vlog2Def ${lefoptions} -u $units ${vlog2defopts} -o ${layoutdir}/${rootname}_preplace.def ${synthdir}/${rootname}.rtlnopwr.v" |& tee -a ${synthlog}
+
+${bindir}/vlog2Def ${lefoptions} -u $units ${vlog2defopts} -o ${layoutdir}/${rootname}_preplace.def \
 	${synthdir}/${rootname}.rtlnopwr.v >>& ${synthlog}
 
 set errcond = $status
@@ -287,10 +296,10 @@ cd ${layoutdir}
 #---------------------------------------------------------------------
 
 # Set value ${fillers} to be equal either to a single cell name if
-# only one of (decapcell, antennacell, fillcell) is defined, or a
-# comma-separated triplet.  If only one is defined, then "fillcell"
-# is set to that name for those scripts that only handle one kind of
-# fill cell.
+# only one of (decapcell, antennacell, fillcell, bodytiecell) is
+# defined, or a comma-separated quadruplet.  If only one is defined,
+# then "fillcell" is set to that name for those scripts that only
+# handle one kind of fill cell.
 
 # Make sure all cell types are defined, but an empty string if not used.
 
@@ -303,37 +312,27 @@ endif
 if ( ! ${?antennacell} ) then
    set antennacell = ""
 endif
+if ( ! ${?bodytiecell} ) then
+   set bodytiecell = ""
+endif
 
-if ("x$fillcell" != "x") then
-   if ("x$decapcell" != "x") then
-      if ("x$antennacell" != "x") then
-	 set fillers = "${fillcell},${decapcell},${antennacell}"
-      else
-	 set fillers = "${fillcell},${decapcell},"
-      endif
-   else if ("x$antennacell" != "x") then
-      set fillers = "${fillcell},,${antennacell}"
-   else
-      set fillers = "${fillcell}"
-   endif
-else
-   if ("x$decapcell" != "x") then
-      if ("x$antennacell" != "x") then
-	 set fillers = ",${decapcell},${antennacell}"
-      else
-	 set fillers = ",${decapcell},"
-      endif
-      set fillcell = "${decapcell}"
-   else if ("x$antennacell" != "x") then
-      set fillers = ",,${antennacell}"
-      set fillcell = "${antennacell}"
-   else
+set fillers = "${fillcell},${decapcell},${antennacell},${bodytiecell}"
+
+# For tools that only require one fill cell as option, make sure that
+# there is a valid fill cell type
+if ("x$fillcell" == "x") then
+   set fillcell = $decapcell
+endif
+if ("x$fillcell" == "x") then
+   set fillcell = $antennacell
+endif
+if ("x$fillcell" == "x") then
+   set fillcell = $bodytiecell
+endif
+if ("x$fillcell" == "x") then
       # There is no fill cell, which is likely to produce poor results.
       echo "Warning:  No fill cell types are defined in the tech setup script."
       echo "This is likely to produce poor layout and/or poor routing results."
-      set fillers = ""
-      set fillcell = ""
-   endif
 endif
 
 #---------------------------------------------------------------------
@@ -347,7 +346,7 @@ endif
 if ( !( ${?replace_options} )) then
    # Some defaults (to be refined)
    set replace_options = "-bmflag ispd"
-   set replace_options = "${replace_options} -lef ${lefpath}"
+   set replace_options = "${replace_options} ${reploptions}"
    set replace_options = "${replace_options} -def ${layoutdir}/${rootname}_preplace.def"
    set replace_options = "${replace_options} -output outputs"
    set replace_options = "${replace_options} -dpflag NTU3"
@@ -377,7 +376,7 @@ endif
 # Spot check:  Did RePlAce produce file ${rootname}_preplace_final.def?
 #---------------------------------------------------------------------
 
-set outfile=outputs/ispd/${rootname}_preplace/experiment000/${rootname}_preplace_final.def
+set outfile=`ls outputs/ispd/${rootname}_preplace/experiment*/${rootname}_preplace_final.def --sort=time | head -1`
 
 if ( !( -f ${outfile} || \
 	( -f ${outfile} && -M ${outfile} < -M ${rootname}_preplace.def ))) then

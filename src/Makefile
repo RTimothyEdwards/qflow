@@ -3,7 +3,7 @@
 #
 
 # Main compiler arguments
-CFLAGS = -g -O2
+CFLAGS = -g
 LIBS = 
 LDFLAGS = 
 INSTALL = /bin/install -c

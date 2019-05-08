@@ -14,8 +14,8 @@
 #include "readverilog.h"
 #include "readlef.h"
 
-int write_output(struct cellrec *, int hasmacros, float aspect, int units,
-		GATE coresite, char *outname);
+int write_output(struct cellrec *, int hasmacros, float aspect, float density,
+		int units, GATE coresite, char *outname);
 void helpmessage(FILE *outf);
 
 /* Linked list for nets */
@@ -38,13 +38,14 @@ int main (int argc, char *argv[])
     int i, result = 0, hasmacros = FALSE;
     int units = 100;
     float aspect = 1.0;
+    float density = 1.0;
     struct cellrec *topcell;
     GATE coresite = NULL;
     char *defoutname = NULL;
 
     InitializeHashTable(&LEFhash, SMALLHASHSIZE);
 
-    while ((i = getopt(argc, argv, "hHl:a:u:o:")) != EOF) {
+    while ((i = getopt(argc, argv, "hHl:a:d:u:o:")) != EOF) {
         switch (i) {
 	    case 'h':
 	    case 'H':
@@ -64,6 +65,19 @@ int main (int argc, char *argv[])
 		if (sscanf(optarg, "%f", &aspect) != 1) {
 		    fprintf(stderr, "Could not read aspect value from \"-a %s\"\n",
 				optarg);
+		    helpmessage(stderr);
+		    return 1;
+		}
+		break;
+	    case 'd':
+		if (sscanf(optarg, "%f", &density) != 1) {
+		    fprintf(stderr, "Could not read density value from \"-d %s\"\n",
+				optarg);
+		    helpmessage(stderr);
+		    return 1;
+		}
+		if (density < 0.0 || density > 1.0) {
+		    fprintf(stderr, "Illegal density value \"-d %s\"\n", optarg);
 		    helpmessage(stderr);
 		    return 1;
 		}
@@ -102,7 +116,8 @@ int main (int argc, char *argv[])
     }
 
     topcell = ReadVerilog(argv[optind]);
-    result = write_output(topcell, hasmacros, aspect, units, coresite, defoutname);
+    result = write_output(topcell, hasmacros, aspect, density,
+		units, coresite, defoutname);
     return result;
 }
 
@@ -143,6 +158,40 @@ struct nlist *output_nets(struct hashlist *p, void *cptr)
 }
 
 /*--------------------------------------------------------------*/
+/* port_output_specs						*/
+/*								*/
+/* Write information to an entry in the DEF PINS section	*/
+/*--------------------------------------------------------------*/
+
+void port_output_specs(FILE *outfptr, struct portrec *port,
+	    LefList *routelayer, int units)
+{
+    char *layername;
+    int x, y, ll, ur, w, hw;
+    LefList pinlayer;
+
+    /* This string array much match the port definitions in readverilog.h */
+    static char *portdirs[] = {"", "INPUT", "OUTPUT", "INOUT"};
+
+    x = y = 0;	    /* To be done (need constraints?) */
+
+    /* To be done:  Layer depends on position and orientation */
+    pinlayer = routelayer[2];
+
+    layername = pinlayer->lefName;
+    w = (int)(0.5 + pinlayer->info.route.width * (float)units);
+    hw = w >> 1;
+    ll = -hw;
+    ur = w - hw;
+    
+    if (port->direction != PORT_NONE)
+	fprintf(outfptr, "\n  + DIRECTION %s", portdirs[port->direction]);
+    fprintf(outfptr, "\n  + LAYER %s ( %d %d ) ( %d %d )", layername,
+		ll, ll, ur, ur);
+    fprintf(outfptr, "\n  + PLACED ( %d %d ) N ;\n", x, y);
+}
+
+/*--------------------------------------------------------------*/
 /* write_output							*/
 /*								*/
 /*         ARGS: 						*/
@@ -150,8 +199,8 @@ struct nlist *output_nets(struct hashlist *p, void *cptr)
 /* SIDE EFFECTS: 						*/
 /*--------------------------------------------------------------*/
 
-int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units,
-	GATE coresite, char *outname)
+int write_output(struct cellrec *topcell, int hasmacros, float aspect,
+	float density, int units, GATE coresite, char *outname)
 {
     FILE *outfptr = stdout;
     int ncomp, npin, nnet, start, end, i, result = 0;
@@ -168,10 +217,9 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
     /* Static string "PIN" for ports */
     static char pinname[] = "PIN";
 
-    /* This string array much match the port definitions in readverilog.h */
-    static char *portdirs[] = {"", "INPUT", "OUTPUT", "INOUT"};
-
     linkedNetPtr nlink, nsrch;
+    LefList slef;
+    LefList routelayer[3];
 
     /* Open the output file (unless name is NULL, in which case use stdout) */
     if (outname != NULL) {
@@ -220,6 +268,7 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 	    }
 	}
     }
+    totalwidth = 0;
     for (inst = topcell->instlist; inst; inst = inst->next) {
 	for (port = inst->portlist; port; port = port->next) {
 
@@ -236,23 +285,35 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 		HashPtrInstall(port->net, nlink, &Nodehash);
 		nnet++;
 	    }
+	}
 
-	    if (hasmacros) {
-		GATE gate;
+	if (hasmacros) {
+	    GATE gate;
 	
-		gate = HashLookup(inst->cellname, &LEFhash);
-		if (gate) {
-		    /* Make sure this is a core cell */
-		    if (gate->gateclass == MACRO_CLASS_CORE) {
-			totalwidth += (int)(gate->width * (float)units);
-			rowheight = (int)(gate->height * (float)units);
-		    }
-		    /* To do:  Handle non-core cell records */
-		    /* (specifically PAD and BLOCK).	    */
+	    gate = HashLookup(inst->cellname, &LEFhash);
+	    if (gate) {
+		/* Make sure this is a core cell */
+		if (gate->gateclass == MACRO_CLASS_CORE) {
+		    totalwidth += (int)(gate->width * (float)units);
+		    rowheight = (int)(gate->height * (float)units);
 		}
+		/* To do:  Handle non-core cell records */
+		/* (specifically PAD and BLOCK).	*/
 	    }
 	}
     }
+
+    /* For pin placement, find the 2nd and 3rd route layer LEF names.	*/
+    /* NOTE:  This only ensures that the output is valid LEF;  it does	*/
+    /* not do anything about applying pin constraints.			*/
+
+    for (i = 0; i < 3; i++)
+	routelayer[i] = (LefList)NULL;
+
+    for (slef = LefInfo; slef; slef = slef->next)
+        if (slef->lefClass == CLASS_ROUTE)
+	    if ((slef->type < 3) && (slef->type >= 0))
+		routelayer[slef->type] = slef;
 
     /* Write output DEF header */
     fprintf(outfptr, "VERSION 5.6 ;\n");
@@ -267,11 +328,26 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
     /* depending on what has been read in from LEF files.			*/
 
     if (hasmacros) {
-	numrows = (int)ceilf(sqrtf(totalwidth / (aspect * rowheight)));
-	rowwidth = (int)ceilf(totalwidth / numrows);
+	/* NOTE:  Use a prorated density that is slightly lower than the target	*/
+	/* or else the placement can fail due to fewer sites available then	*/
+	/* cell area to place, after accounting for density.			*/
+
+	int efftotalwidth = (int)ceilf((float)totalwidth / (density * 0.95));
+
+	numrows = (int)ceilf(sqrtf(efftotalwidth / (aspect * rowheight)));
+	rowwidth = (int)ceilf(efftotalwidth / numrows);
 	totalheight = (int)ceilf(rowheight * numrows);
-	sitewidth = (int)(coresite->width * units);
-	siteheight = (int)(coresite->height * units);
+	sitewidth = (int)ceilf(coresite->width * units);
+	siteheight = (int)ceilf(coresite->height * units);
+
+	/* Diagnostic */
+	fprintf(stdout, "Diagnostic:\n");
+	fprintf(stdout, "Total width of all cells = %gum\n", (float)totalwidth / (float)units);
+	fprintf(stdout, "Effective total width after density planning = %gum\n", (float)efftotalwidth / (float)units);
+	fprintf(stdout, "Site size = (%gum, %gum)\n", (float)sitewidth / (float)units, siteheight / (float)units);
+	fprintf(stdout, "Row height = %gum\n", (float)rowheight / (float)units);
+	fprintf(stdout, "Row width = %gum\n", (float)rowwidth / (float)units);
+	fprintf(stdout, "Total height = %gum\n", (float)totalheight / (float)units);
 
 	/* To do: compute additional area for pins */
 
@@ -326,7 +402,7 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 	if ((net = BusHashLookup(port->name, &topcell->nets)) != NULL) {
 	    int btot = net->start - net->end;
 	    if (btot < 0) btot = -btot;
-	    npin = btot + 1;
+	    npin += btot + 1;
 	}
 	else
 	    npin++;
@@ -337,40 +413,26 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 	if ((net = BusHashLookup(port->name, &topcell->nets)) != NULL) {
 	    if (net->start == -1) {
 		fprintf(outfptr, "- %s + NET %s", port->name, port->name);
-		if (port->direction == PORT_NONE)
-		    fprintf(outfptr, " ;\n");
-		else
-		    fprintf(outfptr, "\n  + DIRECTION %s ;\n", portdirs[port->direction]);
+		port_output_specs(outfptr, port, routelayer, units);
 	    }
 	    else if (net->start > net->end) {
 		for (i = net->start; i >= net->end; i--) {
 		    fprintf(outfptr, "- %s[%d] + NET %s[%d]", port->name, i,
 				port->name, i);
-		    if (port->direction == PORT_NONE)
-			fprintf(outfptr, " ;\n");
-		    else
-			fprintf(outfptr, "\n  + DIRECTION %s ;\n",
-					portdirs[port->direction]);
+		    port_output_specs(outfptr, port, routelayer, units);
 		}
 	    }
 	    else {
 		for (i = net->start; i <= net->end; i++) {
 		    fprintf(outfptr, "- %s[%d] + NET %s[%d]", port->name, i,
 				port->name, i);
-		    if (port->direction == PORT_NONE)
-			fprintf(outfptr, " ;\n");
-		    else
-			fprintf(outfptr, "\n  + DIRECTION %s ;\n",
-					portdirs[port->direction]);
+		    port_output_specs(outfptr, port, routelayer, units);
 		}
 	    }
 	}
 	else {
 	    fprintf(outfptr, "- %s + NET %s", port->name, port->name);
-	    if (port->direction == PORT_NONE)
-		fprintf(outfptr, " ;\n");
-	    else
-		fprintf(outfptr, "\n  + DIRECTION %s ;\n", portdirs[port->direction]);
+	    port_output_specs(outfptr, port, routelayer, units);
 	}
     }
 
@@ -411,6 +473,7 @@ void helpmessage(FILE *outf)
     fprintf(outf,"   -l <path>   Read LEF file from <path> (may be called multiple"
 			" times)\n");
     fprintf(outf,"   -a <value>	 Set aspect ratio to <value> (default 1.0)\n");
+    fprintf(outf,"   -d <value>	 Set density to <value> (default 1.0)\n");
     fprintf(outf,"   -u <value>  Set units-per-micron to <value) (default 100)\n");
 
 } /* helpmessage() */
