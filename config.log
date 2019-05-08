@@ -211,11 +211,14 @@ configure:4538: checking for sta
 configure:4556: found /usr/local/bin/sta
 configure:4568: result: /usr/local/bin/sta
 configure:4721: checking for RePlAce
-configure:4754: result: no
+configure:4739: found /usr/local/bin/RePlAce
+configure:4751: result: /usr/local/bin/RePlAce
 configure:4761: checking for ntuplace3
-configure:4794: result: no
+configure:4779: found /usr/local/bin/ntuplace3
+configure:4791: result: /usr/local/bin/ntuplace3
 configure:4801: checking for ntuplace4h
-configure:4834: result: no
+configure:4819: found /usr/local/bin/ntuplace4h
+configure:4831: result: /usr/local/bin/ntuplace4h
 configure:5114: creating ./config.status
 
 ## ---------------------- ##
@@ -277,8 +280,11 @@ ac_cv_path_GREP=/bin/grep
 ac_cv_path_QFLOW_GRAYWOLF_PATH=/usr/local/bin/graywolf
 ac_cv_path_QFLOW_MAGIC_PATH=/usr/local/bin/magic
 ac_cv_path_QFLOW_NETGEN_PATH=/usr/local/bin/netgen
+ac_cv_path_QFLOW_NTUPLACE3_PATH=/usr/local/bin/ntuplace3
+ac_cv_path_QFLOW_NTUPLACE4_PATH=/usr/local/bin/ntuplace4h
 ac_cv_path_QFLOW_OPENSTA_PATH=/usr/local/bin/sta
 ac_cv_path_QFLOW_QROUTER_PATH=/usr/local/bin/qrouter
+ac_cv_path_QFLOW_REPLACE_PATH=/usr/local/bin/RePlAce
 ac_cv_path_QFLOW_YOSYS_PATH=/usr/local/bin/yosys
 ac_cv_path_TCLSH_PATH=/bin/tclsh
 ac_cv_path_install='/bin/install -c'
@@ -303,7 +309,7 @@ CFLAGS='-g -O2'
 CP='cp'
 CPP='gcc -E'
 CPPFLAGS=''
-DEFS='-DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"\" -DQFLOW_NTUPLACE3_PATH=\"\" -DQFLOW_NTUPLACE4_PATH=\"\"'
+DEFS='-DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -DHAVE_SETENV=1 -DHAVE_PUTENV=1 -DTCLSH_PATH=\"/bin/tclsh\" -DQFLOW_MAGIC_PATH=\"/usr/local/bin/magic\" -DQFLOW_NETGEN_PATH=\"/usr/local/bin/netgen\" -DQFLOW_QROUTER_PATH=\"/usr/local/bin/qrouter\" -DQFLOW_GRAYWOLF_PATH=\"/usr/local/bin/graywolf\" -DQFLOW_YOSYS_PATH=\"/usr/local/bin/yosys\" -DQFLOW_OPENTIMER_PATH=\"\" -DQFLOW_OPENSTA_PATH=\"/usr/local/bin/sta\" -DQFLOW_REPLACE_PATH=\"/usr/local/bin/RePlAce\" -DQFLOW_NTUPLACE3_PATH=\"/usr/local/bin/ntuplace3\" -DQFLOW_NTUPLACE4_PATH=\"/usr/local/bin/ntuplace4h\"'
 ECHO_C=''
 ECHO_N='-n'
 ECHO_T=''
@@ -318,7 +324,7 @@ HAVE_OPENSTA='1'
 HAVE_OPENTIMER='0'
 HAVE_PYTHON3='yes'
 HAVE_QROUTER='1'
-HAVE_REPLACE='0'
+HAVE_REPLACE='1'
 HAVE_YOSYS='1'
 INSTALL_DATA='${INSTALL} -m 644'
 INSTALL_PROGRAM='${INSTALL}'
@@ -341,12 +347,12 @@ QFLOW_GRAYWOLF_PATH='/usr/local/bin/graywolf'
 QFLOW_LIB_DIR='/usr/local/share/qflow'
 QFLOW_MAGIC_PATH='/usr/local/bin/magic'
 QFLOW_NETGEN_PATH='/usr/local/bin/netgen'
-QFLOW_NTUPLACE3_PATH=''
-QFLOW_NTUPLACE4_PATH=''
+QFLOW_NTUPLACE3_PATH='/usr/local/bin/ntuplace3'
+QFLOW_NTUPLACE4_PATH='/usr/local/bin/ntuplace4h'
 QFLOW_OPENSTA_PATH='/usr/local/bin/sta'
 QFLOW_OPENTIMER_PATH=''
 QFLOW_QROUTER_PATH='/usr/local/bin/qrouter'
-QFLOW_REPLACE_PATH=''
+QFLOW_REPLACE_PATH='/usr/local/bin/RePlAce'
 QFLOW_YOSYS_PATH='/usr/local/bin/yosys'
 RANLIB='ranlib'
 REVISION='31'
@@ -412,8 +418,8 @@ target_alias=''
 #define QFLOW_YOSYS_PATH "/usr/local/bin/yosys"
 #define QFLOW_OPENTIMER_PATH ""
 #define QFLOW_OPENSTA_PATH "/usr/local/bin/sta"
-#define QFLOW_REPLACE_PATH ""
-#define QFLOW_NTUPLACE3_PATH ""
-#define QFLOW_NTUPLACE4_PATH ""
+#define QFLOW_REPLACE_PATH "/usr/local/bin/RePlAce"
+#define QFLOW_NTUPLACE3_PATH "/usr/local/bin/ntuplace3"
+#define QFLOW_NTUPLACE4_PATH "/usr/local/bin/ntuplace4h"
 
 configure: exit 0
