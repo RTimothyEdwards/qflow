@@ -248,6 +248,7 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
 			rowheight = (int)(gate->height * (float)units);
 		    }
 		    /* To do:  Handle non-core cell records */
+		    /* (specifically PAD and BLOCK).	    */
 		}
 	    }
 	}
@@ -291,11 +292,33 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect, int units
     /* Write components in the order of the input file */
 
     ncomp = 0;
-    for (inst = topcell->instlist; inst; inst = inst->next) ncomp++;
+    for (inst = topcell->instlist; inst; inst = inst->next) {
+	ncomp++;
+        if (inst->arraystart != -1) {
+	    int arrayw = inst->arraystart - inst->arrayend;
+	    ncomp += (arrayw < 0) ? -arrayw : arrayw;
+	}
+    }
     fprintf(outfptr, "COMPONENTS %d ;\n", ncomp);
 
-    for (inst = topcell->instlist; inst; inst = inst->next)
-	fprintf(outfptr, "- %s %s ;\n", inst->instname, inst->cellname);
+    for (inst = topcell->instlist; inst; inst = inst->next) {
+	if (inst->arraystart != -1) {
+	    int ahigh, alow, j;
+	    if (inst->arraystart > inst->arrayend) {
+		ahigh = inst->arraystart;
+		alow = inst->arrayend;
+	    }
+	    else {
+		ahigh = inst->arrayend;
+		alow = inst->arraystart;
+	    }
+	    for (j = ahigh; j >= alow; j--) {
+		fprintf(outfptr, "- %s[%d] %s ;\n", inst->instname, j, inst->cellname);
+	    }
+	}
+	else
+	    fprintf(outfptr, "- %s %s ;\n", inst->instname, inst->cellname);
+    }
     fprintf(outfptr, "END COMPONENTS\n\n");
 
     npin = 0;
