@@ -25,8 +25,10 @@
 # add the fill cells into the DEF file after placement.
 #
 # "fillcells" is either a single name for a fill cell, or a
-# comma-separated list of three fill cells (of which one or two may
-# be empty strings) for plain fill, decap fill, and antenna fill.
+# comma-separated list of up to four fill cells (of which one or
+# two may be empty strings) for plain fill, decap fill, antenna
+# fill, and body ties (for standard cell sets that do not provide
+# substrate/well contacts inside the standard cells).
 #
 # "scale" gives a scalefactor which is the amount of
 # increase in congestion that will cause an additional fill
@@ -86,7 +88,7 @@ if {$argc < 4 || $argc > 7} {
    puts stderr "Usage: decongest.tcl <rootname> <leffile> <fillcell> [<scale> <offset>]"
    puts stderr "or:    decongest.tcl <rootname> <leffile> <fillcell> <density>"
    puts stderr "or:    decongest.tcl <rootname> <leffile> <fillcells> <density> <ratios>"
-   puts stderr "<fillcell> is a comma-separated list of up to three fill cell types."
+   puts stderr "<fillcell> is a comma-separated list of up to four fill cell types."
    puts stderr "<ratios> is a space-separated list of ratios for each fill cell type."
    puts stderr "use option --units=<units> to set units other than centimicrons."
    exit 1
@@ -123,12 +125,11 @@ if {$argc == 4} {
       set tmpfillr [split $offset ,]
       for {set i 0} {$i < [llength $tmpfillr]} {incr i} {
          set rfill [lindex $tmpfillr $i]
-	 if {$rfill == {}} {set rfill 0}
 	 lappend fillratios $rfill
       }
    }
 } else {
-   # For 6 or 7 arguments.  Note that there is no 5-argument syntax
+   # For 6 to 8 arguments.  Note that there is no 5-argument syntax
    # for ratios, since if only one fill type is specified, then by
    # definition it must be 100% of the fill.
 
@@ -173,15 +174,15 @@ foreach filltype $filltypes {
    if {$filltype != ""} {incr num_filltypes}
 }
 
-if {$num_filltypes > 3} {
-   puts stderr "Can only handle up to three fill cell types.  Ignoring the rest."
-   set filltypes [lrange $filltypes 0 2]
+if {$num_filltypes > 4} {
+   puts stderr "Can only handle up to four fill cell types.  Ignoring the rest."
+   set filltypes [lrange $filltypes 0 3]
 } elseif {$filltypes == {}} {
    puts stderr "Warning:  No fill cell types specified."
 }
 
 # If filltypes is truncated, then pad the array.  However, it is
-# much preferable for the caller to supply all three entries,
+# much preferable for the caller to supply all four entries,
 # with empty strings for those that don't exist, because the
 # following method does not try to match fill cell names to fill
 # cell types.
@@ -189,66 +190,162 @@ if {$num_filltypes > 3} {
 if {[llength $filltypes] == 1} {
       lappend filltypes ""
       lappend filltypes ""
+      lappend filltypes ""
 } elseif {[llength $filltypes] == 2} {
+      lappend filltypes ""
+      lappend filltypes ""
+} elseif {[llength $filltypes] == 3} {
       lappend filltypes ""
 }
 
-# Automatically assign fill ratios if ratios were not specified.
+if {[llength $filltypes] == 4} {
 
-if {$fillratios == {}} {
-   if {$num_filltypes == 1} {
-      foreach filltype $filltypes {
-	  if {$filltype != ""} {
-	      lappend fillratios 100
-	  } else {
-	      lappend fillratios 0
-	  }
-      }
-   } elseif {$num_filltypes == 2} {
-      foreach filltype $filltypes {
-	  if {$filltype != ""} {
-	      lappend fillratios 50
-	  } else {
-	      lappend fillratios 0
-	  }
-      }
-   } else {
-      set fillratios {34 33 33}
-   }
-}
-
-if {[llength $filltypes] == 3} {
-   if {[llength $fillratios] > 3} {
-      puts stderr "Error:  Too many fill ratios.  Ignoring all but the first three."
-      set fillratios [lrange $fillratios 0 2]
-   }
-
-   if {[llength $fillratios] == 3} {
-      set addr [expr {[lindex $fillratios 0] + [lindex $fillratios 1] + [lindex $fillratios 2]}]
-      if {$addr > 100} {
-         puts stderr "Error:  Fill ratios sum to greater than 100 percent."
-         set fillratios [lrange $fillratios 0 1]
-      }
-   }
-
-   if {[llength $fillratios] == 2} {
-      set addr [expr {[lindex $fillratios 0] + [lindex $fillratios 1]}]
-      if {$addr > 100} {
-         puts stderr "Error:  First two fill ratios sum to greater than 100 percent."
-         set fillratios [lindex $fillratios 0]
+   # "needfill" array marks which fill types have non-zero fill ratios.
+   set needfill {}
+   foreach filltype $filltypes {
+      if {$filltype != ""} {
+	 lappend needfill 1
       } else {
-         lappend fillratios [expr {100 - [lindex $fillratios 0] - [lindex $fillratios 1]}]
-         lappend fillratios [expr {100 - $addr}]
+	 lappend needfill 0
       }
    }
 
-   if {[llength $fillratios] == 1} {
-      puts stderr "Error:  Only one fill ratio.  Evenly splitting the remainder."
-      set remain [expr {int((100 - [lindex $fillratios 0]) / 2)}]
-      lappend fillratios $remain
-      set addr [expr {[lindex $fillratios 0] + [lindex $fillratios 1]}]
-      lappend fillratios [expr {100 - $addr}]
+   if {[llength $fillratios] > 4} {
+      puts stderr "Error:  Too many fill ratios.  Ignoring all but the first four."
+      set fillratios [lrange $fillratios 0 3]
    }
+
+   set allratios {}
+   set validratios {}
+   foreach ratio $fillratios {
+       if {$ratio == {} || $ratio == ""} {
+	   lappend validratios 0
+           lappend allratios 0
+       } else {
+	   lappend validratios 1
+           if {catch {set iratio [expr {int($ratio * 1)}]}} {
+	       puts stderr "Error:  Ratio $ratio is not a number"
+               lappend allratios 0
+	   } else {
+               lappend allratios $iratio
+	   }
+       }
+   }
+   while {[llength $allratios] < 4} {
+       lappend allratios 0
+       lappend validratios 0
+   }
+
+   set filldiff 0
+   set addfill {}
+   for {set i 0} {$i < 4} {incr i} {
+      if {[lindex $validratios $i] == 0 && [lindex $needfill $i] == 1} {
+	 lappend addfill 1
+	 incr filldiff
+      } else {
+	 lappend addfill 0
+      }
+   }
+
+   set f1 [expr {[lindex $allratios 0] * [lindex $needfill 0]}]
+   set f2 [expr {[lindex $allratios 1] * [lindex $needfill 1]}]
+   set f3 [expr {[lindex $allratios 2] * [lindex $needfill 2]}]
+   set f4 [expr {[lindex $allratios 3] * [lindex $needfill 3]}]
+   set addr [expr {$f1 + $f2 + $f3 + $f4}]
+
+   # If the total of specified fill ratios for the valid fill
+   # types is more than 100, then proportionally reduce the ratios
+   # to 100
+
+   if {$addr > 100} {
+      puts stderr "Error:  Fill ratios sum to greater than 100 percent."
+      set allratios [lreplace $allratios 3 3 0]
+      set addr [expr {$f1 + $f2 + $f3}]
+      if {$addr > 100} {
+         set allratios [lreplace $allratios 2 2 0]
+	 set addr [expr {$f1 + $f2}]
+         if {$addr > 100} {
+            set allratios [lreplace $allratios 1 1 0]
+	    set addr $f1
+	    if {$addr > 100} {
+	       set allratios [lreplace $allratios 0 0 100]
+	    }
+	 }
+      }
+   }
+
+   # Recompute the ratio total
+
+   set f1 [expr {[lindex $allratios 0] * [lindex $needfill 0]}]
+   set f2 [expr {[lindex $allratios 1] * [lindex $needfill 1]}]
+   set f3 [expr {[lindex $allratios 2] * [lindex $needfill 2]}]
+   set f4 [expr {[lindex $allratios 3] * [lindex $needfill 3]}]
+   set addr [expr {$f1 + $f2 + $f3 + $f4}]
+
+   # If the number of fill ratios specified is less than the number of
+   # valid fill types and sums to less than 100, then automatically
+   # add the remaining ratio to the unspecified cells.
+
+   set fillamounts {}
+   if {$filldiff == 1} {
+      lappend fillamounts [expr {100 - $addr}]
+   } elseif {$filldiff == 2} {
+      set rval [expr {int((100 - $addr) / 2)}]]
+      lappend fillamounts $rval
+      lappend fillamounts [expr {100 - $addr - $rval}]
+   } elseif {$filldiff == 3} {
+      set rval [expr {int((100 - $addr) / 3)}]]
+      lappend fillamounts $rval
+      lappend fillamounts [expr {100 - $addr - 2 * $rval}]
+   } elseif {$filldiff == 4} {
+      set fillamounts {25 25 25 25}
+   }
+
+   for {set i 0} {$i < 4} {incr i} {
+      if {[lindex $addfill $i] == 1} {
+	 set allratios [lreplace $allratios $i $i [lindex $fillamounts 0]] 
+	 set fillamounts [lrange $fillamounts 1 end]
+      }
+   }
+
+   # Recompute the ratio total
+
+   set f1 [expr {[lindex $allratios 0] * [lindex $needfill 0]}]
+   set f2 [expr {[lindex $allratios 1] * [lindex $needfill 1]}]
+   set f3 [expr {[lindex $allratios 2] * [lindex $needfill 2]}]
+   set f4 [expr {[lindex $allratios 3] * [lindex $needfill 3]}]
+   set addr [expr {$f1 + $f2 + $f3 + $f4}]
+
+   # If the total of specified fill ratios for the valid fill
+   # types is less than 100, then proportionally increase the ratios
+   # to 100
+
+   set addto {}
+   set dist 0
+   for {set i 0} {$i < 4} {incr i} {
+      if {[lindex $allratios $i] > 0 && [lindex $needfill $i] > 0} {
+	 lappend addto 1
+         incr dist
+      } else {
+	 lappend addto 0
+      }
+   }
+   set addin [expr {int((100 - $addr) / $dist)}]
+   set remain [expr {(100 - $addr) - ($dist * $addin)}]
+
+   for {set i 0} {$i < 4} {incr i} {
+      if {[lindex $addto $i] == 1} {
+         set oldval [lindex $allratios $i]
+         set newval [expr {$oldval + $addin}]
+	 if {$remain > 0} {
+            set newval [expr {$newval + $remain}]
+	    set remain 0
+	 }
+         set allratios [lreplace $allratios $i $i $newval]
+      }
+   }
+
+   set fillratios $allratios
 }
 
 #----------------------------------------------------------------
@@ -313,10 +410,12 @@ flush stdout
 set fillcells {}
 set decapcells {}
 set antennacells {}
+set bodytiecells {}
 
 set fillcell [lindex $filltypes 0]
 set decapcell [lindex $filltypes 1]
 set antennacell [lindex $filltypes 2]
+set bodytiecell [lindex $filltypes 3]
 
 while {[gets $flef line] >= 0} {
    if [regexp {[ \t]*MACRO[ \t]+(.+)[ \t]*$} $line lmatch macroname] {
@@ -377,13 +476,14 @@ while {[gets $flef line] >= 0} {
 # whole lot we can do. . .
 
 set totalfills [expr {[llength $fillcells] + [llength $decapcells] + \
-	[llength $antennacells]}]
+	[llength $antennacells] + [llength $bodytiecells]}]
 set usedfills [expr {[llength $fillcells] * [lindex $fillratios 0] + \
 	[llength $decapcells] * [lindex $fillratios 1] + \
-	[llength $antennacells] * [lindex $fillratios 2]}]
+	[llength $antennacells] * [lindex $fillratios 2] + \
+	[llength $bodytiecells] * [lindex $fillratios 3]}]
 
 if {$totalfills == 0} {
-   puts stdout "No fill cells (${fillcell}, ${decapcell}, ${antennacell}) found in macro file ${lefname}!"
+   puts stdout "No fill cells (${fillcell}, ${decapcell}, ${antennacell}, ${bodytiecell}) found in macro file ${lefname}!"
    close $flef
    exit 1
 }
@@ -393,6 +493,7 @@ if {$usedfills == 0} {
    if {[llength $fillcells] > 0} {lappend foundcells $fillcell}
    if {[llength $decapcells] > 0} {lappend foundcells $decapcell}
    if {[llength $antennacells] > 0} {lappend foundcells $antennacell}
+   if {[llength $bodytiecells] > 0} {lappend foundcells $bodytiecell}
    puts stdout "Fill cells found are: $foundcells"
    close $flef
    exit 1
@@ -428,6 +529,15 @@ set antennawidths [lsort -decreasing -index 1 -real $antennawidths]
 set antennainfo [lindex $antennawidths 0]
 set antennamacro [lindex $antennainfo 0]
 set antennavalue [lindex $antennainfo 1]
+
+set bodytiewidths {}
+foreach macro $bodytiecells {
+   lappend bodytiewidths [list $macro [subst \$${macro}(w)]]
+}
+set bodytiewidths [lsort -decreasing -index 1 -real $bodytiewidths]
+set bodytieinfo [lindex $bodytiewidths 0]
+set bodytiemacro [lindex $bodytieinfo 0]
+set bodytievalue [lindex $bodytieinfo 1]
 
 #------------------------------------------------------------------------
 # Now read the contents of the cinfo file so that we have a list of the
@@ -511,7 +621,8 @@ if {$scale > 0.0} {
 
    set filltotal [expr {int($alltotal * [lindex $fillratios 0] / 100)}]
    set decaptotal [expr {int($alltotal * [lindex $fillratios 1] / 100)}]
-   set antennatotal [expr {int($alltotal - ($filltotal + $decaptotal))}]
+   set antennatotal [expr {int($alltotal * [lindex $fillratios 2] / 100)}]
+   set bodytietotal [expr {int($alltotal - ($filltotal + $decaptotal + $antennatotal))}]
 
    set numcells [llength $instlist]
 
@@ -522,7 +633,8 @@ if {$scale > 0.0} {
    puts stdout "Number of cells = $numcells, total width = $totalwidth"
    puts stdout "Width of fill = $filltotal"
    puts stdout "Width of decap = $decaptotal"
-   puts stdout "Width of antenna  = $antennatotal"
+   puts stdout "Width of antenna = $antennatotal"
+   puts stdout "Width of body ties = $bodytietotal"
    puts stdout ""
 
    # Rewind the cel file for the next step
@@ -562,16 +674,21 @@ if {$scale > 0.0} {
 #    Target antenna cell width = antennatotal
 #    Target antenna cell ratio = antennaratio = (antennatotal / totalwidth)
 #    Aggregate antenna cell width = antennaagg
+#    Target body tie cell width = bodytietotal
+#    Target body tie cell ratio = bodytieratio = (bodytietotal / totalwidth)
+#    Aggregate body tie cell width = bodytieagg
 # 
 #------------------------------------------------------------------------
 
 set fillratio    [expr {(0.0 + $filltotal) / $totalwidth}]
 set decapratio   [expr {(0.0 + $decaptotal) / $totalwidth}]
 set antennaratio [expr {(0.0 + $antennatotal) / $totalwidth}]
+set bodytieratio [expr {(0.0 + $bodytietotal) / $totalwidth}]
 
 set fillagg 0
 set decapagg 0
 set antennaagg 0
+set bodytieagg 0
 
 set aggwidth 0
 
@@ -696,6 +813,48 @@ while {[gets $fcel line] >= 0} {
 	       incr antennaagg $cwid
 	       incr cellwidth $cwid
                # puts stdout "Diagnostic: add antenna width = $cwid"
+               # puts stdout "Diagnostic: new cell width = $cellwidth"
+	       if {$lastfill == ""} {
+		  set lastfill $cmac
+		  set lastwid $cwid
+		  set multiplier 1
+	       } elseif {$lastfill == $cmac} {
+		  incr multiplier
+	       } else {
+		  if {$multiplier == 1} {
+		     set cstr ${lastfill}.${lastwid}.${cstr}
+		  } else {
+		     set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
+		  }
+		  set lastfill $cmac
+		  set lastwid $cwid
+		  set multiplier 1
+	       }
+	    }
+	    if {$lastfill != ""} {
+	       if {$multiplier == 1} {
+		  set cstr ${lastfill}.${lastwid}.${cstr}
+	       } else {
+		  set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
+	       }
+	    }
+
+	    set needbodytie [expr {$aggwidth * $bodytieratio}]
+	    set lastfill ""
+	    set lastwid 0
+	    while {$needbodytie > $bodytieagg} {
+	       set cwid 0
+	       foreach bodytieinfo $bodytiewidths {
+		  set cmac [lindex $bodytieinfo 0]
+		  set cwid [lindex $bodytieinfo 1]
+		  if {[expr {$bodytieagg + $cwid}] < $needbodytie} {
+		     break
+		  }
+	       }
+	       if {$cwid == 0} {break}
+	       incr bodytieagg $cwid
+	       incr cellwidth $cwid
+               # puts stdout "Diagnostic: add body tie width = $cwid"
                # puts stdout "Diagnostic: new cell width = $cellwidth"
 	       if {$lastfill == ""} {
 		  set lastfill $cmac
