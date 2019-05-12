@@ -223,7 +223,7 @@ if {[llength $filltypes] == 4} {
            lappend allratios 0
        } else {
 	   lappend validratios 1
-           if {catch {set iratio [expr {int($ratio * 1)}]}} {
+           if {[catch {set iratio [expr {int($ratio * 1)}]}]} {
 	       puts stderr "Error:  Ratio $ratio is not a number"
                lappend allratios 0
 	   } else {

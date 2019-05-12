@@ -423,8 +423,8 @@ if ($makedef == 1) then
    # Add spacer cells to create a straight border on the right side
    #---------------------------------------------------------------------
 
-# To be reinstated. . .
-if 0 then
+# fix addspacers for RePlAce and then reinstate this.
+# if 0 then
    if ( !(${?nospacers}) && (-f ${scriptdir}/addspacers.tcl) ) then
 
       # Fill will use just the fillcell for padding under power buses
@@ -462,7 +462,7 @@ if 0 then
 	 mv ${rootname}.obsx ${rootname}.obs
       endif
    endif
-endif
+# endif
 
    # Copy the .def file to a backup called "unroute"
    cp ${rootname}.def ${rootname}_unroute.def
