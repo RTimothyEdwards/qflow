@@ -234,10 +234,14 @@ if ( ${?hard_macros} ) then
     end
 endif
 
+if ( !( ${?blif2cel_options} ) ) then
+    set blif2cel_options = ""
+endif
+
 echo "Running blif2cel to generate input files for graywolf" |& tee -a ${synthlog}
-echo "blif2cel.tcl --blif ${synthdir}/${rootname}.blif ${lefoptions} --cel ${layoutdir}/${rootname}.cel" |& tee -a ${synthlog}
+echo "blif2cel.tcl --blif ${synthdir}/${rootname}.blif ${lefoptions} --cel ${layoutdir}/${rootname}.cel ${blif2cel_options}" |& tee -a ${synthlog}
 ${scriptdir}/blif2cel.tcl --blif ${synthdir}/${rootname}.blif \
-	${lefoptions} --cel ${layoutdir}/${rootname}.cel >>& ${synthlog}
+	${lefoptions} --cel ${layoutdir}/${rootname}.cel ${blif2cel_options} >>& ${synthlog}
 
 set errcond = $status
 if ( ${errcond} != 0 ) then

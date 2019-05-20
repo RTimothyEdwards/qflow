@@ -75,7 +75,7 @@ while {$argc > 2} {
 		    puts stderr "Error: attempt to set scale twice."
 	        }
 	    } else {
-	        set scale [expr 100 * $value] ; set scale_override
+	        set scale [expr 100 * $value] ; set scale_override true
 	    }
 	 }
 	 antennapin {set antennapin $value}

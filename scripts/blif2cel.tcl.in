@@ -493,7 +493,15 @@ foreach flef $flefs {
 	    # Set the default units to use from the manufacturing grid, unless it
 	    # is less than 100 (this arbitrary rule enforced in qrouter's .info
 	    # output).
-	    set mscale [expr int(0.5 + 1.0 / $locunits)]
+	    set mscalegrid [expr int(0.5 + 1.0 / $locunits)]
+	    set mscale $mscalegrid
+	    set defscales {100 200 1000 2000 10000 20000}
+	    foreach defscale $defscales {
+		if {[expr $defscale % $mscalegrid] == 0} {
+		    set mscale $defscale
+		    break
+		}
+	    }
 	    if {$mscale > $units} {
 		if {$units_used == true} {
 		   puts stdout "WARNING:  Scale units read from tech file after reading"
