@@ -33,17 +33,20 @@
 #include "hash.h"
 
 int numSpecial = 0;		/* Tracks number of specialnets */
+int Numnets = 0;		/* Total nets, including special nets */
+int Numgates = 0;		/* Number of components */
+int Numpins = 0;		/* Number of pins */
 
 /* These hash tables speed up DEF file reading */
 
 struct hashtable InstanceTable;
 struct hashtable NetTable;
+struct hashtable RowTable;
 char *DEFDesignName;
 
 DSEG UserObs = NULL;
 double Xlowerbound = 0, Xupperbound = 0, Ylowerbound = 0, Yupperbound = 0;
 double PitchX = 1.0, PitchY = 1.0;
-int Numnets = 0;
 NET *Nlnets = NULL;
 GATE Nlgates = NULL;
 GATE PinMacro;
@@ -59,6 +62,7 @@ DefHashInit(void)
 
    InitializeHashTable(&InstanceTable, LARGEHASHSIZE);
    InitializeHashTable(&NetTable, LARGEHASHSIZE);
+   InitializeHashTable(&RowTable, TINYHASHSIZE);
 }
 
 GATE
@@ -68,6 +72,17 @@ DefFindGate(char *name)
 
     ginst = (GATE)HashLookup(name, &InstanceTable);
     return ginst;
+}
+
+ROW
+DefFindRow(int yval)
+{
+    ROW row;
+    char namepos[32];
+
+    sprintf(namepos, "%d", yval);
+    row = (ROW)HashLookup(namepos, &RowTable);
+    return row;
 }
 
 /*--------------------------------------------------------------*/
@@ -422,7 +437,9 @@ DefReadGatePin(NET net, NODE node, char *instname, char *pinname)
 	gateginfo = g->gatetype;
 
 	if (!gateginfo) {
-	    LefError(DEF_ERROR, "Endpoint %s/%s of net %s not found\n",
+	    // Instances marked "<net>/pin have a NULL gatetype;  this is okay.
+	    if (strcmp(pinname, "pin"))
+		LefError(DEF_ERROR, "Endpoint %s/%s of net %s not found\n",
 				instname, pinname, net->netname);
 	    return;
 	}
@@ -599,6 +616,7 @@ DefReadNets(FILE *f, char *sname, float oscale, char special, int total)
 		    net->numnodes = 0;
 		    net->netname = strdup(token);
 		    net->netnodes = (NODE)NULL;
+		    net->Flags = (special) ? NET_SPECIAL : 0;
 
 		    /* Check for backslash-escape names modified by other tools */
 		    /* (e.g., vlog2Cel) which replace the trailing space with a */
@@ -779,6 +797,9 @@ DefReadLocation(gate, f, oscale)
     static char *orientations[] = {
 	"N", "S", "E", "W", "FN", "FS", "FE", "FW"
     };
+    static int oflags[] = {
+	RN, RS, RE, RW, RN | RF, RS | RF, RE | RF, RW | RF
+    };
 
     token = LefNextToken(f, TRUE);
     if (*token != '(') goto parse_error;
@@ -813,12 +834,6 @@ DefReadLocation(gate, f, oscale)
 	case DEF_FLIPPED_SOUTH:
 	    myflag = 1;
 	    break;
-	case DEF_EAST:
-	case DEF_WEST:
-	case DEF_FLIPPED_EAST:
-	case DEF_FLIPPED_WEST:
-	    LefError(DEF_ERROR, "Error:  Cannot handle 90-degree rotated components!\n");
-	    break;
     }
 
     if (gate) {
@@ -827,6 +842,7 @@ DefReadLocation(gate, f, oscale)
 	gate->orient = MNONE;
 	if (mxflag) gate->orient |= MX;
 	if (myflag) gate->orient |= MY;
+	gate->orient |= oflags[keyword];
     }
     return 0;
 
@@ -963,6 +979,7 @@ DefReadPins(FILE *f, char *sname, float oscale, int total)
 		gate->node[0] = NULL;
 		gate->direction[0] = PORT_CLASS_DEFAULT;
 		gate->area[0] = 0.0;
+		gate->clientdata = (void *)NULL;
 
 		/* Now do a search through the line for "+" entries	*/
 		/* And process each.					*/
@@ -1042,7 +1059,10 @@ DefReadPins(FILE *f, char *sname, float oscale, int total)
 		gate->obs = (DSEG)NULL;
 		gate->nodes = 1;
 		gate->next = Nlgates;
+		gate->last = (GATE)NULL;
+		if (Nlgates) Nlgates->last = gate;
 		Nlgates = gate;
+		Numpins++;
 
 		// Used by Tcl version of qrouter
 		DefHashInstance(gate);
@@ -1338,6 +1358,160 @@ DefReadBlockages(FILE *f, char *sname, float oscale, int total)
 /*
  *------------------------------------------------------------
  *
+ * DefAddGateInstance --
+ *
+ *	Add a gate instance to the list of instances and
+ *	instance hash table.  The instance is assumed to
+ *	have records gatename, gatetype, placedX, and
+ *	placedY already set.  The gate macro is found from
+ *	the gatetype record, and all information about the
+ *	cell macro is copied to the instance record, with
+ *	positions adjusted for the instance.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	Many.  Cell instances are created and added to
+ *	the database.
+ *
+ *------------------------------------------------------------
+ */
+
+void
+DefAddGateInstance(GATE gate)
+{
+    GATE gateginfo;
+    int i;
+    DSEG drect, newrect;
+    double tmp;
+
+    if (gate == NULL) return;
+    gateginfo = gate->gatetype;
+    if (gateginfo == NULL) return;
+
+    /* Process the gate */
+    gate->width = gateginfo->width;   
+    gate->height = gateginfo->height;   
+    gate->nodes = gateginfo->nodes;   
+    gate->obs = (DSEG)NULL;
+
+    gate->taps = (DSEG *)malloc(gate->nodes * sizeof(DSEG));
+    gate->noderec = (NODE *)malloc(gate->nodes * sizeof(NODE));
+    gate->direction = (u_char *)malloc(gate->nodes * sizeof(u_char));
+    gate->area = (float *)malloc(gate->nodes * sizeof(float));
+    gate->netnum = (int *)malloc(gate->nodes * sizeof(int));
+    gate->node = (char **)malloc(gate->nodes * sizeof(char *));
+
+    /* Let the node names point to the master cell; */
+    /* this is just diagnostic;  allows us, for	    */
+    /* instance, to identify vdd and gnd nodes, so  */
+    /* we don't complain about them being	    */
+    /* disconnected.				    */
+
+    for (i = 0; i < gate->nodes; i++) {
+	gate->node[i] = gateginfo->node[i];  /* copy pointer */
+	gate->direction[i] = gateginfo->direction[i];  /* copy */
+	gate->area[i] = gateginfo->area[i];
+	gate->taps[i] = (DSEG)NULL;
+	gate->netnum[i] = 0;		/* Until we read NETS */
+	gate->noderec[i] = NULL;
+
+	/* Make a copy of the gate nodes and adjust for	*/
+	/* instance position and number of layers	*/
+
+	for (drect = gateginfo->taps[i]; drect; drect = drect->next) {
+	    newrect = (DSEG)malloc(sizeof(struct dseg_));
+	    *newrect = *drect;
+	    newrect->next = gate->taps[i];
+	    gate->taps[i] = newrect;
+	}
+
+	for (drect = gate->taps[i]; drect; drect = drect->next) {
+	    // handle offset from gate origin
+	    drect->x1 -= gateginfo->placedX;
+	    drect->x2 -= gateginfo->placedX;
+	    drect->y1 -= gateginfo->placedY;
+	    drect->y2 -= gateginfo->placedY;
+
+	    // handle rotations and orientations here
+	    if (gate->orient & MX) {
+		tmp = drect->x1;
+		drect->x1 = -drect->x2;
+		drect->x1 += gate->placedX + gateginfo->width;
+		drect->x2 = -tmp;
+		drect->x2 += gate->placedX + gateginfo->width;
+	    }
+	    else {
+		drect->x1 += gate->placedX;
+		drect->x2 += gate->placedX;
+	    }
+	    if (gate->orient & MY) {
+		tmp = drect->y1;
+		drect->y1 = -drect->y2;
+		drect->y1 += gate->placedY + gateginfo->height;
+		drect->y2 = -tmp;
+		drect->y2 += gate->placedY + gateginfo->height;
+	    }
+	    else {
+		drect->y1 += gate->placedY;
+		drect->y2 += gate->placedY;
+	    }
+	}
+    }
+
+    /* Make a copy of the gate obstructions and adjust	*/
+    /* for instance position				*/
+    for (drect = gateginfo->obs; drect; drect = drect->next) {
+	newrect = (DSEG)malloc(sizeof(struct dseg_));
+	*newrect = *drect;
+	newrect->next = gate->obs;
+	gate->obs = newrect;
+    }
+
+    for (drect = gate->obs; drect; drect = drect->next) {
+	drect->x1 -= gateginfo->placedX;
+	drect->x2 -= gateginfo->placedX;
+	drect->y1 -= gateginfo->placedY;
+	drect->y2 -= gateginfo->placedY;
+
+	// handle rotations and orientations here
+	if (gate->orient & MX) {
+	    tmp = drect->x1;
+	    drect->x1 = -drect->x2;
+	    drect->x1 += gate->placedX + gateginfo->width;
+	    drect->x2 = -tmp;
+	    drect->x2 += gate->placedX + gateginfo->width;
+	}
+	else {
+	    drect->x1 += gate->placedX;
+	    drect->x2 += gate->placedX;
+	}
+	if (gate->orient & MY) {
+	    tmp = drect->y1;
+	    drect->y1 = -drect->y2;
+	    drect->y1 += gate->placedY + gateginfo->height;
+	    drect->y2 = -tmp;
+	    drect->y2 += gate->placedY + gateginfo->height;
+	}
+	else {
+	    drect->y1 += gate->placedY;
+	    drect->y2 += gate->placedY;
+	}
+    }
+    gate->next = Nlgates;
+    gate->last = (GATE)NULL;
+    if (Nlgates) Nlgates->last = gate;
+    Nlgates = gate;
+    Numgates++;
+
+    // Used by Tcl version of qrouter
+    DefHashInstance(gate);
+}
+
+/*
+ *------------------------------------------------------------
+ *
  * DefReadComponents --
  *
  *	Read a COMPONENTS section from a DEF file.
@@ -1370,8 +1544,6 @@ DefReadComponents(FILE *f, char *sname, float oscale, int total)
     int keyword, subkey, i;
     int processed = 0;
     char OK;
-    DSEG drect, newrect;
-    double tmp;
     int err_fatal = 0;
 
     static char *component_keys[] = {
@@ -1445,6 +1617,7 @@ DefReadComponents(FILE *f, char *sname, float oscale, int total)
 		    gate = (GATE)malloc(sizeof(struct gate_));
 		    gate->gatename = strdup(usename);
 		    gate->gatetype = gateginfo;
+		    gate->clientdata = (void *)NULL;
 		}
 		
 		/* Now do a search through the line for "+" entries	*/
@@ -1482,124 +1655,7 @@ DefReadComponents(FILE *f, char *sname, float oscale, int total)
 			    break;
 		    }
 		}
-
-		if (gate != NULL)
-		{
-		    /* Process the gate */
-		    gate->width = gateginfo->width;   
-		    gate->height = gateginfo->height;   
-		    gate->nodes = gateginfo->nodes;   
-		    gate->obs = (DSEG)NULL;
-
-                    gate->taps = (DSEG *)malloc(gate->nodes * sizeof(DSEG));
-                    gate->noderec = (NODE *)malloc(gate->nodes * sizeof(NODE));
-                    gate->direction = (u_char *)malloc(gate->nodes * sizeof(u_char));
-                    gate->area = (float *)malloc(gate->nodes * sizeof(float));
-                    gate->netnum = (int *)malloc(gate->nodes * sizeof(int));
-                    gate->node = (char **)malloc(gate->nodes * sizeof(char *));
-
-		    for (i = 0; i < gate->nodes; i++) {
-			/* Let the node names point to the master cell;	*/
-			/* this is just diagnostic;  allows us, for	*/
-			/* instance, to identify vdd and gnd nodes, so	*/
-			/* we don't complain about them being		*/
-			/* disconnected.				*/
-
-			gate->node[i] = gateginfo->node[i];  /* copy pointer */
-			gate->direction[i] = gateginfo->direction[i];  /* copy */
-			gate->area[i] = gateginfo->area[i];
-			gate->taps[i] = (DSEG)NULL;
-			gate->netnum[i] = 0;		/* Until we read NETS */
-			gate->noderec[i] = NULL;
-
-			/* Make a copy of the gate nodes and adjust for	*/
-			/* instance position and number of layers	*/
-
-			for (drect = gateginfo->taps[i]; drect; drect = drect->next) {
-			    newrect = (DSEG)malloc(sizeof(struct dseg_));
-			    *newrect = *drect;
-			    newrect->next = gate->taps[i];
-			    gate->taps[i] = newrect;
-			}
-
-			for (drect = gate->taps[i]; drect; drect = drect->next) {
-			    // handle offset from gate origin
-			    drect->x1 -= gateginfo->placedX;
-			    drect->x2 -= gateginfo->placedX;
-			    drect->y1 -= gateginfo->placedY;
-			    drect->y2 -= gateginfo->placedY;
-
-			    // handle rotations and orientations here
-			    if (gate->orient & MX) {
-				tmp = drect->x1;
-				drect->x1 = -drect->x2;
-				drect->x1 += gate->placedX + gateginfo->width;
-				drect->x2 = -tmp;
-				drect->x2 += gate->placedX + gateginfo->width;
-			    }
-			    else {
-				drect->x1 += gate->placedX;
-				drect->x2 += gate->placedX;
-			    }
-			    if (gate->orient & MY) {
-				tmp = drect->y1;
-				drect->y1 = -drect->y2;
-				drect->y1 += gate->placedY + gateginfo->height;
-				drect->y2 = -tmp;
-				drect->y2 += gate->placedY + gateginfo->height;
-			    }
-			    else {
-				drect->y1 += gate->placedY;
-				drect->y2 += gate->placedY;
-			    }
-			}
-		    }
-
-		    /* Make a copy of the gate obstructions and adjust	*/
-		    /* for instance position				*/
-		    for (drect = gateginfo->obs; drect; drect = drect->next) {
-			newrect = (DSEG)malloc(sizeof(struct dseg_));
-			*newrect = *drect;
-			newrect->next = gate->obs;
-			gate->obs = newrect;
-		    }
-
-		    for (drect = gate->obs; drect; drect = drect->next) {
-			drect->x1 -= gateginfo->placedX;
-			drect->x2 -= gateginfo->placedX;
-			drect->y1 -= gateginfo->placedY;
-			drect->y2 -= gateginfo->placedY;
-
-			// handle rotations and orientations here
-			if (gate->orient & MX) {
-			    tmp = drect->x1;
-			    drect->x1 = -drect->x2;
-			    drect->x1 += gate->placedX + gateginfo->width;
-			    drect->x2 = -tmp;
-			    drect->x2 += gate->placedX + gateginfo->width;
-			}
-			else {
-			    drect->x1 += gate->placedX;
-			    drect->x2 += gate->placedX;
-			}
-			if (gate->orient & MY) {
-			    tmp = drect->y1;
-			    drect->y1 = -drect->y2;
-			    drect->y1 += gate->placedY + gateginfo->height;
-			    drect->y2 = -tmp;
-			    drect->y2 += gate->placedY + gateginfo->height;
-			}
-			else {
-			    drect->y1 += gate->placedY;
-			    drect->y2 += gate->placedY;
-			}
-		    }
-		    gate->next = Nlgates;
-		    Nlgates = gate;
-
-		    // Used by Tcl version of qrouter
-		    DefHashInstance(gate);
-		}
+		DefAddGateInstance(gate);
 		break;
 
 	    case DEF_COMP_END:
@@ -1666,6 +1722,7 @@ DefRead(char *inName, float *retscale)
 {
     FILE *f;
     char filename[256];
+    char namepos[32];
     char *token;
     int keyword, dscale, total;
     int curlayer = -1, channels;
@@ -1677,6 +1734,14 @@ DefRead(char *inName, float *retscale)
     double dXlowerbound, dYlowerbound, dXupperbound, dYupperbound;
     char corient = '.';
     DSEG diearea;
+    ROW newrow;
+
+    static char *orientations[] = {
+	"N", "S", "E", "W", "FN", "FS", "FE", "FW"
+    };
+    static int oflags[] = {
+	RN, RS, RE, RW, RN | RF, RS | RF, RE | RF, RW | RF
+    };
 
     static char *sections[] = {
 	"VERSION",
@@ -1792,6 +1857,34 @@ DefRead(char *inName, float *retscale)
 		LefEndStatement(f);
 		break;
 	    case DEF_ROW:
+		newrow = (ROW)malloc(sizeof(struct row_));
+		token = LefNextToken(f, TRUE);
+		newrow->rowname = strdup(token);
+		token = LefNextToken(f, TRUE);
+		newrow->sitename = strdup(token);
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->x);
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->y);
+		token = LefNextToken(f, TRUE);
+		keyword = Lookup(token, orientations);
+		if (keyword < 0)
+		    newrow->orient = 0;
+		else
+		    newrow->orient = oflags[keyword];
+		token = LefNextToken(f, TRUE);	    /* skip "DO" */
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->xnum);
+		token = LefNextToken(f, TRUE);	    /* skip "BY" */
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->ynum);
+		token = LefNextToken(f, TRUE);	    /* skip "STEP" */
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->xstep);
+		token = LefNextToken(f, TRUE);
+		sscanf(token, "%d", &newrow->ystep);
+		sprintf(namepos, "%d", newrow->y);
+		HashPtrInstall(namepos, newrow, &RowTable);
 		LefEndStatement(f);
 		break;
 	    case DEF_TRACKS:

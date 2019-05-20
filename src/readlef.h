@@ -49,6 +49,12 @@ enum macro_classes {MACRO_CLASS_DEFAULT = 0, MACRO_CLASS_CORE,
 	MACRO_CLASS_BLOCK, MACRO_CLASS_PAD, MACRO_CLASS_RING,
 	MACRO_CLASS_COVER, MACRO_CLASS_ENDCAP};
 
+/* Core macro subclasses */
+enum macro_subclasses {MACRO_SUBCLASS_NONE = 0,
+	MACRO_SUBCLASS_SPACER, MACRO_SUBCLASS_ANTENNA,
+	MACRO_SUBCLASS_WELLTAP, MACRO_SUBCLASS_TIEHIGH,
+	MACRO_SUBCLASS_TIELOW, MACRO_SUBCLASS_FEEDTHRU};
+
 /* Port classes */
 enum port_classes {PORT_CLASS_DEFAULT = 0, PORT_CLASS_INPUT,
 	PORT_CLASS_OUTPUT, PORT_CLASS_TRISTATE, PORT_CLASS_BIDIRECTIONAL,
@@ -114,6 +120,7 @@ typedef struct {
 /* with a minimum area "area" for a single contact.			*/
 
 typedef struct {
+    lefSpacingRule *spacing;	/* spacing rules, ordered by width	*/
     struct dseg_ area;		/* Area of single contact, or cell bbox	*/
 				/* in units of microns			*/
     GATE	cell;		/* Cell for fixed via def, or NULL	*/
@@ -147,8 +154,8 @@ typedef struct _lefLayer {
     int	  obsType;	/* GDS type to use if this is an obstruction */
     u_char lefClass;	/* is this a via, route, or masterslice layer */
     union {
-	lefRoute  route;	/* for route layers */
-	lefVia	  via;		/* for contacts */
+	lefRoute   route;	/* for route layers */
+	lefVia	   via;		/* for contacts */
     } info;
 } lefLayer;
 
@@ -174,14 +181,14 @@ DSEG LefReadRect(FILE *f, int curlayer, float oscale);
 int  LefReadLayer(FILE *f, u_char obstruct);
 LefList LefFindLayer(char *token);
 LefList LefFindLayerByNum(int layer);
+LefList LefNewVia(char *name);
 int    LefFindLayerNum(char *token);
 void   LefSetRoutePitchX(int layer, double value);
 void   LefSetRoutePitchY(int layer, double value);
+double LefGetViaWidth(LefList lefl, int layer, int dir);
 double LefGetRouteKeepout(int layer);
 double LefGetRouteWidth(int layer);
 double LefGetRouteMinArea(int layer);
-double LefGetXYViaWidth(int base, int layer, int dir, int orient);
-double LefGetViaWidth(int base, int layer, int dir);
 double LefGetRouteSpacing(int layer);
 double LefGetRouteWideSpacing(int layer, double width);
 double LefGetRoutePitch(int layer);

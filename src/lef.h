@@ -46,10 +46,17 @@ typedef int (*__compar_fn_t)(const void*, const void*);
 #define MAX_LINE_LEN    2048
 
 // define possible gate orientations
+// Basic definitions for flipping in X and Y
+#define MNONE	0x00
+#define MX	0x01
+#define MY	0x02
 
-#define MNONE	0
-#define MX	1
-#define MY	2
+// Complete definition from value in DEF file
+#define RN	0x04
+#define RS	0x08
+#define RE	0x10	
+#define RW	0x20
+#define RF	0x40
 
 // linked list structure for holding a list of char * strings
 
@@ -145,9 +152,11 @@ typedef struct gate_ *GATE;
 
 struct gate_ {
     GATE next;
+    GATE last;		// For double-linked list
     char *gatename;	// Name of instance
     GATE  gatetype;	// Pointer to macro record
     u_char gateclass;	// LEF class of gate (CORE, PAD, etc.)
+    u_char gatesubclass; // LEF sub-class of gate (SPACER, TIELOW, etc.)
     int   nodes;        // number of nodes on this gate
     char **node;	// names of the pins on this gate
     int   *netnum;	// net number connected to each pin
@@ -162,6 +171,7 @@ struct gate_ {
     double placedX;                 
     double placedY;
     int orient;
+    void *clientdata;	// This space for rent
 };
 
 // Define record holding information pointing to a gate and the
@@ -183,7 +193,12 @@ struct net_ {
    char *netname;
    NODE netnodes;	// list of nodes connected to the net
    int  numnodes;	// number of nodes connected to the net
+   char Flags;		// See flag field definitions, below
 };
+
+// Flag definitions for nets
+
+#define NET_SPECIAL 1	// Indicates a net read from SPECIALNETS
 
 // List of nets
 
@@ -192,6 +207,22 @@ typedef struct netlist_ *NETLIST;
 struct netlist_ {
    NETLIST next;
    NET net;
+};
+
+// Structure for a row definition
+
+typedef struct row_ *ROW;
+
+struct row_ {
+    char *rowname;
+    char *sitename;
+    int x;
+    int y;
+    int orient;
+    int xnum;
+    int ynum;
+    int xstep;
+    int ystep;
 };
 
 /* external references to global variables */

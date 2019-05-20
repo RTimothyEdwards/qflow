@@ -229,13 +229,15 @@ while {[gets $fdef line] >= 0} {
 	} elseif [regexp {[ \t]*NEW[ \t]+[^ \t]+[ \t]+([^ \t]+)[ \t]+\([ \t]*(-?[0-9]+)[ \t]+-?[0-9]+[ \t]*\)[ \t]*\([ \t]*\*[ \t]+-?[0-9]+[ \t]*\)} $line lmatch width xmid] {
 	    # Find the vertical stripes and register the X range of each
 	    catch {
-	        set xranges [dict get $pinrec xranges]
-	        set hwid [/ $width 2] 
-	        set xlow [- $xmid $hwid]
-	        set xhigh [+ $xmid $hwid]
-	        lappend xranges [list $xlow $xhigh]
-		dict set pinrec xranges $xranges
-		dict set specialrec $netname $pinrec
+		if {$xmid > 0} {	;# ignore metal1 comb buses on left
+		    set xranges [dict get $pinrec xranges]
+		    set hwid [/ $width 2] 
+		    set xlow [- $xmid $hwid]
+		    set xhigh [+ $xmid $hwid]
+		    lappend xranges [list $xlow $xhigh]
+		    dict set pinrec xranges $xranges
+		    dict set specialrec $netname $pinrec
+		}
 	    }
 	}
     } elseif $inpins {
