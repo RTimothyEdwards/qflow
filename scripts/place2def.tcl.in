@@ -374,37 +374,29 @@ puts $fdef ""
 set width [expr $diextop - $diexbot]
 set height [expr $dieytop - $dieybot]
 
-for {set i 1} {$i <= $numlayers} {incr i} {
-   set mname [subst \$metal${i}(name)]
-   set mpitch [expr $scale * [subst \$metal${i}(pitch)]]
-   set outmpitch [expr int($mpitch * $multiplier)]
-   if {[subst \$metal${i}(orient)] == "vertical"} {
-      set xtracks [expr 1 + int($width / $mpitch)];
-      puts $fdef "TRACKS X $outdiexbot DO $xtracks STEP $outmpitch LAYER $mname ;"
-   } else {
-      set ytracks [expr 1 + int($height / $mpitch)];
-      puts $fdef "TRACKS Y $outdieybot DO $ytracks STEP $outmpitch LAYER $mname ;"
-   }
-}
-puts $fdef ""
-
 # diagnostic
 puts stdout "$numlayers routing layers"
 
-set xtracks [expr int($width / $pitchx)];
-set ytracks [expr int($height / $pitchy)];
-
-if {$metal1(orient) == "horizontal"} {
-   puts stdout \
-	"$ytracks horizontal tracks from $dieybot to $dieytop step $pitchy (M1, M3, ...)"
-   puts stdout \
-	"$xtracks vertical tracks from $diexbot to $diextop step $pitchx (M2, M4, ...)"
-} else {
-   puts stdout \
-	"$ytracks horizontal tracks from $dieybot to $dieytop step $pitchy (M2, M4, ...)"
-   puts stdout \
-	"$xtracks vertical tracks from $diexbot to $diextop step $pitchx (M1, M3, ...)"
+for {set i 1} {$i <= $numlayers} {incr i} {
+   set mname [subst \$metal${i}(name)]
+   set pitchtracks [expr [subst \$metal${i}(pitch)] * [subst \$metal${i}(skip)]]
+   set mpitch [expr $scale * $pitchtracks]
+   set outmpitch [expr int($mpitch * $multiplier)]
+   if {[subst \$metal${i}(orient)] == "vertical"} {
+      set xtracks [expr 1 + int($width / $mpitch)];
+      set xbottracks [expr int($outdiexbot / $mpitch) * $mpitch];
+      puts $fdef "TRACKS X $xbottracks DO $xtracks STEP $outmpitch LAYER $mname ;"
+      set xbottracks [expr int(($diexbot / $scale) / $pitchtracks) * $pitchtracks];
+      puts stdout "$mname: $xtracks vertical tracks from ${xbottracks}um with ${pitchtracks}um pitch"
+   } else {
+      set ytracks [expr 1 + int($height / $mpitch)];
+      set ybottracks [expr int($outdieybot / $mpitch) * $mpitch];
+      puts $fdef "TRACKS Y $ybottracks DO $ytracks STEP $outmpitch LAYER $mname ;"
+      set ybottracks [expr int(($dieybot / $scale) / $pitchtracks) * $pitchtracks];
+      puts stdout "$mname: $ytracks vertical tracks from ${ybottracks}um with ${pitchtracks}um pitch"
+   }
 }
+puts $fdef ""
 
 # generate obstruction around pin areas, so these will not have vias
 # dropped on top of the pin labels (convert values to microns)
