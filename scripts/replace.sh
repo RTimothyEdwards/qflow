@@ -225,11 +225,9 @@ cd ${projectpath}
 
 if ( "$techleffile" == "" ) then
     set lefoptions=""
-    set addsoptions=""
     set reploptions=""
 else
     set lefoptions="-l ${techlefpath}"
-    set addsoptions="-techlef ${techlefpath}"
     set reploptions="-lef ${techlefpath}"
 endif
 set lefoptions="${lefoptions} -l ${lefpath}"
@@ -242,7 +240,6 @@ if ( ${?hard_macros} ) then
 	foreach file ( `ls ${sourcedir}/${macro_path}` )
 	    if ( ${file:e} == "lef" ) then
 		set lefoptions="${lefoptions} -l ${sourcedir}/${macro_path}/${file}"
-		set addsoptions="${addsoptions} -hardlef ${sourcedir}/${macro_path}/${file}"
 	    endif
 	end
     end
@@ -421,32 +418,31 @@ if ($makedef == 1) then
 
    #---------------------------------------------------------------------
    # Add spacer cells to create a straight border on the right side
+   # Add power stripes, stretching the cell if specified
    #---------------------------------------------------------------------
 
-# fix addspacers for RePlAce and then reinstate this.
-# if 0 then
-   if ( !(${?nospacers}) && (-f ${scriptdir}/addspacers.tcl) ) then
+   if ( !(${?nospacers}) && (-f ${bindir}/addspacers) ) then
 
       # Fill will use just the fillcell for padding under power buses
       # and on the edges (to do:  refine this to use other spacer types
       # if the width options are more flexible).
 
       if ( !( ${?addspacers_options} )) then
-         set addspacers_options = "${addsoptions}"
-      else
-         set addspacers_options = "${addsoptions} ${addspacers_options}"
+         set addspacers_options = ""
       endif
+      set addspacers_options = "${addspacers_options} -p ${vddnet} -g ${gndnet} -f ${fillcell} -O"
 
       echo "Running addspacers to generate power stripes and align cell right edge" \
 		|& tee -a ${synthlog}
-      echo "addspacers.tcl ${addspacers_options} ${rootname} ${lefpath} ${fillcell}" \
+      echo "addspacers ${addspacers_options} ${lefoptions} -o ${rootname}_filled.def ${rootname}" \
 		|& tee -a ${synthlog}
 
-      ${scriptdir}/addspacers.tcl ${addspacers_options} \
-		${rootname} ${lefpath} ${fillcell} >>& ${synthlog}
+      rm -f ${rootname}_filled.def
+      ${bindir}/addspacers ${addspacers_options} ${lefoptions} \
+		-o ${rootname}_filled.def ${rootname} >>& ${synthlog}
       set errcond = $status
       if ( ${errcond} != 0 ) then
-	 echo "addspacers.tcl failed with exit status ${errcond}" |& tee -a ${synthlog}
+	 echo "addspacers failed with exit status ${errcond}" |& tee -a ${synthlog}
 	 echo "Premature exit." |& tee -a ${synthlog}
 	 echo "Synthesis flow stopped on error condition." >>& ${synthlog}
 	 exit 1
@@ -462,7 +458,6 @@ if ($makedef == 1) then
 	 mv ${rootname}.obsx ${rootname}.obs
       endif
    endif
-# endif
 
    # Copy the .def file to a backup called "unroute"
    cp ${rootname}.def ${rootname}_unroute.def
@@ -554,7 +549,7 @@ if ($makedef == 1) then
    endif
 
    # Add obstruction fence around design, created by place2def.tcl
-   # and modified by addspacers.tcl
+   # and modified by addspacers
 
    if ( -f ${rootname}.obs ) then
       cat ${rootname}.obs >> ${rootname}.cfg

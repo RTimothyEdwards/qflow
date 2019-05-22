@@ -33,7 +33,7 @@ HAVE_REPLACE = @HAVE_REPLACE@
 HAVE_QROUTER = @HAVE_QROUTER@
 
 OBJECTS = vlog2Spice.o vlog2Verilog.o vlog2Def.o vlog2Cel.o vlogFanout.o
-OBJECTS += DEF2Verilog.o
+OBJECTS += DEF2Verilog.o addspacers.o
 OBJECTS += vesta.o spice2delay.o rc2dly.o
 OBJECTS += blif2BSpice.o blif2Verilog.o blifFanout.o
 HASHLIB = hash.o
@@ -71,6 +71,9 @@ DEF2Verilog$(EXEEXT): DEF2Verilog.o $(HASHLIB) $(VERILOGLIB) $(DEFLIB) $(LEFLIB)
 	$(CC) $(LDFLAGS) DEF2Verilog.o $(HASHLIB) $(VERILOGLIB) $(DEFLIB) $(LEFLIB) \
 		-DQFLOW_VERSION=\"VERSION\" -DQFLOW_REVISION=\"REVISION\" \
 		$(DEPENDS) -o $@ $(LIBS) -lm
+
+addspacers$(EXEEXT): addspacers.o $(HASHLIB) $(LEFLIB) $(DEFLIB)
+	$(CC) $(LDFLAGS) addspacers.o $(HASHLIB) $(LEFLIB) $(DEFLIB) -o $@ $(LIBS) -lm
 
 blif2BSpice$(EXEEXT): blif2BSpice.o
 	$(CC) $(LDFLAGS) blif2BSpice.o -o $@ $(LIBS)

@@ -10,11 +10,17 @@
 
 #include "lef.h"
 
-extern int numSpecial;
 extern int DefRead(char *inName, float *);
 
-extern GATE DefFindGate(char *name);
-extern NET DefFindNet(char *name);
+extern int Numnets;
+extern int Numgates;
+extern int Numpins;
+extern int numSpecial;
+
+extern GATE  DefFindGate(char *name);
+extern NET   DefFindNet(char *name);
+extern ROW   DefFindRow(int yval);
+extern void  DefAddGateInstance(GATE gate);
 extern char *DefDesign();
 
 /* External access to hash tables for recursion functions */

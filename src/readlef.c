@@ -22,6 +22,7 @@
 #include <sys/time.h>
 #include <math.h>
 
+#include "hash.h"
 #include "readlef.h"
 
 /*----------------------------------------------------------------------*/
@@ -31,6 +32,8 @@
 GATE   GateInfo = NULL;		// standard cell macro information
 u_char Verbose = 0;
 char   delimiter;		// opening bus delimiter;
+
+struct hashtable MacroTable;
 
 /*----------------------------------------------------------------------*/
 
@@ -44,6 +47,31 @@ LefList LefInfo = NULL;
 LinkedStringPtr AllowedVias = NULL;
 
 /* Gate information is in the linked list GateInfo, imported */
+
+/*
+ *---------------------------------------------------------
+ * Initialize hash table of cells
+ *---------------------------------------------------------
+ */
+
+static void
+LefHashInit(void)
+{
+    /* Initialize the macro hash table */
+    InitializeHashTable(&MacroTable, SMALLHASHSIZE);
+}
+
+/*
+ *---------------------------------------------------------
+ * Add macro to Lef cell macro hash table
+ *---------------------------------------------------------
+ */
+
+static void
+LefHashMacro(GATE gateginfo)
+{
+    HashPtrInstall(gateginfo->gatename, gateginfo, &MacroTable);
+}
 
 /*---------------------------------------------------------
  * Lookup --
@@ -437,7 +465,7 @@ LefSkipSection(FILE *f, char *section)
  *
  * 	"name" is the name of the cell to search for.
  *	Returns the GATE entry for the cell from the GateInfo
- *	list.
+ *	hash table.
  *
  *------------------------------------------------------------
  */
@@ -447,11 +475,8 @@ lefFindCell(char *name)
 {
     GATE gateginfo;
 
-    for (gateginfo = GateInfo; gateginfo; gateginfo = gateginfo->next) { 
-	if (!strcasecmp(gateginfo->gatename, name))
-	    return gateginfo;
-    }
-    return (GATE)NULL;
+    gateginfo = (GATE)HashLookup(name, &MacroTable);
+    return gateginfo;
 }
 
 /*
@@ -626,6 +651,7 @@ LefGetMaxLayer(void)
 /*
  *---------------------------------------------------------------
  * Find the maximum routing layer number defined by the LEF file
+ * Note that as defined, this returns value (layer_index + 1).
  *---------------------------------------------------------------
  */
 
@@ -696,6 +722,43 @@ LefGetRouteWidth(int layer)
 	}
     }
     return 0.0;
+}
+
+/*
+ *------------------------------------------------------------
+ * Similar to the above, return the width of a via.  Arguments
+ * are the via record, the layer to check the width of, and
+ * direction "dir" = 1 for height and 0 for width.
+ *------------------------------------------------------------
+ */
+
+double
+LefGetViaWidth(LefList lefl, int layer, int dir)
+{
+    double width, maxwidth;
+    DSEG lrect;
+
+    maxwidth = 0.0;
+
+    if (lefl->lefClass == CLASS_VIA) {
+        if (lefl->info.via.area.layer == layer) {
+            if (dir)
+                width = lefl->info.via.area.y2 - lefl->info.via.area.y1;
+            else
+                width = lefl->info.via.area.x2 - lefl->info.via.area.x1;
+	    if (width > maxwidth) maxwidth = width;
+        }
+        for (lrect = lefl->info.via.lr; lrect; lrect = lrect->next) {
+            if (lrect->layer == layer) {
+                if (dir)
+		    width = lrect->y2 - lrect->y1;
+		else
+		    width = lrect->x2 - lrect->x1;
+	        if (width > maxwidth) maxwidth = width;
+            }
+        }
+    }
+    return maxwidth / 2;
 }
 
 /*
@@ -1276,7 +1339,18 @@ LefReadEnclosure(FILE *f, int curlayer, float oscale)
     static struct dseg_ paintrect;
 
     token = LefNextToken(f, TRUE);
-    if (!token || sscanf(token, "%f", &x) != 1) goto enc_parse_error;
+    if (!token) goto enc_parse_error;
+
+    if (sscanf(token, "%f", &x) != 1) {
+	if (!strcmp(token, "BELOW") || !strcmp(token, "ABOVE"))
+	    /* NOTE:  This creates two records but fails to differentiate   */
+	    /* between the layers, both of which will be -1 if this is a    */
+	    /* cut layer.  Needs to be handled properly.		    */
+
+	    token = LefNextToken(f, TRUE);
+	else
+	    goto enc_parse_error;
+    }
     token = LefNextToken(f, TRUE);
     if (!token || sscanf(token, "%f", &y) != 1) goto enc_parse_error;
 
@@ -2084,6 +2158,25 @@ LefReadMacro(f, mname, oscale)
 	MACRO_CLASS_ENDCAP
     };
 
+    static char *macro_subclasses[] = {
+	";",
+	"SPACER",
+	"ANTENNACELL",
+	"WELLTAP",
+	"TIEHIGH",
+	"TIELOW",
+	"FEEDTHRU"
+    };
+
+    static int lef_macro_subclass_to_bitmask[] = {
+	MACRO_SUBCLASS_NONE,
+	MACRO_SUBCLASS_SPACER,
+	MACRO_SUBCLASS_ANTENNA,
+	MACRO_SUBCLASS_WELLTAP,
+	MACRO_SUBCLASS_TIEHIGH,
+	MACRO_SUBCLASS_TIELOW,
+	MACRO_SUBCLASS_FEEDTHRU
+    };
 
     /* Start by creating a new celldef */
 
@@ -2121,12 +2214,14 @@ LefReadMacro(f, mname, oscale)
     lefMacro->gatename = strdup(mname);
     lefMacro->gatetype = NULL;
     lefMacro->gateclass = MACRO_CLASS_DEFAULT;
+    lefMacro->gatesubclass = MACRO_SUBCLASS_NONE;
     lefMacro->width = 0.0;
     lefMacro->height = 0.0;
     lefMacro->placedX = 0.0;
     lefMacro->placedY = 0.0;
     lefMacro->obs = (DSEG)NULL;
     lefMacro->next = GateInfo;
+    lefMacro->last = (GATE)NULL;
     lefMacro->nodes = 0;
     lefMacro->orient = 0;
     // Allocate memory for up to 10 pins initially
@@ -2144,6 +2239,7 @@ LefReadMacro(f, mname, oscale)
     lefMacro->node[0] = NULL;
     lefMacro->bus = NULL;
     lefMacro->netnum[0] = -1;
+    lefMacro->clientdata = (void *)NULL;
     GateInfo = lefMacro;
 
     /* Set gate type to the site name for site definitions */
@@ -2177,7 +2273,22 @@ LefReadMacro(f, mname, oscale)
 		}
 		else
 		    lefMacro->gateclass = lef_macro_class_to_bitmask[subkey];
-		LefEndStatement(f);
+		token = LefNextToken(f, TRUE);
+		if (token) {
+		    subkey = Lookup(token, macro_subclasses);
+		    if (subkey < 0) {
+			lefMacro->gatesubclass = MACRO_SUBCLASS_NONE;
+			LefEndStatement(f);
+		    }
+		    else if (subkey > 0) {
+			lefMacro->gatesubclass = lef_macro_subclass_to_bitmask[subkey];
+			LefEndStatement(f);
+		    }
+		    else
+			lefMacro->gatesubclass = MACRO_SUBCLASS_NONE;
+		}
+		else
+		    LefEndStatement(f);
 		break;
 	    case LEF_SIZE:
 		token = LefNextToken(f, TRUE);
@@ -2408,7 +2519,11 @@ LefList LefNewVia(char *name)
     lefl->info.via.lr = (DSEG)NULL;
     lefl->info.via.generated = FALSE;
     lefl->info.via.respervia = 0.0;
-    lefl->lefName = strdup(name);
+    lefl->info.via.spacing = (lefSpacingRule *)NULL;
+    if (name != NULL)
+	lefl->lefName = strdup(name);
+    else
+	lefl->lefName = NULL;
 
     return lefl;
 }
@@ -2458,7 +2573,7 @@ enum lef_layer_keys {LEF_LAYER_TYPE=0, LEF_LAYER_WIDTH,
 	LEF_VIARULE_METALOVERHANG, LEF_VIARULE_VIA,
 	LEF_VIARULE_GENERATE, LEF_LAYER_END};
 
-enum lef_spacing_keys {LEF_SPACING_RANGE=0, LEF_END_LAYER_SPACING};
+enum lef_spacing_keys {LEF_SPACING_RANGE=0, LEF_SPACING_BY, LEF_END_LAYER_SPACING};
 
 void
 LefReadLayerSection(f, lname, mode, lefl)
@@ -2522,6 +2637,7 @@ LefReadLayerSection(f, lname, mode, lefl)
 
     static char *spacing_keys[] = {
 	"RANGE",
+	"BY",
 	";",
 	NULL
     };
@@ -2604,6 +2720,7 @@ LefReadLayerSection(f, lname, mode, lefl)
 			}
 		    }
 		    else if (typekey == CLASS_CUT || typekey == CLASS_VIA) {
+			lefl->info.via.spacing = NULL;
 			lefl->info.via.area.x1 = 0.0;
 			lefl->info.via.area.y1 = 0.0;
 			lefl->info.via.area.x2 = 0.0;
@@ -2661,9 +2778,8 @@ LefReadLayerSection(f, lname, mode, lefl)
 		LefEndStatement(f);
 		break;
 	    case LEF_LAYER_SPACING:
-		// Only parse spacing for routes
-
-		if (lefl->lefClass != CLASS_ROUTE) {
+		if ((lefl->lefClass != CLASS_ROUTE) && (lefl->lefClass != CLASS_CUT) &&
+			(lefl->lefClass != CLASS_VIA)) {
 		    LefEndStatement(f);
 		    break;
 		}
@@ -2675,13 +2791,7 @@ LefReadLayerSection(f, lname, mode, lefl)
 		newrule = (lefSpacingRule *)malloc(sizeof(lefSpacingRule));
 
 		// If no range specified, then the rule goes in front
-		if (typekey != LEF_SPACING_RANGE) {
-		    newrule->spacing = dvalue / (double)oscale;
-		    newrule->width = 0.0;
-		    newrule->next = lefl->info.route.spacing;
-		    lefl->info.route.spacing = newrule;
-		}
-		else {
+		if (typekey == LEF_SPACING_RANGE) {
 		    // Get range minimum, ignore range maximum, and sort
 		    // the spacing order.
 		    newrule->spacing = dvalue / (double)oscale;
@@ -2704,6 +2814,29 @@ LefReadLayerSection(f, lname, mode, lefl)
 		    }
 		    token = LefNextToken(f, TRUE);
 		    typekey = Lookup(token, spacing_keys);
+		}
+		else if (typekey == LEF_SPACING_BY) {
+		    /* In info.via.spacing, save two rules;  first one	*/
+		    /* is for X spacing, second is for Y spacing	*/
+
+		    newrule->spacing = dvalue / (double)oscale;
+		    newrule->width = 0;
+		    newrule->next = NULL;
+		    lefl->info.via.spacing = newrule;
+
+		    token = LefNextToken(f, TRUE);
+		    sscanf(token, "%lg", &dvalue);
+		    newrule = (lefSpacingRule *)malloc(sizeof(lefSpacingRule));
+		    newrule->spacing = dvalue / (double)oscale;
+		    newrule->width = 0;
+		    newrule->next = NULL;
+		    lefl->info.via.spacing->next = newrule;
+		}
+		else {
+		    newrule->spacing = dvalue / (double)oscale;
+		    newrule->width = 0.0;
+		    newrule->next = lefl->info.route.spacing;
+		    lefl->info.route.spacing = newrule;
 		}
 		if (typekey != LEF_END_LAYER_SPACING)
 		    LefEndStatement(f);
@@ -2915,21 +3048,20 @@ LefReadLayerSection(f, lname, mode, lefl)
 		LefEndStatement(f);
 		break;
 	    case LEF_VIA_ENCLOSURE:
-		/* Defines how to draw via metal layers.  Ignore unless */
-		/* this is a VIARULE GENERATE section.			*/
-		if (mode == LEF_SECTION_VIARULE) {
-		    /* Note that values can interact with ENCLOSURE	*/	
-		    /* values given for the cut layer type.  This is	*/
-		    /* not being handled.				*/
-
+		/* Defines how to draw via metal layers.	    */
+		/* Note that values can interact with ENCLOSURE	    */	
+		/* values given for the cut layer type.  This is    */
+		/* not being handled.				    */
+		{
 		    DSEG viarect, encrect;
 		    encrect = LefReadEnclosure(f, curlayer, oscale);
 		    viarect = (DSEG)malloc(sizeof(struct dseg_));
 		    *viarect = *encrect;
 		    viarect->next = lefl->info.via.lr;
 		    lefl->info.via.lr = viarect;
-		    lefl->info.via.generated = TRUE;
 		}
+		if (mode == LEF_SECTION_VIARULE)
+		    lefl->info.via.generated = TRUE;
 		LefEndStatement(f);
 		break;
 	    case LEF_VIARULE_OVERHANG:
@@ -3045,6 +3177,8 @@ LefRead(inName)
     }
 
     oscale = 1;
+
+    LefHashInit();
 
     while ((token = LefNextToken(f, TRUE)) != NULL)
     {
@@ -3220,6 +3354,7 @@ LefRead(inName)
 	gateginfo = (GATE)malloc(sizeof(struct gate_));
 	gateginfo->gatetype = NULL;
 	gateginfo->gateclass = MACRO_CLASS_DEFAULT;
+	gateginfo->gatesubclass = MACRO_SUBCLASS_NONE;
 	gateginfo->gatename = (char *)malloc(4);
 	strcpy(gateginfo->gatename, "pin");
 	gateginfo->width = 0.0;
@@ -3242,12 +3377,16 @@ LefRead(inName)
 	grect->next = (DSEG)NULL;
 	gateginfo->obs = (DSEG)NULL;
 	gateginfo->next = GateInfo;
+	gateginfo->last = (GATE)NULL;
 	gateginfo->taps[0] = grect;
         gateginfo->noderec[0] = NULL;
         gateginfo->area[0] = 0.0;
         gateginfo->netnum[0] = -1;
 	gateginfo->node[0] = strdup("pin");
+	gateginfo->clientdata = (void *)NULL;
 	GateInfo = gateginfo;
+
+	LefHashMacro(gateginfo);
     }
     return oprecis;
 }
