@@ -331,6 +331,16 @@ class QflowManager(ttk.Frame):
         window.module.entry.insert(0, '(none)')
         window.module.entry.pack(side = 'left')
 
+        window.reset = ttk.Frame(window)
+        window.reset.pack(side = 'top', fill = 'x')
+        window.reset.title = ttk.Label(window.reset, style = 'normal.TLabel',
+		text = 'Reset config files:')
+        window.reset.title.pack(side = 'left')
+        self.reset = tkinter.IntVar(window.reset)
+        self.reset.set(0)
+        window.reset.check = ttk.Checkbutton(window.reset, variable = self.reset)
+        window.reset.check.pack(side = 'left', fill = 'x')
+
         # Preparation:  Set up selection for all synthesis flow tools
         # Find tools available at compile time and present selection for each.
         # Synthesis:	
@@ -2783,8 +2793,9 @@ class QflowManager(ttk.Frame):
 
             # Read file contents into GUI settings (if they exist)
             # Remove the files in preparation for regeneration
-            existing = self.read_project_vars(remove=True)
-            self.read_par_file(remove=True)
+            resetstate = True if self.reset.get() == 1 else False
+            existing = self.read_project_vars(remove=resetstate)
+            self.read_par_file(remove=resetstate)
 
             # Set the project name from the verilog module name
             self.project = self.module.get()
@@ -3374,6 +3385,7 @@ class QflowManager(ttk.Frame):
                 self.pdkdir = testdir
 
         self.purge.set(1)
+        self.reset.set(1)
         self.qflow_cleanup()
         self.qflow_get_status()
         self.gui_set_status()
