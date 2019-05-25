@@ -741,10 +741,14 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 
 	for (gate = Nlgates; gate; gate = gate->next) {
 	    if (gate->gatetype == NULL) {
-		int px, pitches;
-		px = (int)(roundf(gate->placedX * scale));
+		int px, po, pitches;
 
-		pitches = 1 + (px - stripeoffset_f - (stripewidth_f / 2)) / stripepitch_f;
+		px = (int)(roundf(gate->placedX * scale));
+		po = px - stripeoffset_f - (stripewidth_f / 2);
+		if (po > 0)
+		    pitches = 1 + po / stripepitch_f;
+		else
+		    pitches = -1;
 		if (pitches <= 0) continue;
 
 		px += pitches * stripewidth_f;
@@ -806,7 +810,7 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
     char line[256];
     char layer[32];
     float fllx, flly, furx, fury;
-    int   illx, iurx, pitches;
+    int   illx, iurx, pitches, po;
 
     /* If no layout stretching was done, then nothing needs to be modified  */
     if (Flags & NOSTRETCH) return;
@@ -856,12 +860,16 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 	    illx = (int)(roundf(fllx * scale));
 	    iurx = (int)(roundf(furx * scale));
 
-	    pitches = 1 + (illx - stripevals->offset - (stripevals->width / 2))
-			/ stripevals->pitch;
-	    if (pitches > 0) illx += pitches * stripevals->width;
-	    pitches = 1 + (iurx - stripevals->offset - (stripevals->width / 2))
-			/ stripevals->pitch;
-	    if (pitches > 0) iurx += pitches * stripevals->width;
+	    po = illx - stripevals->offset - (stripevals->width / 2);
+	    if (po > 0) {
+		pitches = 1 + po / stripevals->pitch;
+		illx += pitches * stripevals->width;
+	    }
+	    po = iurx - stripevals->offset - (stripevals->width / 2);
+	    if (po > 0) {
+		pitches = 1 + po / stripevals->pitch;
+		iurx += pitches * stripevals->width;
+	    }
 
 	    fllx = (float)illx / scale;
 	    furx = (float)iurx / scale;
@@ -1649,9 +1657,10 @@ write_output(char *definname, char *defoutname, float scale,
 	    while (isspace(*dptr)) dptr++; 
 	    sscanf(dptr, "%s", layer);
 
-	    rnum += (int)(stripevals->stretch / rpitch);
-	    if (stripevals->stretch % rpitch != 0) rnum++;
-
+	    if (o == 'X') {
+		rnum += (int)(stripevals->stretch / rpitch);
+		if (stripevals->stretch % rpitch != 0) rnum++;
+	    }
 	    fprintf(outfptr, "TRACKS %c %d DO %d STEP %d LAYER %s ;\n",
 		    o, roffset, rnum, rpitch, layer);
 	}
