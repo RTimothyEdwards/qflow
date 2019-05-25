@@ -850,25 +850,27 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 	if (!strncmp(line, "obstruction", 11)) {
 	    sscanf(line + 11, "%g %g %g %g %s", &fllx, &flly, &furx, &fury, layer);
 
+	    if (Flags & VERBOSE)
+		fprintf(stdout, "In: %g %g %g %g\n", fllx, flly, furx, fury);
+
 	    illx = (int)(roundf(fllx * scale));
 	    iurx = (int)(roundf(furx * scale));
 
-	    pitches = (illx - stripevals->offset - (stripevals->width / 2))
+	    pitches = 1 + (illx - stripevals->offset - (stripevals->width / 2))
 			/ stripevals->pitch;
-	    if (pitches >= 0) {
-		illx += pitches * stripevals->width;
-	    }
-	    pitches = (iurx - stripevals->offset - (stripevals->width / 2))
+	    if (pitches > 0) illx += pitches * stripevals->width;
+	    pitches = 1 + (iurx - stripevals->offset - (stripevals->width / 2))
 			/ stripevals->pitch;
-	    if (pitches >= 0) {
-		iurx += pitches * stripevals->width;
-	    }
+	    if (pitches > 0) iurx += pitches * stripevals->width;
 
 	    fllx = (float)illx / scale;
 	    furx = (float)iurx / scale;
 
 	    fprintf(fobsout, "obstruction %g %g %g %g %s\n",
 			fllx, flly, furx, fury, layer);
+
+	    if (Flags & VERBOSE)
+		fprintf(stdout, "Out: %g %g %g %g\n", fllx, flly, furx, fury);
 	}
     }
 

@@ -2185,6 +2185,15 @@ class QflowManager(ttk.Frame):
         self.qflow_get_status()
         self.gui_set_status()
 
+    def remove_project_vars(self):
+        varsfile = self.rootpath + '/project_vars.sh'
+        os.remove(varsfile)
+
+    def remove_par_file(self):
+        ldir = self.layoutdir
+        parfile = ldir + '/' + self.project + '.par'
+        os.remove(parfile)
+
     # Read an existing project_vars.sh file and seed the values in the GUI
     # It is okay for project_vars.sh file not to exist (GUI values will
     # retain defaults).  If "remove" is true, remove the file after reading.
@@ -2794,8 +2803,13 @@ class QflowManager(ttk.Frame):
             # Read file contents into GUI settings (if they exist)
             # Remove the files in preparation for regeneration
             resetstate = True if self.reset.get() == 1 else False
-            existing = self.read_project_vars(remove=resetstate)
-            self.read_par_file(remove=resetstate)
+            if resetstate:
+                self.remove_project_vars()
+                self.remove_par_file()
+                existing = False
+            else:
+                existing = self.read_project_vars(remove=True)
+                self.read_par_file(remove=True)
 
             # Set the project name from the verilog module name
             self.project = self.module.get()
@@ -2820,6 +2834,7 @@ class QflowManager(ttk.Frame):
             # the flow manager
             if not existing:
                 self.read_project_vars(remove=False)
+                self.read_par_file(remove=False)
 
             # Pull foundry and node from tech directory/symbolic link 
             pdkdir = os.path.realpath(self.pdkdir)
@@ -2839,6 +2854,7 @@ class QflowManager(ttk.Frame):
 
         else:
             # If the process got this far, enable the next button and mark step as done.
+            self.reset.set(0)
             self.status = 'synth'
             self.gui_set_status()
         return

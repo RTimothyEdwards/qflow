@@ -998,6 +998,11 @@ double calc_setup_time(double trans, pinptr testpin, double clktrans, short sens
 /* clock is found, then return NULL---these endpoints are	*/
 /* asynchronously clocked.					*/
 /*								*/
+/* Modified 5/23/2019:  Cascaded clocks should be traced	*/
+/* through a flop.  i.e., if a clock is found to come from a	*/
+/* DFF output, then add the clock-to-Q delay and keep tracing	*/
+/* from the DFF clock.						*/
+/*								*/
 /* If mode == 2, return TRUE if the search ended on a		*/
 /* connection found in a mode 1 search.  Otherwise, return	*/
 /* FALSE.							*/
@@ -1041,13 +1046,34 @@ find_clock_source(connptr testlink, ddataptr *clocklist, btptr btrace, short dir
     iupstream = driver->refinst;
 
     if (iupstream == NULL) goto makehead;         /* Not supposed to happen? */
-    if (driver->refpin->type & DFFOUT) goto makehead;  /* Reached a flop output */
-    if (driver->refpin->type & LATCHOUT) goto makehead; /* Reached a latch output */
 
-    for (iinput = iupstream->in_connects; iinput; iinput = iinput->next) {
-        newdir = calc_dir(iinput->refpin, dir);
-        result = find_clock_source(iinput, clocklist, newclock, newdir, mode);
-	if (result == (unsigned char)1) return result;
+    /* If a flop or latch output is reached, add the clock-to-output delay  */
+    /* and continue tracing from the DFF clock or LATCH input.		    */
+
+    if (driver->refpin->type & DFFOUT) {
+	for (iinput = driver->refinst->in_connects; iinput; iinput = iinput->next) {
+	    if (iinput->refpin->type & DFFCLK) {
+		newdir = calc_dir(iinput->refpin, dir);
+		result = find_clock_source(iinput, clocklist, newclock, newdir, mode);
+		if (result == (unsigned char)1) return result;
+	    }
+	}
+    }
+    else if (driver->refpin->type & LATCHOUT) {
+	for (iinput = driver->refinst->in_connects; iinput; iinput = iinput->next) {
+	    if (iinput->refpin->type & LATCHIN) {
+		newdir = calc_dir(iinput->refpin, dir);
+		result = find_clock_source(iinput, clocklist, newclock, newdir, mode);
+		if (result == (unsigned char)1) return result;
+	    }
+	}
+    }
+    else {
+	for (iinput = iupstream->in_connects; iinput; iinput = iinput->next) {
+	    newdir = calc_dir(iinput->refpin, dir);
+	    result = find_clock_source(iinput, clocklist, newclock, newdir, mode);
+	    if (result == (unsigned char)1) return result;
+	}
     }
     return (unsigned char)0;
     
@@ -2816,7 +2842,12 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
             if (!strcasecmp(testcell->name, inst->cellname))
                 break;
 
-        if (testcell == NULL) {
+	// NOTE:  testcell may be NULL for non-functional cells like
+	// filler cells which have no I/O and so have no timing.  Only
+	// report cells that are relevant to timing and do not show up
+	// in the liberty database (portlist is non-NULL).
+
+        if ((testcell == NULL) && (inst->portlist != NULL)) {
 	    fprintf(stderr, "Cell \"%s\" was not in the liberty database!\n",
 		    inst->cellname);
 	    continue;
