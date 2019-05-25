@@ -1564,7 +1564,7 @@ write_output(char *definname, char *defoutname, float scale,
 	/* Assuming a typical DEF file here. . . */
 	if (!strncmp(sptr, "COMPONENTS", 10)) break;
 
-	/* Rewrite DIEAREA and ROWS */
+	/* Rewrite DIEAREA, ROWS, and TRACKS */
 	else if (!strncmp(sptr, "DIEAREA", 7)) {
 	    char *dptr;
 	    int dllx, dlly, durx, dury;
@@ -1621,7 +1621,40 @@ write_output(char *definname, char *defoutname, float scale,
 		    orientations[ridx], xnum, row->ynum,
 		    row->xstep, row->ystep);
 	}
+	else if (!strncmp(sptr, "TRACKS", 6)) {
+	    char *dptr;
+	    char o;
+	    char layer[64];
+	    int roffset, rnum, rpitch;
 
+	    dptr = sptr + 6;
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%c", &o);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &roffset);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &rnum);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &rpitch);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%s", layer);
+
+	    rnum += (int)(stripevals->stretch / rpitch);
+	    if (stripevals->stretch % rpitch != 0) rnum++;
+
+	    fprintf(outfptr, "TRACKS %c %d DO %d STEP %d LAYER %s ;\n",
+		    o, roffset, rnum, rpitch, layer);
+	}
 	else
 	    fprintf(outfptr, "%s", line);
     }
