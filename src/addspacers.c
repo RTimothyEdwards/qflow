@@ -741,10 +741,14 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 
 	for (gate = Nlgates; gate; gate = gate->next) {
 	    if (gate->gatetype == NULL) {
-		int px, pitches;
-		px = (int)(roundf(gate->placedX * scale));
+		int px, po, pitches;
 
-		pitches = 1 + (px - stripeoffset_f - (stripewidth_f / 2)) / stripepitch_f;
+		px = (int)(roundf(gate->placedX * scale));
+		po = px - stripeoffset_f - (stripewidth_f / 2);
+		if (po > 0)
+		    pitches = 1 + po / stripepitch_f;
+		else
+		    pitches = -1;
 		if (pitches <= 0) continue;
 
 		px += pitches * stripewidth_f;
@@ -806,7 +810,7 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
     char line[256];
     char layer[32];
     float fllx, flly, furx, fury;
-    int   illx, iurx, pitches;
+    int   illx, iurx, pitches, po;
 
     /* If no layout stretching was done, then nothing needs to be modified  */
     if (Flags & NOSTRETCH) return;
@@ -850,17 +854,20 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 	if (!strncmp(line, "obstruction", 11)) {
 	    sscanf(line + 11, "%g %g %g %g %s", &fllx, &flly, &furx, &fury, layer);
 
+	    if (Flags & VERBOSE)
+		fprintf(stdout, "In: %g %g %g %g\n", fllx, flly, furx, fury);
+
 	    illx = (int)(roundf(fllx * scale));
 	    iurx = (int)(roundf(furx * scale));
 
-	    pitches = (illx - stripevals->offset - (stripevals->width / 2))
-			/ stripevals->pitch;
-	    if (pitches >= 0) {
+	    po = illx - stripevals->offset - (stripevals->width / 2);
+	    if (po > 0) {
+		pitches = 1 + po / stripevals->pitch;
 		illx += pitches * stripevals->width;
 	    }
-	    pitches = (iurx - stripevals->offset - (stripevals->width / 2))
-			/ stripevals->pitch;
-	    if (pitches >= 0) {
+	    po = iurx - stripevals->offset - (stripevals->width / 2);
+	    if (po > 0) {
+		pitches = 1 + po / stripevals->pitch;
 		iurx += pitches * stripevals->width;
 	    }
 
@@ -869,6 +876,9 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 
 	    fprintf(fobsout, "obstruction %g %g %g %g %s\n",
 			fllx, flly, furx, fury, layer);
+
+	    if (Flags & VERBOSE)
+		fprintf(stdout, "Out: %g %g %g %g\n", fllx, flly, furx, fury);
 	}
     }
 
@@ -1562,7 +1572,7 @@ write_output(char *definname, char *defoutname, float scale,
 	/* Assuming a typical DEF file here. . . */
 	if (!strncmp(sptr, "COMPONENTS", 10)) break;
 
-	/* Rewrite DIEAREA and ROWS */
+	/* Rewrite DIEAREA, ROWS, and TRACKS */
 	else if (!strncmp(sptr, "DIEAREA", 7)) {
 	    char *dptr;
 	    int dllx, dlly, durx, dury;
@@ -1619,7 +1629,41 @@ write_output(char *definname, char *defoutname, float scale,
 		    orientations[ridx], xnum, row->ynum,
 		    row->xstep, row->ystep);
 	}
+	else if (!strncmp(sptr, "TRACKS", 6)) {
+	    char *dptr;
+	    char o;
+	    char layer[64];
+	    int roffset, rnum, rpitch;
 
+	    dptr = sptr + 6;
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%c", &o);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &roffset);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &rnum);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%d", &rpitch);
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    while (!isspace(*dptr)) dptr++; 
+	    while (isspace(*dptr)) dptr++; 
+	    sscanf(dptr, "%s", layer);
+
+	    if (o == 'X') {
+		rnum += (int)(stripevals->stretch / rpitch);
+		if (stripevals->stretch % rpitch != 0) rnum++;
+	    }
+	    fprintf(outfptr, "TRACKS %c %d DO %d STEP %d LAYER %s ;\n",
+		    o, roffset, rnum, rpitch, layer);
+	}
 	else
 	    fprintf(outfptr, "%s", line);
     }
