@@ -1793,8 +1793,8 @@ write_output(char *definname, char *defoutname, float scale,
 	    fprintf(outfptr, "\n");
 
 	    lefl = LefFindLayerByNum(gate->taps[0]->layer);
-	    urx = (int)(roundf((gate->taps[0]->x2 - gate->taps[0]->x1) * scale));
-	    ury = (int)(roundf((gate->taps[0]->y2 - gate->taps[0]->y1) * scale));
+	    urx = (int)(roundf((gate->taps[0]->x2 - gate->taps[0]->x1) * scale) / 2.0);
+	    ury = (int)(roundf((gate->taps[0]->y2 - gate->taps[0]->y1) * scale) / 2.0);
 	    llx = -urx;
 	    lly = -ury;
 	    px =  (int)(roundf(gate->placedX * scale));
