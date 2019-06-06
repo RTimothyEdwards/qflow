@@ -86,6 +86,33 @@ DefFindRow(int yval)
 }
 
 /*--------------------------------------------------------------*/
+/* Find the lowest row and return the row record.		*/
+/*--------------------------------------------------------------*/
+
+struct nlist *rowfindlowest(struct hashlist *p, void *clientdata)
+{
+    ROW row = (char *)(p->ptr);
+    ROW *lrow = (ROW *)clientdata;
+
+    if ((*lrow == NULL) || (row->y < (*lrow)->y))
+	*lrow = row;
+
+    return NULL;
+}
+
+/*--------------------------------------------------------------*/
+
+ROW
+DefLowestRow()
+{
+    ROW row = NULL;
+
+    RecurseHashTablePointer(&RowTable, rowfindlowest, (void *)(&row));
+
+    return row;
+}
+
+/*--------------------------------------------------------------*/
 
 NET
 DefFindNet(char *name)

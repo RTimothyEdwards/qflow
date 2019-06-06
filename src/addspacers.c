@@ -66,6 +66,7 @@ typedef struct _corebbox {
     int sitew;	    /* Core site width */
     int siteh;	    /* Core site height */
     int fillmin;    /* Minimum fill cell width */
+    int orient;	    /* Orientation of the first (lowest) row */
 } corebbox;
 
 /* Structure used to hold the final calculated pitch and width of stripes */
@@ -278,7 +279,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 {
     GATE gate, newfillinst;
     ROW row;
-    int isfill;
+    int isfill, orient;
     int corew = 1, coreh = 0, testh;
     int instx, insty, instw, insth, fnamelen;
     int x, y, dx, nx, fillmin;
@@ -423,6 +424,30 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     if (Flags & VERBOSE) fprintf(stdout, "Adding fill cells.\n");
 
+    /* Find the orientation of the first row and record this	    */
+    /* in corearea.  NOTE:  This is simpler if the DEF file records */
+    /* ROWs, something that needs to be done in place2def.	    */
+
+    row = DefFindRow(corelly);
+    if (row) {
+	corearea->orient = row->orient & (RN | RS);
+    }
+    else {
+	corearea->orient = RN;
+	y = corelly;
+	x = corellx;
+	while (x < coreurx) {
+	    sprintf(posname, "%dx%d", x, y);
+	    gate = (GATE)HashLookup(posname, &CellPosTable);
+	    if (gate != NULL) {
+		corearea->orient = gate->orient & (RN | RS);
+		break;
+	    }
+	    x += testfill->width;
+	}
+    }
+    orient = corearea->orient;
+
     /* Starting from the lower-left corner, find gate at each site  */
     /* position.  If there is no gate at the site position, then    */
     /* find the next gate forward, and add fill.		    */
@@ -478,7 +503,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		    newfillinst->placedY = (double)y / (double)scale;
 		    newfillinst->clientdata = (void *)NULL;
 		    row = DefFindRow(y);
-		    newfillinst->orient = (row) ? row->orient : RN;
+		    newfillinst->orient = (row) ? row->orient : orient;
 		    DefAddGateInstance(newfillinst);
 
 		    /* Hash the new instance position */
@@ -493,6 +518,9 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		x += (int)(roundf(gate->width * scale));
 	    }
 	}
+	/* Flip orientation each row (NOTE:  This is not needed if ROW	*/
+	/* statements are in the DEF file!				*/
+	orient = (orient == RN) ? RS : RN;
     }
 
     if (fillcells) {
@@ -548,11 +576,13 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     int stripepitch_i, stripewidth_i, stripeoffset_i;
     int stripepitch_f, stripewidth_f, stripeoffset_f;
     int totalw;
+    int orient;
     int nextx, totalfx;
     FILLLIST fillseries, testfill, newfill;
     SINFO stripevals;
     char posname[32];
     GATE gate, newfillinst;
+    ROW row;
 
     stripevals = (SINFO)malloc(sizeof(stripeinfo));
     stripevals->pitch = 0;
@@ -686,6 +716,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 	/* width is increased by the total width of all stripes, and	*/
 	/* the extra fill is added as close to each stripe as possible.	*/
 
+	orient = corearea->orient;
         for (y = corearea->lly; y < corearea->ury; y += corearea->siteh) {
 	    nextx = corearea->llx + stripeoffset_f - stripewidth_f / 2;
 	    totalfx = 0;
@@ -726,6 +757,9 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 		    newfillinst->gatename = strdup(posname);
 		    newfillinst->placedX = (double)(x + totalfx) / (double)scale;
 		    newfillinst->placedY = (double)y / (double)scale;
+		    newfillinst->clientdata = (void *)NULL;
+		    row = DefFindRow(y);
+		    newfillinst->orient = (row) ? row->orient : orient;
 		    DefAddGateInstance(newfillinst);
 
 		    /* Position will not be revisited, so no need to 	*/
@@ -735,6 +769,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 		}
 		nextx += stripepitch_f;
 	    }
+	    orient = (orient == RN) ? RS : RN;
 	}
 
 	/* Adjust pins */
@@ -1063,7 +1098,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     float syt, syb;
     double vw, vh;
     int cutlayer, lcut;
-    int gnd_ymin, gnd_ymax, vdd_ymin, vdd_ymax;
+    int gnd_ymin, gnd_ymax, vdd_ymin, vdd_ymax, gate_ymin;
     char *powername, *groundname;
     int corew;
 
@@ -1079,6 +1114,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 
     GATE fillgate = fillcells->gate;
     DSEG r;
+    ROW row;
 
     lbot = 0;
     for (i = 0; i < fillgate->nodes; i++) {
@@ -1132,6 +1168,27 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     r = fillcells->gate->taps[j];
     gnd_ymin =  (int)(roundf(r->y1 * scale));
     gnd_ymax =  (int)(roundf(r->y2 * scale));
+
+    /* If the first row is inverted then the ymin/ymax values need to be    */
+    /* adjusted.							    */
+
+    row = DefLowestRow();   /* Try this first */
+    if (row) {
+	if (row->orient & RS) {
+	    gnd_ymax = corearea->siteh - gnd_ymax;
+	    gnd_ymin = corearea->siteh - gnd_ymin;
+	    vdd_ymax = corearea->siteh - vdd_ymax;
+	    vdd_ymin = corearea->siteh - vdd_ymin;
+	}
+    }
+    else {
+	if (corearea->orient & RS) {
+	    gnd_ymax = corearea->siteh - gnd_ymax;
+	    gnd_ymin = corearea->siteh - gnd_ymin;
+	    vdd_ymax = corearea->siteh - vdd_ymax;
+	    vdd_ymin = corearea->siteh - vdd_ymin;
+	}
+    }
 
     n = strlen(pattern);
 
