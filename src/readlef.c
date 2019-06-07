@@ -2567,13 +2567,15 @@ enum lef_layer_keys {LEF_LAYER_TYPE=0, LEF_LAYER_WIDTH,
 	LEF_LAYER_ANTENNADIFF, LEF_LAYER_ANTENNASIDE,
 	LEF_LAYER_AGG_ANTENNA, LEF_LAYER_AGG_ANTENNADIFF,
 	LEF_LAYER_AGG_ANTENNASIDE,
+	LEF_LAYER_ACCURRENT, LEF_LAYER_DCCURRENT,
 	LEF_VIA_DEFAULT, LEF_VIA_LAYER, LEF_VIA_RECT,
 	LEF_VIA_ENCLOSURE, LEF_VIA_PREFERENCLOSURE,
 	LEF_VIARULE_OVERHANG,
 	LEF_VIARULE_METALOVERHANG, LEF_VIARULE_VIA,
 	LEF_VIARULE_GENERATE, LEF_LAYER_END};
 
-enum lef_spacing_keys {LEF_SPACING_RANGE=0, LEF_SPACING_BY, LEF_END_LAYER_SPACING};
+enum lef_spacing_keys {LEF_SPACING_RANGE=0, LEF_SPACING_BY,
+	LEF_SPACING_ADJACENTCUTS, LEF_END_LAYER_SPACING};
 
 void
 LefReadLayerSection(f, lname, mode, lefl)
@@ -2622,6 +2624,8 @@ LefReadLayerSection(f, lname, mode, lefl)
 	"ANTENNACUMAREARATIO",
 	"ANTENNACUMDIFFAREARATIO",
 	"ANTENNACUMSIDEAREARATIO",
+	"ACCURRENTDENSITY",
+	"DCCURRENTDENSITY",
 	"DEFAULT",
 	"LAYER",
 	"RECT",
@@ -2638,6 +2642,7 @@ LefReadLayerSection(f, lname, mode, lefl)
     static char *spacing_keys[] = {
 	"RANGE",
 	"BY",
+	"ADJACENTCUTS",
 	";",
 	NULL
     };
@@ -2741,6 +2746,39 @@ LefReadLayerSection(f, lname, mode, lefl)
 		}
 		LefEndStatement(f);
 		break;
+	    case LEF_LAYER_ACCURRENT:
+		// Not used, but syntax is f**king stupid and has to be
+		// specially handled, or it breaks the parser.
+		token = LefNextToken(f, TRUE);	/* "AVERAGE", ... */
+		token = LefNextToken(f, TRUE);	/* Value or "FREQUENCY" */
+		LefEndStatement(f);
+		if (!strcmp(token, "FREQUENCY"))
+		{
+		    while (TRUE) {
+			token = LefNextToken(f, TRUE);
+			LefEndStatement(f);
+			if (!strcmp(token, "TABLEENTRIES")) {
+			    break;
+			}
+		    }
+		}
+		break;
+	    case LEF_LAYER_DCCURRENT:
+		// Not used.  See comments above for ACCURRENTDENSITY
+		token = LefNextToken(f, TRUE);	    /* "AVERAGE" */
+		token = LefNextToken(f, TRUE);	    /* Value or "WIDTH" */
+		LefEndStatement(f);
+		if (!strcmp(token, "WIDTH"))
+		{
+		    while (TRUE) {
+			token = LefNextToken(f, TRUE);
+			LefEndStatement(f);
+			if (!strcmp(token, "TABLEENTRIES")) {
+			    break;
+			}
+		    }
+		}
+		break;
 	    case LEF_LAYER_MINWIDTH:
 		// Not handled if width is already defined.
 		if ((lefl->lefClass != CLASS_ROUTE) ||
@@ -2832,7 +2870,12 @@ LefReadLayerSection(f, lname, mode, lefl)
 		    newrule->next = NULL;
 		    lefl->info.via.spacing->next = newrule;
 		}
-		else {
+		else if (typekey == LEF_SPACING_ADJACENTCUTS) {
+		    /* ADJACENTCUTS not handled here (yet) */
+		    /* Need this for power post generation in addspacers */
+		    /* (Do nothing here) */
+		}
+		else if (typekey >= 0) {
 		    newrule->spacing = dvalue / (double)oscale;
 		    newrule->width = 0.0;
 		    newrule->next = lefl->info.route.spacing;
@@ -3021,6 +3064,7 @@ LefReadLayerSection(f, lname, mode, lefl)
 		else
 		    lefl->info.route.method = CALC_AGG_SIDEAREA;
 		LefEndStatement(f);
+		break;
 	    case LEF_LAYER_ANTENNADIFF:
 	    case LEF_LAYER_AGG_ANTENNADIFF:
 		/* Not specifically handling these antenna types */
