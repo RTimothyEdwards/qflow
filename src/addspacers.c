@@ -1099,6 +1099,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     double vw, vh;
     int cutlayer, lcut;
     int gnd_ymin, gnd_ymax, vdd_ymin, vdd_ymax, gate_ymin;
+    int gnd_xmin, vdd_xmin, tmp;
     char *powername, *groundname;
     int corew;
 
@@ -1144,6 +1145,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     r = fillcells->gate->taps[i];
     vdd_ymin =  (int)(roundf(r->y1 * scale));
     vdd_ymax =  (int)(roundf(r->y2 * scale));
+    vdd_xmin =  (int)(roundf(r->x1 * scale));
 
     for (j = 0; j < fillgate->nodes; j++) {
 	testuse = fillgate->use[j];
@@ -1168,6 +1170,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     r = fillcells->gate->taps[j];
     gnd_ymin =  (int)(roundf(r->y1 * scale));
     gnd_ymax =  (int)(roundf(r->y2 * scale));
+    gnd_xmin =  (int)(roundf(r->x1 * scale));
 
     /* If the first row is inverted then the ymin/ymax values need to be    */
     /* adjusted.							    */
@@ -1179,6 +1182,14 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	    gnd_ymin = corearea->siteh - gnd_ymin;
 	    vdd_ymax = corearea->siteh - vdd_ymax;
 	    vdd_ymin = corearea->siteh - vdd_ymin;
+
+	    tmp = gnd_ymax;
+	    gnd_ymax = gnd_ymin;
+	    gnd_ymin = tmp; 
+
+	    tmp = vdd_ymax;
+	    vdd_ymax = vdd_ymin;
+	    vdd_ymin = tmp; 
 	}
     }
     else {
@@ -1187,6 +1198,14 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	    gnd_ymin = corearea->siteh - gnd_ymin;
 	    vdd_ymax = corearea->siteh - vdd_ymax;
 	    vdd_ymin = corearea->siteh - vdd_ymin;
+
+	    tmp = gnd_ymax;
+	    gnd_ymax = gnd_ymin;
+	    gnd_ymin = tmp; 
+
+	    tmp = vdd_ymax;
+	    vdd_ymax = vdd_ymin;
+	    vdd_ymin = tmp; 
 	}
     }
 
@@ -1206,7 +1225,16 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	/* Generate comb structures in metal1 on either side to connect	*/
 	/* power and ground.						*/
 
-	mspace = (int)(roundf(LefGetRouteSpacing(lbot) * scale));
+	/* Get wide spacing rule relative to stripe width */
+	mspace = (int)(roundf(LefGetRouteWideSpacing(lbot, 
+			(float)(stripevals->width) / scale) * scale));
+
+	/* Account for ground or power bus extending beyond the cell	*/
+	/* bounding box.  Assumes that the extension is symmetric on	*/
+	/* left and right, and the same for power and ground.		*/
+
+	if (gnd_xmin < 0) mspace -= gnd_xmin;
+	else if (vdd_xmin < 0) mspace -= vdd_xmin;
 	corew = corearea->sitew;
 
 	/* Generate power comb on left */
@@ -1234,8 +1262,8 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	prail->stripe->next = NULL;
 	prail->stripe->x1 = -(float)(stripevals->width / 2) / scale;
 	prail->stripe->x2 = (float)(stripevals->width / 2) / scale;
-	prail->stripe->y1 = (float)corearea->lly / scale;
-	prail->stripe->y2 = (float)corearea->ury / scale;
+	prail->stripe->y1 = (float)(corearea->lly - hh) / scale;
+	prail->stripe->y2 = (float)(corearea->ury + hh) / scale;
 	prail->posts = NULL;
 
 	/* Create all posts */
@@ -1280,8 +1308,8 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	prail->stripe->next = NULL;
 	prail->stripe->x1 = -(float)(stripevals->width / 2) / scale;
 	prail->stripe->x2 = (float)(stripevals->width / 2) / scale;
-	prail->stripe->y1 = (float)corearea->lly / scale;
-	prail->stripe->y2 = (float)corearea->ury / scale;
+	prail->stripe->y1 = (float)(corearea->lly - hh) / scale;
+	prail->stripe->y2 = (float)(corearea->ury + hh) / scale;
 	prail->posts = NULL;
 
 	/* Create all posts */

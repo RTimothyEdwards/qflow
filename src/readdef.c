@@ -91,7 +91,7 @@ DefFindRow(int yval)
 
 struct nlist *rowfindlowest(struct hashlist *p, void *clientdata)
 {
-    ROW row = (char *)(p->ptr);
+    ROW row = (ROW)(p->ptr);
     ROW *lrow = (ROW *)clientdata;
 
     if ((*lrow == NULL) || (row->y < (*lrow)->y))
