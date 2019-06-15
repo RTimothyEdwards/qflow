@@ -775,6 +775,15 @@ endif
 
 chmod u+x ${execfile}
 
+# Note: Support legacy behavior;  ${magicrc} may be a full path or may be
+# relative to ${techdir}
+
+if ( -f ${techdir}/${magicrc} ) then
+    set magicrc=${techdir}/${magicrc}
+else if (!( -f ${magicrc} )) then
+    echo "Error:  Technology file not in ${techdir}/${magicrc} or ${magicrc}!"
+endif
+
 # Drop the magic startup file into the layout directory if it does not exist
 # If it exists but the technology directory has a newer file, or if we are
 # changing technologies, then copy the old file to a backup and create a new
@@ -786,12 +795,12 @@ if (-d ${layoutdir}) then
    else if ( $newtech == 1 ) then
       echo "Technology changed:  Old .magicrc file moved to .magicrc.orig"
       cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
-      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
-   else if ( -M ${techdir}/${magicrc} > -M ${layoutdir}/.magicrc ) then
+      cp ${magicrc} ${layoutdir}/.magicrc
+   else if ( -M ${magicrc} > -M ${layoutdir}/.magicrc ) then
       echo -n "Technology .magicrc file has been updated.  "
       echo "Old .magicrc file moved to .magicrc.orig"
       cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
-      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+      cp ${magicrc} ${layoutdir}/.magicrc
    endif
 endif
 
