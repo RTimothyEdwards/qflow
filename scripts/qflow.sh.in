@@ -791,7 +791,7 @@ endif
 
 if (-d ${layoutdir}) then
    if (!(-f ${layoutdir}/.magicrc)) then
-      cp ${techdir}/${magicrc} ${layoutdir}/.magicrc
+      cp ${magicrc} ${layoutdir}/.magicrc
    else if ( $newtech == 1 ) then
       echo "Technology changed:  Old .magicrc file moved to .magicrc.orig"
       cp ${layoutdir}/.magicrc ${layoutdir}/.magicrc.orig
