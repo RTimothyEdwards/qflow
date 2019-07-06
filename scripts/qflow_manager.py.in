@@ -2187,12 +2187,14 @@ class QflowManager(ttk.Frame):
 
     def remove_project_vars(self):
         varsfile = self.rootpath + '/project_vars.sh'
-        os.remove(varsfile)
+        if os.path.exists(varsfile):
+            os.remove(varsfile)
 
     def remove_par_file(self):
         ldir = self.layoutdir
         parfile = ldir + '/' + self.project + '.par'
-        os.remove(parfile)
+        if os.path.exists(parfile):
+            os.remove(parfile)
 
     # Read an existing project_vars.sh file and seed the values in the GUI
     # It is okay for project_vars.sh file not to exist (GUI values will

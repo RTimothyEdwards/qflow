@@ -235,7 +235,7 @@ int main (int argc, char *argv[])
     if (optind < argc) {
 	char *pptr;
 
-        definname = (char *)malloc(strlen(argv[optind] + 5));
+        definname = (char *)malloc(strlen(argv[optind]) + 5);
 	strcpy(definname, argv[optind]);
 	pptr = strrchr(argv[optind], '.');
 	if (pptr == NULL) strcat(definname, ".def");

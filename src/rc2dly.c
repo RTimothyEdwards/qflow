@@ -1132,7 +1132,7 @@ int main (int argc, char* argv[]) {
             if (verbose > 3) print_node(last_driver->node);
 
             elmdlyptr currElm = calloc(1, sizeof(elmdly));
-            currElm->name = calloc(1, sizeof(char) * strlen(tokens[0]));
+            currElm->name = calloc(1, sizeof(char) * (strlen(tokens[0]) + 1));
             // name the Elmore Delay after the net
             strcpy(currElm->name, tokens[0]);
             currElm->src = last_driver->node;
