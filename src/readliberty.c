@@ -167,6 +167,7 @@ advancetoken(FILE *flib, char delimiter)
 
     // Remove any trailing whitespace
     tptr = token + strlen(token) - 1;
+    if (tptr < token) tptr = token;
     while (isblank(*tptr)) {
 	*tptr = '\0';
 	tptr--;
@@ -1303,6 +1304,7 @@ read_liberty(char *libfile, char *pattern)
 					    *(newcell->values + j * reftable->tsize
 							+ i) = gval * time_unit;
 					    while (*iptr != ' ' && *iptr != '\"' &&
+							*iptr != '\0' &&
 							*iptr != ',' || *iptr == '\\')
 						iptr++;
 					}
