@@ -2117,7 +2117,8 @@ class QflowManager(ttk.Frame):
                 if dmatch:
                     self.power.set(0)
         if remove:
-            os.remove(varsfile)
+            if os.path.exists(varsfile):
+                os.remove(varsfile)
         return True
 
     # Regenerate the project_vars.sh file from values in the GUI
@@ -2323,7 +2324,8 @@ class QflowManager(ttk.Frame):
                     else:
                         self.place_graphics.set(0)
         if remove:
-            os.remove(parfile)
+            if os.path.exists(parfile):
+                os.remove(parfile)
 
     # Regenerate the .par file from values in the GUI
 
