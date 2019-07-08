@@ -133,6 +133,16 @@ if ( ${?hard_macros} ) then
    end
 endif
 
+if (! ${?qrouter_nocleanup} ) then
+   set qrouter_nocleanup = ""
+else
+   if (${qrouter_nocleanup} == 0) then
+      set qrouter_nocleanup = ""
+   else
+      set qrouter_nocleanup = "true"
+   endif
+endif
+
 if (!($?logdir)) then
    set logdir=${projectpath}/log
 endif
@@ -771,7 +781,7 @@ if ($makedef == 1) then
       cat ${rootname}.cfg2 >> ${rootname}.cfg
    else
       if (${scripting} == "T") then
-	 echo "qrouter::standard_route ${rootname}_route.def false" >> ${rootname}.cfg
+	 echo "qrouter::standard_route ${rootname}_route.def false ${qrouter_nocleanup}" >> ${rootname}.cfg
 	 # write_delays folded into standard_route in qrouter version 1.4.21.
 	 if (${major} == 1 && ${minor} == 4 && ${subv} < 21) then
 	    echo "qrouter::write_delays ${rootname}_route.rc" >> ${rootname}.cfg

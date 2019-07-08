@@ -732,6 +732,12 @@ if ( ! -f ${userfile} ) then
       echo \# set qrouter_options = >> ${userfile}
    endif
 
+   if ( ${?qrouter_nocleanup} ) then
+      echo \# set qrouter_nocleanup = \"${qrouter_nocleanup}\" >> ${userfile}
+   else
+      echo \# set qrouter_nocleanup = >> ${userfile}
+   endif
+
    echo "" >> ${userfile}
    echo "# STA command options:" >> ${userfile}
    echo "# -------------------------------------------" >> ${userfile}
