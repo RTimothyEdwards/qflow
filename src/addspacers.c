@@ -483,20 +483,23 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 				fprintf(stderr, "limited fill cell widths.\n");
 			    }
 			    Flags |= FILLWARNED;    // Do not repeat this message
+			    x = nx;
+			    dx = 0;
+			    break;
 			}
 			else {
 			    fprintf(stderr, "Error: Empty slot at (%g, %g) is smaller"
 				    " than any available fill cell.\n",
 				    (float)x / scale, (float)y / scale);
 			}
-			x = nx;
-			dx = 0;
-			break;
 		    }
 
 		    /* Create new fill instance */
 		    newfillinst = (GATE)malloc(sizeof(struct gate_));
-		    newfillinst->gatetype = testfill->gate;
+		    if (testfill)
+			newfillinst->gatetype = testfill->gate;
+		    else
+			newfillinst->gatetype = NULL;	/* placeholder */
 		    sprintf(posname, "FILL%dx%d", x, y);
 		    newfillinst->gatename = strdup(posname);
 		    newfillinst->placedX = (double)x / (double)scale;
@@ -510,8 +513,15 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		    sprintf(posname, "%dx%d", x, y);
 		    HashPtrInstall(posname, newfillinst, &CellPosTable);
 
-		    dx -= testfill->width;
-		    x += testfill->width;
+		    if (testfill) {
+			x += testfill->width;
+			dx -= testfill->width;
+		    }
+		    else {
+			newfillinst->width = dx;
+			x += dx;
+			dx = 0;
+		    }
 		}
 	    }
 	    else {

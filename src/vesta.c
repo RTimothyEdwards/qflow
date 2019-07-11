@@ -383,7 +383,7 @@ unsigned char cleanup;       /* Clean up net name syntax */
 /*--------------------------------------------------------------*/
 
 char *
-advancetoken(FILE *flib, char delimiter)
+advancetoken0(FILE *flib, char delimiter, char nocontline)
 {
     static char *token = NULL;
     static char line[LIB_LINE_MAX];
@@ -434,7 +434,7 @@ advancetoken(FILE *flib, char delimiter)
             /* Keep pulling stuff in if the line ends with a continuation character */
             lptr = line;
             while (*lptr != '\n' && *lptr != '\0') {
-                if (*lptr == '\\') {
+                if ((*lptr == '\\') && (nocontline == 0)) {
                     // To be considered a line continuation marker, there must be
                     // only whitespace or newline between the backslash and the
                     // end of the string.
@@ -538,6 +538,26 @@ advancetoken(FILE *flib, char delimiter)
         tptr--;
     }
     return token;
+}
+
+/*--------------------------------------------------------------*/
+/* Wrapper for advancetoken0():  Default nocontline = 0		*/
+/*--------------------------------------------------------------*/
+
+char *
+advancetoken(FILE *flib, char delimiter)
+{
+    return advancetoken0(flib, delimiter, 0);
+}
+
+/*--------------------------------------------------------------*/
+/* Wrapper for advancetoken0():  nocontline = 1	for delay file	*/
+/*--------------------------------------------------------------*/
+
+char *
+advancetokennocont(FILE *flib, char delimiter)
+{
+    return advancetoken0(flib, delimiter, 1);
 }
 
 /*--------------------------------------------------------------*/
@@ -3143,7 +3163,7 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
     /* be a standard delimiter, breaking up certain yosys-generated	*/
     /* net names.							*/
     
-    token = advancetoken(fdly, '\n');
+    token = advancetokennocont(fdly, '\n');
     result = token;
 
     while (token != NULL) {
@@ -3159,6 +3179,22 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 
 	if ((testnet == NULL) && cleanup) {
 	    char *mchr, *dchr;
+	    /* Handle the insane backslash-escape names in verilog.
+	     * To make these compatible with SPICE, qflow opts to
+	     * replace the ending space character with another
+	     * backslash.  The 2nd backslash has to be replaced by
+	     * the original space character to match the original
+	     * verilog net name.
+	     */
+	    
+	    if (*token == '\\') {
+	        if ((mchr = strchr(token + 1, '\\')) != NULL) {
+		    dchr = strchr(token + 1, ' ');
+		    if ((dchr == NULL) || (dchr > mchr)) *mchr = ' ';
+		}
+	    }
+
+	    /* Other, legacy stuff. */
 	    if ((mchr = strrchr(token, '<')) != NULL) {
 		if ((dchr = strrchr(token, '>')) != NULL) {
 		    if (mchr < dchr) {
@@ -3264,7 +3300,7 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 			testnet->fanout);
         }
 
-        token = advancetoken(fdly, '\n');
+        token = advancetokennocont(fdly, '\n');
     }
     if (result == NULL) {
 	fprintf(stderr, "ERROR: Unexpected end-of-file while reading delay file.\n");
