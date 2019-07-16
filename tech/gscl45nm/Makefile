@@ -13,7 +13,7 @@ QFLOW_LIB_DIR = /usr/local/share/qflow
 
 TECH_FILES = gscl45nm.par gscl45nm.lef gscl45nm.sh
 TECH_FILES += gscl45nm.sp gscl45nm.magicrc gscl45nm.prm
-TECH_FILES += gscl45nm.tech gscl45nm.lib
+TECH_FILES += gscl45nm.tech gscl45nm.lib gscl45nm.gds
 TECH_FILES += gscl45nm.v gscl45nm_setup.tcl
 
 TECHINSTALL = ${QFLOW_LIB_DIR}/tech
