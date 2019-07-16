@@ -12,7 +12,7 @@ tech
 end
 
 version
- version 20171011
+ version 20190716
  description "NCSU FreePDK45: Open rules and DRC"
 end
 
@@ -114,7 +114,6 @@ types
  metal10 obsm10
 
  comment glass
- comment boundary
  comment fillblock
 
  comment comment
@@ -189,8 +188,6 @@ aliases
   alldiffcont	   allndiffcont,allpdiffcont
 
   allcont	   alldiffcont,pc
-
-  allboundary	   boundary
 
   allm1		   *m1,rm1
   allm2		   *m2,rm2
@@ -267,7 +264,6 @@ styles
   obsm10    metal10
   glass	    overglass
   comment   comment
-  boundary  cwell subcircuit
   error_p   error_waffle
   error_s   error_waffle
   error_ps  error_waffle
@@ -346,35 +342,482 @@ cifoutput
 ############################################################################
 style gdsii
 ############################################################################
- scalefactor 25 angstroms
+ scalefactor 25 nanometers
  options calma-permissive-labels
- gridlimit 25
+ gridlimit 5
 
-# VIA generation rules only for LEF file input
+ layer METAL1   *m1,obsm1,rm1
+	calma 21 0
+
+ layer M1_PORT
+	labels *m1,obsm1,rm1 port
+	calma  21 1
+
+ layer M1_TEXT
+	labels *m1,obsm1,rm1 noport
+	calma  21 2
+
+ layer METAL2   *m2,obsm2,rm2
+	calma 23 0
+ 
+ layer M2_PORT
+	labels *m2,obsm2,rm2 port
+	calma  23 1
+
+ layer M2_TEXT
+	labels *m2,obsm2,rm2 noport
+	calma  23 2
+
+ layer METAL3   *m3,obsm3,rm3
+	calma 25 0
+ 
+ layer M3_PORT
+	labels *m3,obsm3,rm3 port
+	calma  25 1
+
+ layer M3_TEXT
+	labels *m3,obsm3,rm3 noport
+	calma  25 2
+
+ layer METAL4   *m4,obsm4,rm4
+	calma 27 0
+ 
+ layer M4_PORT
+	labels *m4,obsm4,rm4 port
+	calma  27 1
+
+ layer M4_TEXT
+	labels *m4,obsm4,rm4 noport
+	calma  27 2
+
+ layer METAL5   *m5,obsm5,rm5
+	calma 29 0
+ 
+ layer M5_PORT
+	labels *m5,obsm5,rm5 port
+	calma  29 1
+
+ layer M5_TEXT
+	labels *m5,obsm5,rm5 noport
+	calma  29 2
+
+ layer METAL6   *m6,obsm6,rm6
+	calma 31 0
+ 
+ layer M6_PORT
+	labels *m6,obsm6,rm6 port
+	calma  31 1
+
+ layer M6_TEXT
+	labels *m6,obsm6,rm6 noport
+	calma  31 2
+
+ layer METAL7   *m7,obsm7,rm7
+	calma 33 0
+ 
+ layer M7_PORT
+	labels *m7,obsm7,rm7 port
+	calma  33 1
+
+ layer M7_TEXT
+	labels *m7,obsm7,rm7 noport
+	calma  33 2
+
+ layer METAL8   *m8,obsm8,rm8
+	calma 35 0
+ 
+ layer M8_PORT
+	labels *m8,obsm8,rm8 port
+	calma  35 1
+
+ layer M8_TEXT
+	labels *m8,obsm8,rm8 noport
+	calma  35 2
+
+ layer METAL9   *m9,obsm9,rm9
+	calma 37 0
+ 
+ layer M9_PORT
+	labels *m9,obsm9,rm9 port
+	calma  37 1
+
+ layer M9_TEXT
+	labels *m9,obsm9,rm9 noport
+	calma  37 2
+
+ layer METAL10  *m10,obsm10,rm10
+	calma 39 0
+
+ layer M10_PORT
+	labels *m10,obsm10,rm10 port
+	calma  39 1
+
+ layer M10_TEXT
+	labels *m10,obsm10,rm10 noport
+	calma  39 2
+
+ layer BOUNDARY
+	boundary
+	calma 63 0
+
+ layer TEXT comment
+	labels comment
+	calma 63 1
+
+# VIA generation rules
  layer VIA1 	via1
- 	squares-grid 0 650 750
+ 	squares-grid 0 65 75
+	calma	22 0
  layer VIA2 	via2
- 	squares-grid 0 700 850
+ 	squares-grid 0 70 85
+	calma	24 0
  layer VIA3	via3
- 	squares-grid 0 700 850
+ 	squares-grid 0 70 85
+	calma	26 0
  layer VIA4	via4
- 	squares-grid 0 1400 1600 
+ 	squares-grid 0 140 160
+	calma	28 0
  layer VIA5	via5
- 	squares-grid 0 1400 1600
+ 	squares-grid 0 140 160
+	calma	30 0
  layer VIA6	via6
- 	squares-grid 0 1400 1600
+ 	squares-grid 0 140 160
+	calma	32 0
  layer VIA7	via7
- 	squares-grid 0 4000 4400
+ 	squares-grid 0 400 440
+	calma	34 0
  layer VIA8	via8
- 	squares-grid 0 4000 4400
+ 	squares-grid 0 400 440
+	calma	36 0
  layer VIA9	via9
- 	squares-grid 0 8000 8800
+ 	squares-grid 0 800 880
+	calma	38 0
+
+ layer CONT	pc,ndc,nsc,pdc,psc
+	squares-grid 0 65 75
+	calma	16 0
+
+ layer POLY	*poly,nfet,pfet
+	labels	poly
+	calma   15 0
+
+ layer DIFF	*ndiff,*pdiff,*nsd,*psd
+	calma	 5 0
+
+ layer THINOX	*ndiff,*pdiff,nfet,pfet
+	grow	2000
+	shrink	1000
+	or	*nsd,*psd
+	grow	200
+	shrink	200
+	calma	6 0
+
+ layer NIMP	*ndiff,*nsc,nfet
+	grow	 500
+	calma	 7 0
+
+ layer PIMP	*pdiff,*psc,pfet
+	grow	 500
+	calma	 8 0
+
+ layer PWELL	 *ndiff,nfet,*psc
+	grow	 500
+	or	 psub
+	labels	 psub
+	calma	 2 0
+
+ layer NWELL	 *pdiff,pfet,*nsc
+	grow	 500
+	or	 nwell
+	labels	 nwell
+	calma	 1 0
 
 end
 
 #-----------------------------------------------------------------------
 cifinput
 #-----------------------------------------------------------------------
+
+style gdsii
+  scalefactor 25 nanometers
+
+  ignore THINOX
+
+  layer nwell NWELL
+  labels NWELL
+
+  layer psub PWELL
+  labels PWELL
+
+  layer metal1 METAL1
+  labels METAL1
+
+  layer metal1 M1_PORT
+  labels M1_PORT port
+
+  layer metal1 M1_TEXT
+  labels M1_TEXT text
+
+  layer metal2 METAL2
+  labels METAL2
+
+  layer metal2 M2_PORT
+  labels M2_PORT port
+
+  layer metal2 M2_TEXT
+  labels M2_TEXT text
+
+  layer metal3 METAL3
+  labels METAL3
+
+  layer metal3 M3_PORT
+  labels M3_PORT port
+
+  layer metal3 M3_TEXT
+  labels M3_TEXT text
+
+  layer metal4 METAL4
+  labels METAL4
+
+  layer metal4 M4_PORT
+  labels M4_PORT port
+
+  layer metal4 M4_TEXT
+  labels M4_TEXT text
+
+  layer metal5 METAL5
+  labels METAL5
+
+  layer metal5 M5_PORT
+  labels M5_PORT port
+
+  layer metal5 M5_TEXT
+  labels M5_TEXT text
+
+  layer metal6 METAL6
+  labels METAL6
+
+  layer metal6 M6_PORT
+  labels M6_PORT port
+
+  layer metal6 M6_TEXT
+  labels M6_TEXT text
+
+  layer metal7 METAL7
+  labels METAL7
+
+  layer metal7 M7_PORT
+  labels M7_PORT port
+
+  layer metal7 M7_TEXT
+  labels M7_TEXT text
+
+  layer metal8 METAL8
+  labels METAL8
+
+  layer metal8 M8_PORT
+  labels M8_PORT port
+
+  layer metal8 M8_TEXT
+  labels M8_TEXT text
+
+  layer metal9 METAL9
+  labels METAL9
+
+  layer metal9 M9_PORT
+  labels M9_PORT port
+
+  layer metal9 M9_TEXT
+  labels M9_TEXT text
+
+  layer metal10 METAL10
+  labels METAL10
+
+  layer metal10 M10_PORT
+  labels M10_PORT port
+
+  layer metal10 M10_TEXT
+  labels M10_TEXT text
+
+  layer via1 VIA1
+  and METAL1
+  and METAL2
+  labels VIA1
+
+  layer via2 VIA2
+  and METAL2
+  and METAL3
+  labels VIA2
+
+  layer via3 VIA3
+  and METAL3
+  and METAL4
+  labels VIA3
+
+  layer via4 VIA4
+  and METAL4
+  and METAL5
+  labels VIA4
+
+  layer via5 VIA5
+  and METAL5
+  and METAL6
+  labels VIA5
+
+  layer via6 VIA6
+  and METAL6
+  and METAL7
+  labels VIA6
+
+  layer via7 VIA7
+  and METAL7
+  and METAL8
+  labels VIA7
+
+  layer via8 VIA8
+  and METAL8
+  and METAL9
+  labels VIA8
+
+  layer via9 VIA9
+  and METAL9
+  and METAL10
+  labels VIA9
+
+  templayer boundary BOUNDARY
+  boundary
+  calma BOUNDARY 63 0
+
+  layer comment TEXT
+  labels TEXT
+ 
+  layer pc CONT
+  and METAL1
+  and POLY
+
+  layer poly POLY
+  and-not DIFF
+  and-not CONT
+  labels POLY
+
+  layer ndc CONT
+  and METAL1
+  and DIFF
+  and NIMP
+  and-not NWELL
+
+  layer pdc CONT
+  and METAL1
+  and DIFF
+  and PIMP
+  and NWELL
+  and-not PWELL
+
+  layer nfet POLY
+  and DIFF
+  and NIMP
+  and-not NWELL
+  and-not CONT
+  labels POLY
+
+  layer pfet POLY
+  and DIFF
+  and PIMP
+  and-not PWELL
+  and-not CONT
+  labels POLY
+
+  layer ndiff DIFF
+  and NIMP
+  and-not NWELL
+  and-not POLY
+  and-not CONT
+  labels DIFF
+
+  layer pdiff DIFF
+  and PIMP
+  and-not PWELL
+  and-not POLY
+  and-not CONT
+  labels DIFF
+
+  layer nsd DIFF
+  and NIMP
+  and NWELL
+  and-not PWELL
+  and-not POLY
+  and-not CONT
+  labels DIFF
+
+  layer nsc DIFF
+  and NIMP
+  and NWELL
+  and-not PWELL
+  and-not POLY
+  and CONT
+
+  layer psd DIFF
+  and PIMP
+  and-not NWELL
+  and-not POLY
+  and-not CONT
+  labels DIFF
+
+  layer psc DIFF
+  and PIMP
+  and-not NWELL
+  and-not POLY
+  and CONT
+
+  calma NWELL 1 0
+  calma PWELL 2 0
+  calma DIFF 5 0
+  calma THINOX 6 0
+  calma NIMP 7 0
+  calma PIMP 8 0
+  calma METAL1 21 0
+  calma METAL2 23 0
+  calma METAL3 25 0
+  calma METAL4 27 0
+  calma METAL5 29 0
+  calma METAL6 31 0
+  calma METAL7 33 0
+  calma METAL8 35 0
+  calma METAL9 27 0
+  calma METAL10 29 0
+  calma VIA1 22 0
+  calma VIA2 24 0
+  calma VIA3 26 0
+  calma VIA4 28 0
+  calma VIA5 30 0
+  calma VIA6 32 0
+  calma VIA7 34 0
+  calma VIA8 36 0
+  calma VIA9 38 0
+  calma M1_PORT 21 1
+  calma M2_PORT 23 1
+  calma M3_PORT 25 1
+  calma M4_PORT 27 1
+  calma M5_PORT 29 1
+  calma M6_PORT 31 1
+  calma M7_PORT 33 1
+  calma M8_PORT 35 1
+  calma M9_PORT 37 1
+  calma M10_PORT 39 1
+  calma M1_TEXT 21 2
+  calma M2_TEXT 23 2
+  calma M3_TEXT 25 2
+  calma M4_TEXT 27 2
+  calma M5_TEXT 29 2
+  calma M6_TEXT 31 2
+  calma M7_TEXT 33 2
+  calma M8_TEXT 35 2
+  calma M9_TEXT 37 2
+  calma M10_TEXT 39 2
+  calma BOUNDARY 63 0
+  calma TEXT 63 1
+  calma CONT 16 0
+  calma POLY 15 0
 
 end
 
@@ -393,14 +836,10 @@ drc
 
  style drc variants (fast),(full),(routing)
 
- scalefactor 5 2
+ scalefactor 25
  option wide-width-noninclusive
 
  variants (fast),(full)
-#-----------------------------
-# Boundary
-#-----------------------------
-  no_overlap boundary boundary
 
 #-----------------------------
 # NWELL
@@ -429,7 +868,13 @@ drc
  width allpoly 50 "Poly width < 50nm (POLY.1)"
  spacing allfets allfets 140 touching_ok "Poly gate spacing < 140nm (POLY.2)"
  overhang *poly allfets 55 "Poly overhang of transistor < 55nm (POLY.3)"
- spacing *ndiff,*nsd allpolynonfet 50 touching_illegal \
+ spacing allpolynonfet *ndiff 50 corner_ok allnfets \
+	"Poly to diffusion spacing < 50nm (POLY.5)"
+ spacing allpolynonfet *pdiff 50 corner_ok allpfets \
+	"Poly to diffusion spacing < 50nm (POLY.5)"
+ spacing allpolynonfet *nsd 50 touching_illegal \
+	"Poly to diffusion spacing < 50nm (POLY.5)"
+ spacing allpolynonfet *psd 50 touching_illegal \
 	"Poly to diffusion spacing < 50nm (POLY.5)"
  spacing allpolynonfet allpolynonfet 75 touching_ok \
 	"Field poly to field poly spacing < 75nm (POLY.6)"
@@ -796,8 +1241,6 @@ lef
  obs obsm10  MET10
 
  obs obsm1 VIA1
-
- bound boundary BOUND
 
 end
 
@@ -1296,7 +1739,7 @@ router
 end
 
 #-----------------------------------------------------
-# Plowing (doesn't work in Magic 7.5 right now. . .)
+# Plowing
 #-----------------------------------------------------
 
 plowing
@@ -1309,7 +1752,6 @@ end
 plot
   style pnm
      default
-     draw boundary no_color_at_all
      draw comment no_color_at_all
      draw nwell cwell
 end
