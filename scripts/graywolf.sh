@@ -654,7 +654,7 @@ if ($makedef == 1) then
       # Check if the _mod.def output file was generated, and if so, rename it
       # back to plain .def.
 
-      if ( !( -f ${rootname}_mod.def || ( -f ${rootname}_mode.def && \
+      if ( !( -f ${rootname}_mod.def || ( -f ${rootname}_mod.def && \
 		-M ${rootname}_mod.def < -M ${rootname}.def ))) then
           echo "Error (ignoring):"
 	  echo "   arrangepins.tcl failed to generate file ${rootname}_mod.def."
