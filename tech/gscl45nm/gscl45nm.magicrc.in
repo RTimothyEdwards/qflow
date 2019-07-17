@@ -5,6 +5,9 @@
 path sys +QFLOW_LIB_DIR/tech/gscl45nm
 tech load gscl45nm -noprompt
 
+# Set internal grid to 5nm (lambda is 25nm)
+scalegrid 1 5
+
 set GND gnd
 set VDD vdd
 

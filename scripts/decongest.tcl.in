@@ -50,17 +50,46 @@
 # Option --units=<units> where units are distance units per micron
 # in the .cel file (default 100)
 #
+# Option --lib=<path>, where <path> is the full path to a
+# liberty format file, will parse the liberty file to determine
+# which cells are flops.  Since flop cells have more area for
+# fewer pins, they tend not to be the point of congestion.  So
+# density can be considerably optimized by placing far more
+# fill next to combinational cells and far less next to flops,
+# resulting in better routability at higher density.
+#
 #------------------------------------------------------------
 # Written by Tim Edwards, November 23, 2013
 #------------------------------------------------------------
 # LEF dimensions are microns unless otherwise stated.
 #------------------------------------------------------------
 
+proc parse_liberty_file {flib} {
+    # Note that this is a trivial file parser.  It only looks
+    # for lines of the type "cell (<name>)" followed by "ff (<...>)".
+
+    set floplist {}
+    set cellname ""
+    while {[gets $flib line] >= 0} {
+        if [regexp {^[ \t]*cell[ \t]*\([ \t]*([^ \t)]+)\)} $line lmatch cellname] {
+	    # No action
+        }
+        if [regexp {^[ \t]*ff[ \t]*\([ \t]*[^)]+\)} $line lmatch] {
+	    if {$cellname != ""} {
+		lappend floplist $cellname
+	    }
+        }
+    }
+    close $flib
+    return $floplist
+}
+
 # To-do:  Just split the argument list into options and arguments,
 # where options begin with "--".  For now, just assume options come
 # at the end.
 
 set units 100
+set libertypath ""
 
 while {true} {
     set option [lindex $argv $argc-1]
@@ -76,6 +105,8 @@ while {true} {
 	}
 	switch -exact $optkey {
 	    units {set units $optval}
+	    lib {set libertypath $optval}
+	    liberty {set libertypath $optval}
 	    default {puts stderr "Unknown option switch $option"}
 	}
     } else {
@@ -91,6 +122,7 @@ if {$argc < 4 || $argc > 7} {
    puts stderr "<fillcell> is a comma-separated list of up to four fill cell types."
    puts stderr "<ratios> is a space-separated list of ratios for each fill cell type."
    puts stderr "use option --units=<units> to set units other than centimicrons."
+   puts stderr "use option --lib=<path> to analyze a liberty file for optimizing."
    exit 1
 }
 
@@ -105,6 +137,7 @@ set cinfofile ${cellname}.cinfo
 set lefname [lindex $argv 1]
 set filltypes [split [lindex $argv 2] ,]
 set fillratios {}
+set nopadcells {}
 
 if {$argc == 4} {
    set density [lindex $argv 3]
@@ -160,6 +193,15 @@ if {$scale > 0.0} {
 if [catch {open $annofile w} fanno] {
    puts stderr "Error: can't open file $annofile for output"
    return
+}
+
+if {$libertypath != ""} {
+   if [catch {open $libertypath r} flib] {
+      puts stderr "Warning: can't open file $libertypath for input, will not optimize"
+   } else {
+      set nopadcells [parse_liberty_file $flib]
+      # puts stdout "Diagnostic:  List of flop cells is $nopadcells"
+   }
 }
 
 #----------------------------------------------------------------
@@ -290,7 +332,7 @@ if {[llength $filltypes] == 4} {
    if {$filldiff == 1} {
       lappend fillamounts [expr {100 - $addr}]
    } elseif {$filldiff == 2} {
-      set rval [expr {int((100 - $addr) / 2)}]]
+      set rval [expr {int((100 - $addr) / 2)}]
       lappend fillamounts $rval
       lappend fillamounts [expr {100 - $addr - $rval}]
    } elseif {$filldiff == 3} {
@@ -501,6 +543,12 @@ if {$usedfills == 0} {
 
 close $flef
 
+# Add all the fill cells to the list of cells that are not padded.
+lappend nopadcells {*}$fillcells
+lappend nopadcells {*}$decapcells
+lappend nopadcells {*}$antennacells
+lappend nopadcells {*}$bodytiecells
+
 # Sort each array of fill cells by width
 
 set fillwidths {}
@@ -600,10 +648,20 @@ if {$scale > 0.0} {
 
    set totalwidth 0
    set instlist {}
+   set nopadlist {}
    while {[gets $fcel line] >= 0} {
       if [regexp {[ \t]*cell[ \t]*([0-9]+)[ \t]+([^ \t]+)} $line \
 		lmatch instnum instname] {
-         lappend instlist $instname
+         # NOTE:  The .cel file has names in the format <cellname>:<instname>
+         if [regexp {([^:]+):[^:]+} $instname lmatch cellname] {
+             if {[lsearch $nopadcells $cellname] >= 0} {
+                 lappend nopadlist $instname
+	     } else {
+                 lappend instlist $instname
+             }
+	 } else {
+             lappend instlist $instname
+         }
 	 gets $fcel line
 	 regexp {[ \t]*left[ \t]+([-]*[0-9]+)[ \t]+right[ \t]+([-]*[0-9]+)} $line \
 		lmatch left right
@@ -622,9 +680,9 @@ if {$scale > 0.0} {
    set filltotal [expr {int($alltotal * [lindex $fillratios 0] / 100)}]
    set decaptotal [expr {int($alltotal * [lindex $fillratios 1] / 100)}]
    set antennatotal [expr {int($alltotal * [lindex $fillratios 2] / 100)}]
-   set bodytietotal [expr {int($alltotal - ($filltotal + $decaptotal + $antennatotal))}]
+   set bodytietotal [expr {int($alltotal * [lindex $fillratios 3] / 100)}]
 
-   set numcells [llength $instlist]
+   set numcells [expr {[llength $instlist] + [llength $nopadlist]}]
 
    # Diagnostic information
    puts stdout ""
@@ -685,12 +743,64 @@ set decapratio   [expr {(0.0 + $decaptotal) / $totalwidth}]
 set antennaratio [expr {(0.0 + $antennatotal) / $totalwidth}]
 set bodytieratio [expr {(0.0 + $bodytietotal) / $totalwidth}]
 
-set fillagg 0
-set decapagg 0
-set antennaagg 0
-set bodytieagg 0
-
 set aggwidth 0
+
+# Find the total number of instances to which fill will be attached
+set numinsts [llength $instlist]
+
+# Find the ideal exact amount of fill to add per instance.
+set fillperinst [expr {(0.0 + $filltotal) / (0.0 + $numinsts)}]
+set decapperinst [expr {(0.0 + $decaptotal) / (0.0 + $numinsts)}]
+set antennaperinst [expr {(0.0 + $antennatotal) / (0.0 + $numinsts)}]
+set bodytieperinst [expr {(0.0 + $bodytietotal) / (0.0 + $numinsts)}]
+
+# Track the ideal amount of fill that should be added at any point in the output
+set filltotalideal 0.0
+set decaptotalideal 0.0
+set antennatotalideal 0.0
+set bodytietotalideal 0.0
+
+# Track the actual amount of fill that has been added at any point in the output
+set filltotalactual 0
+set decaptotalactual 0
+set antennatotalactual 0
+set bodytietotalactual 0
+
+set numfilltypes [llength $fillwidths]
+if {$numfilltypes > 0} {
+    set lastfillindex [expr {$numfilltypes - 1}]
+    set lastfillentry [lindex $fillwidths $lastfillindex]
+    set minfillwidth [lindex $lastfillentry 1]
+} else {
+    set minfillwidth 100    ;# any value above zero should do
+}
+
+set numdecaptypes [llength $decapwidths]
+if {$numdecaptypes > 0} {
+    set lastdecapindex [expr {$numdecaptypes - 1}]
+    set lastdecapentry [lindex $decapwidths $lastdecapindex]
+    set mindecapwidth [lindex $lastdecapentry 1]
+} else {
+    set mindecapwidth 100    ;# any value above zero should do
+}
+
+set numantennatypes [llength $antennawidths]
+if {$numantennatypes > 0} {
+    set lastantennaindex [expr {$numantennatypes - 1}]
+    set lastantennaentry [lindex $antennawidths $lastantennaindex]
+    set minantennawidth [lindex $lastantennaentry 1]
+} else {
+    set minantennawidth 100    ;# any value above zero should do
+}
+
+set numbodytietypes [llength $bodytiewidths]
+if {$numbodytietypes > 0} {
+    set lastbodytieindex [expr {$numbodytietypes - 1}]
+    set lastbodytieentry [lindex $bodytiewidths $lastbodytieindex]
+    set minbodytiewidth [lindex $lastbodytieentry 1]
+} else {
+    set minbodytiewidth 100    ;# any value above zero should do
+}
 
 while {[gets $fcel line] >= 0} {
    if [regexp {[ \t]*cell[ \t]*([0-9]+)[ \t]+([^ \t]+)} \
@@ -702,18 +812,31 @@ while {[gets $fcel line] >= 0} {
 			$cline lmatch left right rest] {
          puts $fanno $line	;# failed to parse, so output unchanged
          puts $fanno $cline
-      } else {
 
-         # Calculate aggregate cell width
+      } elseif {$instidx < 0} {
+         puts $fanno $line	;# unknown/unhandled cell, so output unchanged
+         puts $fanno $cline
+
+      } else {
+	 # Calculate cell width
 	 set cellwidth [expr {$right - $left}]
-         # puts stdout "Diagnostic: instance $instname cell width = $cellwidth"
-         incr aggwidth $cellwidth
-	 if {$instidx < 0} {
-            puts $fanno $line	;# unknown cell, so output unchanged
-            puts $fanno $cline
-         } else {
-	    set needfill [expr {$aggwidth * $fillratio}]
-            set cstr ""
+
+         # Update the ideal fill total.
+         set filltotalideal [expr {$filltotalideal + $fillperinst}]
+         set decaptotalideal [expr {$decaptotalideal + $decapperinst}]
+         set antennatotalideal [expr {$antennatotalideal + $antennaperinst}]
+         set bodytietotalideal [expr {$bodytietotalideal + $bodytieperinst}]
+
+         set needfill [expr {$filltotalideal - $filltotalactual}]
+         set needdecap [expr {$decaptotalideal - $decaptotalactual}]
+         set needantenna [expr {$antennatotalideal - $antennatotalactual}]
+         set needbodytie [expr {$bodytietotalideal - $bodytietotalactual}]
+
+         set cstr ""
+
+         # If needfill is larger than half the minimum fill width, then add fill
+         if {$needfill > [expr {$minfillwidth / 2}]} {
+	    set fillagg 0
 	    set lastfill ""
 	    set lastwid 0
 	    while {$needfill > $fillagg} {
@@ -728,6 +851,7 @@ while {[gets $fcel line] >= 0} {
 	       if {$cwid == 0} {break}
 	       incr fillagg $cwid
 	       incr cellwidth $cwid
+               incr filltotalactual $cwid
                # puts stdout "Diagnostic: add fill width = $cwid"
                # puts stdout "Diagnostic: new cell width = $cellwidth"
 	       if {$lastfill == ""} {
@@ -754,8 +878,11 @@ while {[gets $fcel line] >= 0} {
 		  set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
 	       }
 	    }
+	 }
 
-	    set needdecap [expr {$aggwidth * $decapratio}]
+         # If needdecap is larger than half the minimum decap width, then add decap
+         if {$needdecap > [expr {$mindecapwidth / 2}]} {
+	    set decapagg 0
 	    set lastfill ""
 	    set lastwid 0
 	    while {$needdecap > $decapagg} {
@@ -770,6 +897,7 @@ while {[gets $fcel line] >= 0} {
 	       if {$cwid == 0} {break}
 	       incr decapagg $cwid
 	       incr cellwidth $cwid
+               incr decaptotalactual $cwid
                # puts stdout "Diagnostic: add decap width = $cwid"
                # puts stdout "Diagnostic: new cell width = $cellwidth"
 	       if {$lastfill == ""} {
@@ -796,8 +924,11 @@ while {[gets $fcel line] >= 0} {
 		  set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
 	       }
 	    }
+	 }
 
-	    set needantenna [expr {$aggwidth * $antennaratio}]
+         # If needantenna is larger than half the minimum antenna width, then add antenna
+         if {$needantenna > [expr {$minantennawidth / 2}]} {
+	    set antennaagg 0
 	    set lastfill ""
 	    set lastwid 0
 	    while {$needantenna > $antennaagg} {
@@ -812,6 +943,7 @@ while {[gets $fcel line] >= 0} {
 	       if {$cwid == 0} {break}
 	       incr antennaagg $cwid
 	       incr cellwidth $cwid
+               incr antennatotalactual $cwid
                # puts stdout "Diagnostic: add antenna width = $cwid"
                # puts stdout "Diagnostic: new cell width = $cellwidth"
 	       if {$lastfill == ""} {
@@ -838,8 +970,11 @@ while {[gets $fcel line] >= 0} {
 		  set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
 	       }
 	    }
+	 }
 
-	    set needbodytie [expr {$aggwidth * $bodytieratio}]
+         # If needbodytie is larger than half the minimum bodytie width, then add bodytie
+         if {$needbodytie > [expr {$minbodytiewidth / 2}]} {
+	    set bodytieagg 0
 	    set lastfill ""
 	    set lastwid 0
 	    while {$needbodytie > $bodytieagg} {
@@ -854,6 +989,7 @@ while {[gets $fcel line] >= 0} {
 	       if {$cwid == 0} {break}
 	       incr bodytieagg $cwid
 	       incr cellwidth $cwid
+               incr bodytietotalactual $cwid
                # puts stdout "Diagnostic: add body tie width = $cwid"
                # puts stdout "Diagnostic: new cell width = $cellwidth"
 	       if {$lastfill == ""} {
@@ -880,14 +1016,14 @@ while {[gets $fcel line] >= 0} {
 		  set cstr ${lastfill}.${lastwid}X${multiplier}.${cstr}
 	       }
 	    }
-            
-	    puts $fanno "cell $instnum ${cstr}${instname}"
-
-            # puts stdout "Diagnostic: final cell width = $cellwidth"
-	    set fleft [expr {-($cellwidth / 2)}]
-	    set fright [expr {$fleft + $cellwidth}]
-	    puts $fanno "left $fleft right $fright $rest"
 	 }
+            
+	 puts $fanno "cell $instnum ${cstr}${instname}"
+
+         # puts stdout "Diagnostic: final cell width = $cellwidth"
+	 set fleft [expr {-($cellwidth / 2)}]
+	 set fright [expr {$fleft + $cellwidth}]
+	 puts $fanno "left $fleft right $fright $rest"
       }
    } else {
       puts $fanno $line

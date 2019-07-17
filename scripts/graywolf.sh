@@ -133,6 +133,14 @@ if ( ${?hard_macros} ) then
    end
 endif
 
+# Prepend techdir to each libertyfile unless libertyfile begins with "/"
+set abspath=`echo ${libertyfile} | cut -c1`
+if ( "${abspath}" == "/" ) then
+   set libertypath=${libertyfile}
+else
+   set libertypath=${techdir}/${libertyfile}
+endif
+
 if (! ${?qrouter_nocleanup} ) then
    set qrouter_nocleanup = ""
 else
@@ -260,9 +268,9 @@ endif
 # the pre-placement netlist.
 #------------------------------------------------------------------
 
-if ( -f ${synthdir}/${rootname}_synth.rtl.v && ( -M ${synthdir}/${rootname}_synth.rtl.v \
-	> -M ${synthdir}/${rootname}_soc_sized.v )) then
-    echo "Restoring ${rootname}.rtl.v, ${rootname}.rtlnopwr.v, and ${rootname}.rtlbb.v from pre-placement backups"
+if ( -f ${synthdir}/${rootname}_synth.rtl.v && { test ${synthdir}/${rootname}_synth.rtl.v \
+	-ot ${synthdir}/${rootname}_soc_sized.v } ) then
+    echo "Restoring ${rootname}.rtl.v, ${rootname}.rtlnopwr.v, and ${rootname}.rtlbb.v from pre-placement backups" |& tee -a ${synthlog}
     cp ${synthdir}/${rootname}_synth.rtl.v ${synthdir}/${rootname}.rtl.v
     cp ${synthdir}/${rootname}_synth.rtlnopwr.v ${synthdir}/${rootname}.rtlnopwr.v
     cp ${synthdir}/${rootname}_synth.rtlbb.v ${synthdir}/${rootname}.rtlbb.v
@@ -346,52 +354,42 @@ endif
 if ( ! ${?antennacell} ) then
    set antennacell = ""
 endif
+if ( ! ${?bodytiecell} ) then
+   set bodytiecell = ""
+endif
 
-if ("x$fillcell" != "x") then
-   if ("x$decapcell" != "x") then
-      if ("x$antennacell" != "x") then
-	 set fillers = "${fillcell},${decapcell},${antennacell}"
-      else
-	 set fillers = "${fillcell},${decapcell},"
-      endif
-   else if ("x$antennacell" != "x") then
-      set fillers = "${fillcell},,${antennacell}"
-   else
-      set fillers = "${fillcell}"
-   endif
-else
-   if ("x$decapcell" != "x") then
-      if ("x$antennacell" != "x") then
-	 set fillers = ",${decapcell},${antennacell}"
-      else
-	 set fillers = ",${decapcell},"
-      endif
-      set fillcell = "${decapcell}"
-   else if ("x$antennacell" != "x") then
-      set fillers = ",,${antennacell}"
-      set fillcell = "${antennacell}"
-   else
+set fillers = "${fillcell},${decapcell},${antennacell},${bodytiecell}"
+
+# For tools that only require one fill cell as option, make sure that
+# there is a valid fill cell type
+if ("x$fillcell" == "x") then
+   set fillcell = $decapcell
+endif
+if ("x$fillcell" == "x") then
+   set fillcell = $antennacell
+endif
+if ("x$fillcell" == "x") then
+   set fillcell = $bodytiecell
+endif
+if ("x$fillcell" == "x") then
       # There is no fill cell, which is likely to produce poor results.
       echo "Warning:  No fill cell types are defined in the tech setup script."
       echo "This is likely to produce poor layout and/or poor routing results."
-      set fillers = ""
-      set fillcell = ""
-   endif
 endif
 
 if ( ${?initial_density} ) then
    echo "Running decongest to set initial density of ${initial_density}" \
 		|& tee -a ${synthlog}
    if ( ${?fill_ratios} ) then
-        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} ${fill_ratios} --units=${units}" \
+        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} ${fill_ratios} --units=${units} --lib=${libertypath}" \
 		|& tee -a ${synthlog}
 	${scriptdir}/decongest.tcl ${rootname} ${lefpath} \
-		${fillers} ${initial_density} ${fill_ratios} --units=${units} |& tee -a ${synthlog}
+		${fillers} ${initial_density} ${fill_ratios} --units=${units} --lib=${libertypath} |& tee -a ${synthlog}
    else
-        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} --units=${units}" \
+        echo "decongest.tcl ${rootname} ${lefpath} ${fillers} ${initial_density} --units=${units} --lib=${libertypath}" \
 		|& tee -a ${synthlog}
 	${scriptdir}/decongest.tcl ${rootname} ${lefpath} \
-		${fillers} ${initial_density} --units=${units} |& tee -a ${synthlog}
+		${fillers} ${initial_density} --units=${units} --lib=${libertypath} |& tee -a ${synthlog}
    endif
    set errcond = $status
    if ( ${errcond} != 0 ) then
