@@ -281,11 +281,16 @@ typedef struct _gaterec {
 /* iterating through them.  Nodes needed buffering are marked with the	*/
 /* number of buffers required.  Then, the nodes are parsed again and	*/
 /* buffers are added where marked.					*/
+/*									*/
+/* Return the highest index (plus one) of any component added, so that	*/
+/* insert_buffers can be called subsequent times without generating the	*/
+/* same name for any component.	 This value is passed back to the	*/
+/* subroutine as "cidx".						*/
 /*----------------------------------------------------------------------*/
 
-void insert_buffers(struct cellrec *topcell)
+int insert_buffers(struct cellrec *topcell, int cidx)
 {
-    int i, cidx;
+    int i;
     int hier;
     int slen;
     struct Nodelist *nl = NULL;
@@ -431,7 +436,6 @@ void insert_buffers(struct cellrec *topcell)
 
     /* Insert any added buffers */
 
-    cidx = 0;
     nl = (struct Nodelist *)HashFirst(&Nodehash);
     while (nl != NULL) {
 	for (i = nl->num_buf - 1; i >= 0; i--) {
@@ -510,6 +514,7 @@ void insert_buffers(struct cellrec *topcell)
 	nl->num_buf = 0;
 	nl = (struct Nodelist *)HashNext(&Nodehash);
     }
+    return cidx;
 }
 
 /*
@@ -1270,7 +1275,7 @@ void helpmessage(void)
 
 int main (int argc, char *argv[])
 {
-    int i, j, k, l, iter;
+    int i, j, k, l, iter, cidx;
     int state;
     int maxline, curline;
     int libcount;
@@ -1650,6 +1655,7 @@ int main (int argc, char *argv[])
     /* Apply iterative buffering and resizing */
 
     iter = 0;
+    cidx = 0;
     Changed_count = 1;
     while (Changed_count > 0) {
 	iter++;
@@ -1704,7 +1710,7 @@ int main (int argc, char *argv[])
 
 	fprintf(stderr, "%d gates exceed specified minimum load.\n", stren_err_counter);
 
-	if (doFanout) insert_buffers(topcell);
+	if (doFanout) cidx = insert_buffers(topcell, cidx);
 	fprintf(stderr, "%d buffers were added.\n", Buffer_count);
 
 	resize_gates(topcell, doLoadBalance, doFanout);

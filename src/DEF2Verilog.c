@@ -31,6 +31,7 @@
 
 #include "hash.h"
 #include "readverilog.h"
+#include "readlef.h"
 #include "readdef.h"
 
 void write_output(struct cellrec *top, char *vlogoutname);
@@ -38,6 +39,8 @@ void helpmessage(FILE *outf);
 
 char *VddNet = NULL;
 char *GndNet = NULL;
+
+int nccount = 0;	/* Count of global unconnected nets */
 
 /*--------------------------------------------------------------*/
 
@@ -237,11 +240,18 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
     fprintf(outf, "%s (\n", gate->gatename);
 
     /* In case power/ground pins are at the end of the list, find the	*/
-    /* index of the last valid output line.				*/
+    /* index of the last valid output line.  Consider any input pin	*/
+    /* that is not marked use POWER or GROUND to be automatically valid	*/
+    /* even if it is not connected (e.g., unconnected antenna cell	*/
+    /* input pins).							*/
 
     for (lastidx = gate->nodes - 1; lastidx >= 0; lastidx--) {
 	node = gate->noderec[lastidx];
 	if (node) break;
+	else if ((gate->gatetype->direction[lastidx] == PORT_CLASS_INPUT)
+		    && (gate->gatetype->use[lastidx] != PORT_USE_POWER)
+		    && (gate->gatetype->use[lastidx] != PORT_USE_GROUND))
+	    break;
     }
 
     /* If the gate defines pin buses, then prepare a set of arrays for	*/
@@ -256,6 +266,8 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
 
     /* Write each port and net connection */
     for (i = 0; i <= lastidx; i++) {
+	int is_nc_input;
+	char *netname;
 	node = gate->noderec[i];
 
 	/* node may be NULL if power or ground.  Currently not handling */
@@ -264,9 +276,22 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
 	/* options for handling power and ground in various ways.	*/
 	/*								*/
 	/* node may also be NULL if not connected, in which case it is	*/
-	/* optional to output it in verilog.				*/
+	/* optional to output it in verilog if it is an output.  If it	*/
+	/* is an input, such as an unconnected antenna cell, then	*/
+	/* generate an arbitrary net name to represent it.		*/
 
-	if (node) {
+	is_nc_input = 0;
+	if ((node == NULL) &&
+		    (gate->gatetype->direction[i] == PORT_CLASS_INPUT) &&
+		    (gate->gatetype->use[i] != PORT_USE_POWER) &&
+		    (gate->gatetype->use[i] != PORT_USE_GROUND)) {
+	    is_nc_input = 1;
+	    netname = (char *)malloc(32 * sizeof(char));
+	    sprintf(netname, "_proxy_no_connect_%d_", nccount++);
+	}
+	else if (node) netname = node->netname;
+
+	if (node || is_nc_input) {
 	    char *sptr, *eptr;
 	    int k;
 
@@ -279,7 +304,7 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
 			for (bus = gate->gatetype->bus, j = 0; bus;
 					bus = bus->next, j++) {
 			    if (!strcmp(bus->busname, gate->node[i])) {
-				net_array[j][k] = strdup(node->netname);
+				net_array[j][k] = strdup(netname);
 				break;
 			    }
 			}
@@ -289,10 +314,11 @@ struct nlist *output_instances(struct hashlist *p, void *cptr)
 		}
 	    }
 
-	    fprintf(outf, "    .%s(%s)", gate->node[i], node->netname);
+	    fprintf(outf, "    .%s(%s)", gate->node[i], netname);
 	    if ((i != lastidx) || (gate->bus != NULL)) fprintf(outf, ",");
 	    fprintf(outf, "\n");
 	}
+	if (is_nc_input) free(netname);
     }
 
     /* Write out bus connections */
