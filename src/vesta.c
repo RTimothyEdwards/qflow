@@ -3149,6 +3149,7 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
     char d[128];
     char *token;
     char *result;
+    char *tokencopy = NULL;
 
     netptr newnet, testnet;
     connptr testconn;
@@ -3193,30 +3194,40 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 		    if ((dchr == NULL) || (dchr > mchr)) *mchr = ' ';
 		}
 	    }
+	    testnet = (netptr)HashLookup(token, Nethash);
 
 	    /* Other, legacy stuff. */
-	    if ((mchr = strrchr(token, '<')) != NULL) {
-		if ((dchr = strrchr(token, '>')) != NULL) {
-		    if (mchr < dchr) {
-			*mchr = '[';
-			*dchr = ']';
+	    if (testnet == NULL) {
+		tokencopy = strdup(token);
+		if ((mchr = strrchr(tokencopy, '<')) != NULL) {
+		    if ((dchr = strrchr(tokencopy, '>')) != NULL) {
+			if (mchr < dchr) {
+			    *mchr = '[';
+			    *dchr = ']';
+			}
 		    }
 		}
+		testnet = (netptr)HashLookup(tokencopy, Nethash);
 	    }
-	    for (mchr = token; *mchr != '\0'; mchr++) {
-		if ((*mchr == ':') || (*mchr == '.') || (*mchr == '$')
-				|| (*mchr == '<') || (*mchr == '>'))
-		    *mchr = '_';
-	    }
-	    testnet = (netptr)HashLookup(token, Nethash);
+
 	    if (testnet == NULL) {
-		for (mchr = token; *mchr != '\0'; mchr++) {
+		for (mchr = tokencopy; *mchr != '\0'; mchr++) {
+		    if ((*mchr == ':') || (*mchr == '.') || (*mchr == '$')
+				|| (*mchr == '<') || (*mchr == '>'))
+			*mchr = '_';
+		}
+		testnet = (netptr)HashLookup(tokencopy, Nethash);
+	    }
+
+	    if (testnet == NULL) {
+		for (mchr = tokencopy; *mchr != '\0'; mchr++) {
 		    if ((*mchr == '[') || (*mchr == ']'))
 			*mchr = '_';
 		}
+		testnet = (netptr)HashLookup(tokencopy, Nethash);
 	    }
-	    testnet = (netptr)HashLookup(token, Nethash);
 	}
+	if (tokencopy != NULL) free(tokencopy);
 
 	if (testnet == NULL) {
 	    fprintf(stderr, "ERROR: Net %s not found in hash table\n", token);
