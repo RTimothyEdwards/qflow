@@ -114,9 +114,12 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
     GATE gateginfo;
 
     int i, j, layers, feedx, cellidx, kidx;
-    int llx, lly, cllx, clly, urx, ury, width, height, px, py;
+    int llx, lly, cllx, clly, curx, cury;
+    int urx, ury, width, height, px, py;
     int *pitchx, *pitchy;
     int lvert = -1;
+    int arrayidx;
+    char *netsptr;
 
     if (outfile != NULL) {
 	outfptr = fopen(outfile, "w");
@@ -182,226 +185,300 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 
 	cllx = -(width >> 1);
 	clly = -(height >> 1);
-	urx = width + cllx;
-	ury = height + clly;
-	
-	fprintf(outfptr, "cell %d %s:%s\n", cellidx, inst->cellname, inst->instname);
-	fprintf(outfptr, "left %d right %d bottom %d top %d\n",
-		cllx, urx, clly, ury);
-	cellidx++;
+	curx = width + cllx;
+	cury = height + clly;
 
-	/* Generate implicit feedthroughs to satisfy global routing, as many	*/
-	/* as will fit on the vertical track pitch.				*/
+	arrayidx = inst->arraystart;
+	while (1) {
 
-	feedx = cllx + pitchx[lvert] / 2 + pitchx[lvert];
-	kidx = 1;
-	while (feedx < urx) {
-	    fprintf(outfptr, "pin name twfeed%d signal TW_PASS_THRU layer %d %d %d\n",
-			kidx, lvert, feedx, clly);
-	    fprintf(outfptr, "   equiv name twfeed%d layer %d %d %d\n",
-			kidx, lvert, feedx, ury);
-	    feedx += pitchx[lvert];
-	    kidx++;
-	}
+	    if (arrayidx != -1)
+	        fprintf(outfptr, "cell %d %s:%s[%d]\n", cellidx, inst->cellname,
+			inst->instname, arrayidx);
+	    else
+	        fprintf(outfptr, "cell %d %s:%s\n", cellidx, inst->cellname,
+			inst->instname);
+	    fprintf(outfptr, "left %d right %d bottom %d top %d\n",
+			cllx, curx, clly, cury);
+	    cellidx++;
 
-	/* Write each port and net connection */
-	for (port = inst->portlist; port; port = port->next) {
-	    int is_array = FALSE;
+	    /* Generate implicit feedthroughs to satisfy global routing, as */
+	    /* many as will fit on the vertical track pitch.		    */
 
-	    /* Verilog backslash-escaped names have spaces that	*/
-	    /* break pretty much every other format, so replace	*/
-	    /* the space with the (much more sensible) second	*/
-	    /* backslash.  This can be detected and changed	*/
-	    /* back by programs converting the syntax back into	*/
-	    /* verilog.						*/
-
-	    if (*port->net == '\\') {
-		char *sptr;
-		sptr = strchr(port->net, ' ');
-		if (sptr != NULL) *sptr = '\\';
+	    feedx = cllx + pitchx[lvert] / 2 + pitchx[lvert];
+	    kidx = 1;
+	    while (feedx < curx) {
+		fprintf(outfptr, "pin name twfeed%d signal TW_PASS_THRU layer %d %d %d\n",
+				kidx, lvert, feedx, clly);
+		fprintf(outfptr, "   equiv name twfeed%d layer %d %d %d\n",
+				kidx, lvert, feedx, cury);
+		feedx += pitchx[lvert];
+		kidx++;
 	    }
 
-	    /* Find the port name in the gate pin list */
-	    for (j = 0; j < gateginfo->nodes; j++) {
-		if (!strcmp(port->name, gateginfo->node[j])) break;
-	    }
-	    if (j == gateginfo->nodes) {
-		/* Is this a bus? */
+	    /* Write each port and net connection */
+	    for (port = inst->portlist; port; port = port->next) {
+
+		/* Any one of these can be a bus:  the port, the net,	*/
+		/* or the instance.					*/
+
+		int is_port_bus = FALSE;
+		int is_net_bus = FALSE;
+		int is_inst_bus = (arrayidx == -1) ? FALSE : TRUE;
+
+		/* Bus (array) cases:
+		 *    instance port   net   
+		 * 1) single   single single :  simple case
+		 * 2) single   single array  :  not legal unless bus is 1-bit
+		 * 3) single   array  single :  copy net to each port bit
+		 * 4) single   array  array  :  bit-wise matching net to port
+		 * 5) array    single single :  copy net to each instance
+		 * 6) array    single array  :  bit-wise matching net to instance
+		 * 7) array    array  single :  copy net in both dimensions
+		 * 8) array    array  array  :  bit-wise matching net to port, then
+		 *				copy to each instance.
+		 */
+
+		/* Verilog backslash-escaped names have spaces that	*/
+		/* break pretty much every other format, so replace	*/
+		/* the space with the (much more sensible) second	*/
+		/* backslash.  This can be detected and changed		*/
+		/* back by programs converting the syntax back into	*/
+		/* verilog.						*/
+
+		netsptr = port->net;
+		if (*port->net == '\\') {
+		    netsptr = strchr(port->net, ' ');
+		    if (netsptr != NULL) *netsptr = '\\';
+		}
+
+		/* Find the port name in the gate pin list */
 		for (j = 0; j < gateginfo->nodes; j++) {
-		    char *delim = strrchr(gateginfo->node[j], '[');
-		    if (delim != NULL) {
-			*delim = '\0';
-			if (!strcmp(port->name, gateginfo->node[j]))
-			    is_array = TRUE;
-			*delim = '[';
-			if (is_array) break;
+		    if (!strcmp(port->name, gateginfo->node[j])) break;
+		}
+		if (j == gateginfo->nodes) {
+		    /* Is this a bus? */
+		    for (j = 0; j < gateginfo->nodes; j++) {
+			char *delim = strrchr(gateginfo->node[j], '[');
+			if (delim != NULL) {
+			    *delim = '\0';
+			    if (!strcmp(port->name, gateginfo->node[j]))
+				is_port_bus = TRUE;
+			    *delim = '[';
+			    if (is_port_bus) break;
+			}
 		    }
 		}
-	    }
 
-	    if (j == gateginfo->nodes) {
-		fprintf(stderr, "Error:  Pin \"%s\" not found in LEF macro \"%s\"!\n",
-			port->name, gateginfo->gatename);
-		result = 1;	// Set error result but continue output
-	    }
-	    else if (is_array == FALSE) {
-		/* Pull pin position from first rectangle in taps list.  This	*/
-		/* does not have to be accurate;  just representative.		*/
-		int bufidx;
-		char *sigptr;
-		DSEG tap = gateginfo->taps[j];
+		/* Check if the net itself is an array */
+		net = HashLookup(port->net, &topcell->nets);
+		if (net && (net->start != -1)) {
+		    char *sptr, *dptr, *cptr;
 
-		/* If LEF file failed to specify pin geometry, then use cell center */
-		if (tap == NULL) {
-		    px = cllx;
-		    py = clly;
-		}
-		else {
-		    llx = (int)(tap->x1 * (double)units + 0.5);
-		    lly = (int)(tap->y1 * (double)units + 0.5);
-		    urx = (int)(tap->x2 * (double)units + 0.5);
-		    ury = (int)(tap->y2 * (double)units + 0.5);
-		    px = cllx + ((llx + urx) / 2);
-		    py = clly + ((lly + ury) / 2);
-		}
+		    is_net_bus = TRUE;
 
-		if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
-			((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
-			(gateginfo->direction[j] == PORT_CLASS_INPUT)) {
-		    fprintf(outfptr, "pin_group\n");
-		    *sigptr = '\0';
-		    fprintf(outfptr, "pin name %s_bF$pin/%s ",
-				port->net, port->name);
-		    *sigptr = '_';
-		    fprintf(outfptr, "signal %s layer %d %d %d\n",
-				port->net, lvert, px, py);
-		    fprintf(outfptr, "end_pin_group\n");
-		}
-		else {
-		    fprintf(outfptr, "pin name %s signal %s layer %d %d %d\n",
-				port->name, port->net, lvert, px, py);
-		}
-	    }
-	    else {	/* Handle arrays */
-		char *apin, *anet, *dptr, *cptr;
-		int a, pidx, armax, armin;
+		    /* However, if net name is a 1-bit bus subnet, then	*/
+		    /* it is not considered to be a bus.  Note that	*/
+		    /* brackets inside a verilog backslash-escaped name	*/
+		    /* are not array indicators.			*/
 
-		armax = armin = 0;
-		for (j = 0; j < gateginfo->nodes; j++) {
-		    char *delim = strrchr(gateginfo->node[j], '[');
-		    if (delim != NULL) {
-			*delim = '\0';
-			if (!strcmp(port->name, gateginfo->node[j])) {
-			    if (sscanf(delim + 1, "%d", &pidx) == 1) {
-				if (pidx > armax) armax = pidx;
-				if (pidx < armin) armin = pidx;
-			    }
+		    dptr = strchr(netsptr, '[');
+		    if (dptr) {
+			cptr = strchr(dptr + 1, ':');
+			if (!cptr) {
+			    is_net_bus = FALSE;
 			}
-			*delim = '[';
 		    }
 		}
 
-		/* To do:  Need to check if array is high-to-low or low-to-high */
-		/* Presently assuming arrays are always defined high-to-low	*/
+		if (j == gateginfo->nodes) {
+		    fprintf(stderr, "Error:  Pin \"%s\" not found in LEF macro \"%s\"!\n",
+			    port->name, gateginfo->gatename);
+		    result = 1;	// Set error result but continue output
+		}
+		else if (is_net_bus == FALSE) {
+		    /* Pull pin position from first rectangle in taps list.  This   */
+		    /* does not have to be accurate;  just representative.	    */
+		    int bufidx;
+		    char *sigptr;
+		    DSEG tap = gateginfo->taps[j];
 
-		apin = (char *)malloc(strlen(port->name) + 15);
-		for (a = armax; a >= armin; a--) {
-		    sprintf(apin, "%s[%d]", port->name, a);
-
-		    /* If net is not delimited by {...} then it is also	*/
-		    /* an array.  Otherwise, find the nth element in	*/
-		    /* the brace-enclosed set.				*/
-
-		    /* To do: if any component of the array is a vector	*/
-		    /* then we need to count bits in that vector.	*/
-
-		    if (*port->net == '{') {
-			int aidx;
-			char *sptr, ssave;
-			char *pptr = port->net + 1;
-			for (aidx = 0; aidx < (armax - a); aidx++) {
-			    sptr = pptr;
-			    while (*sptr != ',' && *sptr != '}') sptr++;
-			    pptr = sptr + 1;
-			}
-			sptr = pptr;
-			if (*sptr != '\0') {
-			    while (*sptr != ',' && *sptr != '}') sptr++;
-			    ssave = *sptr;
-			    *sptr = '\0';
-			    anet = (char *)malloc(strlen(pptr) + 1);
-			    sprintf(anet, "%s", pptr);
-			    *sptr = ssave;
-			}
-			else {
-			    anet = NULL;	/* Must handle this error! */
-			}
-		    }
-		    else if (((dptr = strrchr(port->net, '[')) != NULL) &&
-				((cptr = strrchr(port->net, ':')) != NULL)) {
-			int fhigh, flow, fidx;
-			sscanf(dptr + 1, "%d", &fhigh);
-			sscanf(cptr + 1, "%d", &flow);
-			if (fhigh > flow) fidx = fhigh - (armax - a);
-			else fidx = flow + (armax - a);
-			anet = (char *)malloc(strlen(port->net) + 15);
-			*dptr = '\0';
-			sprintf(anet, "%s[%d]", port->net, fidx);
-			*dptr = '[';
+		    /* If LEF file failed to specify pin geometry, then use cell center */
+		    if (tap == NULL) {
+			px = cllx;
+			py = clly;
 		    }
 		    else {
-			anet = (char *)malloc(strlen(port->net) + 15);
-			sprintf(anet, "%s[%d]", port->net, a);
+			llx = (int)(tap->x1 * (double)units + 0.5);
+			lly = (int)(tap->y1 * (double)units + 0.5);
+			urx = (int)(tap->x2 * (double)units + 0.5);
+			ury = (int)(tap->y2 * (double)units + 0.5);
+			px = cllx + ((llx + urx) / 2);
+			py = clly + ((lly + ury) / 2);
 		    }
 
-		    /* Find the corresponding port bit */
-		    for (j = 0; j < gateginfo->nodes; j++) {
-			if (anet == NULL) break;
-			if (!strcmp(apin, gateginfo->node[j])) {
+		    if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
+			     ((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
+			     (gateginfo->direction[j] == PORT_CLASS_INPUT)) {
+			fprintf(outfptr, "pin_group\n");
+			*sigptr = '\0';
+			fprintf(outfptr, "pin name %s_bF$pin/%s ",
+				port->net, port->name);
+			*sigptr = '_';
+			fprintf(outfptr, "signal %s layer %d %d %d\n",
+				port->net, lvert, px, py);
+			fprintf(outfptr, "end_pin_group\n");
+		    }
+		    else {
+			fprintf(outfptr, "pin name %s signal %s layer %d %d %d\n",
+				port->name, port->net, lvert, px, py);
+		    }
+		}
+		else {	/* Handle arrays */
+		    char *apin, *anet, *dptr, *cptr;
+		    int a, pidx, armax, armin;
 
-			    /* Pull pin position from first rectangle in taps	*/
-			    /* list.  This does not have to be accurate;  just	*/
-			    /* representative.					*/
-			    int bufidx;
-			    char *sigptr;
-			    DSEG tap = gateginfo->taps[j];
+		    if ((is_inst_bus == TRUE) && (is_port_bus == FALSE) &&
+				(is_net_bus == TRUE)) {
+			armax = armin = arrayidx;
+		    }
+		    else {
+			armax = armin = 0;
+			for (j = 0; j < gateginfo->nodes; j++) {
+			    char *delim, *sptr;
 
-			    /* If LEF file failed to specify pin geometry, then	*/
-			    /* use cell center 					*/
-			    if (tap == NULL) {
-				px = cllx;
-				py = clly;
-			    }
-			    else {
-				llx = (int)(tap->x1 * (double)units + 0.5);
-				lly = (int)(tap->y1 * (double)units + 0.5);
-				urx = (int)(tap->x2 * (double)units + 0.5);
-				ury = (int)(tap->y2 * (double)units + 0.5);
-				px = cllx + ((llx + urx) / 2);
-				py = clly + ((lly + ury) / 2);
-			    }
-
-			    if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
-					((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
-					(gateginfo->direction[j] == PORT_CLASS_INPUT)) {
-				fprintf(outfptr, "pin_group\n");
-				*sigptr = '\0';
-				fprintf(outfptr, "pin name %s_bF$pin/%s ",
-						anet, apin);
-				*sigptr = '_';
-				fprintf(outfptr, "signal %s layer %d %d %d\n",
-						anet, lvert, px, py);
-				fprintf(outfptr, "end_pin_group\n");
-			    }
-			    else {
-				fprintf(outfptr, "pin name %s signal %s layer %d %d %d\n",
-					apin, anet, lvert, px, py);
+			    sptr = gateginfo->node[j];
+			    if (*sptr == '\\') sptr = strchr(sptr, ' ');
+			    if (sptr == NULL) sptr = gateginfo->node[j];
+			    delim = strrchr(sptr, '[');
+			    if (delim != NULL) {
+				*delim = '\0';
+				if (!strcmp(port->name, gateginfo->node[j])) {
+				    if (sscanf(delim + 1, "%d", &pidx) == 1) {
+					if (pidx > armax) armax = pidx;
+					if (pidx < armin) armin = pidx;
+				    }
+				}
+				*delim = '[';
 			    }
 			}
 		    }
-		    free(anet);
+
+		    /* To do:  Need to check if array is high-to-low or low-to-high */
+		    /* Presently assuming arrays are always defined high-to-low	*/
+
+		    apin = (char *)malloc(strlen(port->name) + 15);
+		    for (a = armax; a >= armin; a--) {
+			if (is_port_bus)
+			    sprintf(apin, "%s[%d]", port->name, a);
+			else
+			    sprintf(apin, "%s", port->name);
+
+			/* If net is not delimited by {...} then it is also	*/
+			/* an array.  Otherwise, find the nth element in	*/
+			/* the brace-enclosed set.				*/
+
+			/* To do: if any component of the array is a vector	*/
+			/* then we need to count bits in that vector.		*/
+
+			if (*port->net == '{') {
+			    int aidx;
+			    char *sptr, ssave;
+			    char *pptr = port->net + 1;
+			    for (aidx = 0; aidx < (armax - a); aidx++) {
+				sptr = pptr;
+				while (*sptr != ',' && *sptr != '}') sptr++;
+				pptr = sptr + 1;
+			    }
+			    sptr = pptr;
+			    if (*sptr != '\0') {
+				while (*sptr != ',' && *sptr != '}') sptr++;
+				ssave = *sptr;
+				*sptr = '\0';
+				anet = (char *)malloc(strlen(pptr) + 1);
+				sprintf(anet, "%s", pptr);
+				*sptr = ssave;
+			    }
+			    else {
+				anet = NULL;	/* Must handle this error! */
+			    }
+			}
+			else if (((dptr = strrchr(netsptr, '[')) != NULL) &&
+				((cptr = strrchr(netsptr, ':')) != NULL)) {
+			    int fhigh, flow, fidx;
+			    sscanf(dptr + 1, "%d", &fhigh);
+			    sscanf(cptr + 1, "%d", &flow);
+			    if (fhigh > flow) fidx = fhigh - (armax - a);
+			    else fidx = flow + (armax - a);
+			    anet = (char *)malloc(strlen(port->net) + 15);
+			    *dptr = '\0';
+			    sprintf(anet, "%s[%d]", port->net, fidx);
+			    *dptr = '[';
+			}
+			else {
+			    anet = (char *)malloc(strlen(port->net) + 15);
+			    sprintf(anet, "%s[%d]", port->net, a);
+			}
+
+			/* Find the corresponding port bit */
+			for (j = 0; j < gateginfo->nodes; j++) {
+			    if (anet == NULL) break;
+			    if (!strcmp(apin, gateginfo->node[j])) {
+
+				/* Pull pin position from first rectangle in taps	*/
+				/* list.  This does not have to be accurate;  just	*/
+				/* representative.					*/
+				int bufidx;
+				char *sigptr;
+				DSEG tap = gateginfo->taps[j];
+
+				/* If LEF file failed to specify pin geometry, then	*/
+				/* use cell center 					*/
+				if (tap == NULL) {
+				    px = cllx;
+				    py = clly;
+				}
+				else {
+				    llx = (int)(tap->x1 * (double)units + 0.5);
+				    lly = (int)(tap->y1 * (double)units + 0.5);
+				    urx = (int)(tap->x2 * (double)units + 0.5);
+				    ury = (int)(tap->y2 * (double)units + 0.5);
+				    px = cllx + ((llx + urx) / 2);
+				    py = clly + ((lly + ury) / 2);
+				}
+
+				if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
+					((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
+					(gateginfo->direction[j] == PORT_CLASS_INPUT)) {
+				    fprintf(outfptr, "pin_group\n");
+				    *sigptr = '\0';
+				    fprintf(outfptr, "pin name %s_bF$pin/%s ",
+						anet, apin);
+				    *sigptr = '_';
+				    fprintf(outfptr, "signal %s layer %d %d %d\n",
+						anet, lvert, px, py);
+				    fprintf(outfptr, "end_pin_group\n");
+				}
+				else {
+				    fprintf(outfptr, "pin name %s signal %s layer %d %d %d\n",
+					    apin, anet, lvert, px, py);
+				}
+				break;
+			    }
+			}
+			free(anet);
+			if (j == gateginfo->nodes) {
+			    fprintf(stderr, "Error:  Failed to find port %s in cell %s"
+				    " port list!\n", port->name, inst->cellname);
+			}
+		    }
+		    free(apin);
 		}
-		free(apin);
+	    }
+	    if (inst->arraystart < inst->arrayend) {
+		if (++arrayidx > inst->arrayend) break;
+	    }
+	    else {
+		if (--arrayidx < inst->arrayend) break;
 	    }
 	}
     }

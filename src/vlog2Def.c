@@ -184,7 +184,7 @@ void port_output_specs(FILE *outfptr, struct portrec *port,
     ll = -hw;
     ur = w - hw;
     
-    if (port->direction != PORT_NONE)
+    if (port->direction > PORT_NONE)
 	fprintf(outfptr, "\n  + DIRECTION %s", portdirs[port->direction]);
     fprintf(outfptr, "\n  + LAYER %s ( %d %d ) ( %d %d )", layername,
 		ll, ll, ur, ur);
