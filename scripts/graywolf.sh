@@ -268,8 +268,8 @@ endif
 # the pre-placement netlist.
 #------------------------------------------------------------------
 
-if ( -f ${synthdir}/${rootname}_synth.rtl.v && { test ${synthdir}/${rootname}_synth.rtl.v \
-	-ot ${synthdir}/${rootname}_soc_sized.v } ) then
+if ( -f ${synthdir}/${rootname}_synth.rtl.v && ( -M ${synthdir}/${rootname}_synth.rtl.v \
+	> -M ${synthdir}/${rootname}_sized.v ) ) then
     echo "Restoring ${rootname}.rtl.v, ${rootname}.rtlnopwr.v, and ${rootname}.rtlbb.v from pre-placement backups" |& tee -a ${synthlog}
     cp ${synthdir}/${rootname}_synth.rtl.v ${synthdir}/${rootname}.rtl.v
     cp ${synthdir}/${rootname}_synth.rtlnopwr.v ${synthdir}/${rootname}.rtlnopwr.v
