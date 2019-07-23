@@ -283,11 +283,11 @@ endif
 
 echo "DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v -o ${synthdir}/${rootname}_postroute.v" \
 	|& tee -a ${synthlog}
-echo "-p ${vddnet} -g ${gndnet} ${lefoptions} ${rootname}.def" |& tee -a ${synthlog}
+echo "-p ${vddnet} -g ${gndnet} ${lefoptions} ${rootname}_route.def" |& tee -a ${synthlog}
 ${bindir}/DEF2Verilog -v ${synthdir}/${rootname}.rtlnopwr.v \
 		-o ${synthdir}/${rootname}_postroute.v \
 		-p ${vddnet} -g ${gndnet} \
-		${lefoptions} ${rootname}.def >>& ${synthlog}
+		${lefoptions} ${rootname}_route.def >>& ${synthlog}
 set errcond = $status
 if ( ${errcond} != 0 ) then
    echo "DEF2Verilog failed with exit status ${errcond}" |& tee -a ${synthlog}

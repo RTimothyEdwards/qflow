@@ -177,6 +177,8 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 		return NULL;
 	}
     }
+    else if (!strcmp(p->name, GndNet)) return NULL;
+    else if (!strcmp(p->name, VddNet)) return NULL;
 
     fprintf(outf, "wire ");
     if (net->start >= 0 && net->end >= 0) {

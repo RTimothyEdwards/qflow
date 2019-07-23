@@ -386,89 +386,127 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 	    } 
 
 	    for (port = inst->portlist; port; port = port->next) {
+		/* Find the port name in the instance which matches */
+		/* the port name in the macro definition.	    */
+
 		if (libport) {
-		    if (!strcasecmp(libport->name, port->name))
+		    if (!strcasecmp(libport->name, port->name)) {
 			match = TRUE;
+			break;
+		    }
 		}
-		else match = TRUE;
-
-		if (match) {
-		    if (flags & DO_DELIMITER) {
-			char *d1ptr, *d2ptr;
-			if ((d1ptr = strchr(port->net, '[')) != NULL) {
-			    if ((d2ptr = strchr(d1ptr + 1, ']')) != NULL) {
-				*d1ptr = '<';
-				*d2ptr = '>';
-			    }
-			}
-		    }
-		    if (is_array) {
-			char *portname = port->net;
-			if (*portname == '{') {
-			    char *epos, ssave;
-			    int k;
-
-			    /* Bus notation "{a, b, c, ... }" */
-			    /* Go to the end and count bits backwards.	*/
-			    /* until reaching the idx'th position.	*/
-
-			    /* To be done:  Move GetIndexedNet() from	*/
-			    /* vlog2Verilog.c to readverilog.c and call	*/
-			    /* it from here.  It is more complete than	*/
-			    /* this implementation.			*/
-
-			    while (*portname != '}' && *portname != '\0') portname++;
-			    for (k = 0; k < idx; k++) {
-				epos = portname;
-				portname--;
-				while (*portname != ',' && portname > port->net)
-				    portname--;
-			    }
-			    if (*portname == ',') portname++;
-			    ssave = *epos;
-			    *epos = '\0';
-			    fprintf(outfile, "%s", portname);
-			    *epos = ssave;
-			}
-			else {
-			    struct netrec wb;
-
-			    GetBus(portname, &wb, &topcell->nets);
-
-			    if (wb.start < 0) {
-				/* portname is not a bus */
-				fprintf(outfile, "%s", portname);
-			    }
-			    else {
-				int lidx;
-				if (wb.start < wb.end)
-				    lidx =  wb.start + idx;
-				else
-				    lidx = wb.start - idx;
-				/* portname is a partial or full bus */
-				dptr = strrchr(portname, '[');
-				if (dptr) *dptr = '\0';
-				if (flags & DO_DELIMITER)
-				    fprintf(outfile, "%s<%d>", portname, lidx);
-				else
-				    fprintf(outfile, "%s[%d]", portname, lidx);
-				if (dptr) *dptr = '[';
-			    }
-			}
-		    }
-		    else {
-			fprintf(outfile, "%s", port->net);
-		    }
-
-		    if (pcount++ % 8 == 7) {
-			pcount = 0;
-			fprintf(outfile, "\n+");
-		    }
-		    fprintf(outfile, " ");
-
-		    if (libport != NULL) break;
+		else {
+		    match = TRUE;
+		    break;
 		}
 	    }
+	    if (!match) {
+		char *gptr;
+
+		/* Deal with annoying use of "!" as a global indicator,	*/
+		/* which is sometimes used. . .				*/
+		gptr = libport->name + strlen(libport->name) - 1;
+		if (*gptr == '!') {
+		    *gptr = '\0';
+		    for (port = inst->portlist; port; port = port->next) {
+			if (!strcasecmp(libport->name, port->name)) {
+			    match = TRUE;
+			    break;
+			}
+		    }
+		    *gptr = '!';
+		}
+		else {
+		    for (port = inst->portlist; port; port = port->next) {
+			gptr = port->name + strlen(port->name) - 1;
+			if (*gptr == '!') {
+			    *gptr = '\0';
+			    if (!strcasecmp(libport->name, port->name)) match = TRUE;
+			    *gptr = '!';
+			    if (match == TRUE) break;
+			}
+		    }
+		}
+	    }
+	    if (!match) {
+		fprintf(stderr, "Error:  Instance %s has no port %s!\n",
+			inst->instname, libport->name);
+	    }
+	    else {
+		if (flags & DO_DELIMITER) {
+		    char *d1ptr, *d2ptr;
+		    if ((d1ptr = strchr(port->net, '[')) != NULL) {
+			if ((d2ptr = strchr(d1ptr + 1, ']')) != NULL) {
+			    *d1ptr = '<';
+			    *d2ptr = '>';
+			}
+		    }
+		}
+		if (is_array) {
+		    char *portname = port->net;
+		    if (*portname == '{') {
+			char *epos, ssave;
+			int k;
+
+			/* Bus notation "{a, b, c, ... }"	    */
+			/* Go to the end and count bits backwards.  */
+			/* until reaching the idx'th position.	    */
+
+			/* To be done:  Move GetIndexedNet() from   */
+			/* vlog2Verilog.c to readverilog.c and call */
+			/* it from here.  It is more complete than  */
+			/* this implementation.			    */
+
+			while (*portname != '}' && *portname != '\0') portname++;
+			for (k = 0; k < idx; k++) {
+			    epos = portname;
+			    portname--;
+			    while (*portname != ',' && portname > port->net)
+				portname--;
+			}
+			if (*portname == ',') portname++;
+			ssave = *epos;
+			*epos = '\0';
+			fprintf(outfile, "%s", portname);
+			*epos = ssave;
+		    }
+		    else {
+			struct netrec wb;
+
+			GetBus(portname, &wb, &topcell->nets);
+
+			if (wb.start < 0) {
+			    /* portname is not a bus */
+			    fprintf(outfile, "%s", portname);
+			}
+			else {
+			    int lidx;
+			    if (wb.start < wb.end)
+				lidx =  wb.start + idx;
+			    else
+				lidx = wb.start - idx;
+			    /* portname is a partial or full bus */
+			    dptr = strrchr(portname, '[');
+			    if (dptr) *dptr = '\0';
+			    if (flags & DO_DELIMITER)
+				fprintf(outfile, "%s<%d>", portname, lidx);
+			    else
+				fprintf(outfile, "%s[%d]", portname, lidx);
+			    if (dptr) *dptr = '[';
+			}
+		    }
+		}
+		else {
+		    fprintf(outfile, "%s", port->net);
+		}
+
+		if (pcount++ % 8 == 7) {
+		    pcount = 0;
+		    fprintf(outfile, "\n+");
+		}
+		fprintf(outfile, " ");
+	    }
+
 	    if (portlist == NULL) {
 		fprintf(stdout, "Warning:  No defined subcircuit %s for "
 				"instance %s!\n", inst->cellname, inst->instname);
