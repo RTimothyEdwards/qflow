@@ -280,7 +280,9 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
             if xmatch:
                 # Replace subcircuit call with xspice call
                 instname = xmatch.group(1)
-                conns = xmatch.group(2).split()
+                # NOTE:  Parsing for common CDLisms like '/' before cellname and
+		# parameter passing to the instance.
+                conns = list(item for item in xmatch.group(2).split() if '=' not in item and item != '/')
                 pins = conns[0:-1]
                 cellname = conns[-1]
 
