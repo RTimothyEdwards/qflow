@@ -213,8 +213,8 @@ ${bindir}/qrouter -i ${rootname}.info -c ${rootname}.cfg
 # Spot check:  Did qrouter produce file ${rootname}.info?
 #---------------------------------------------------------------------
 
-if ( !( -f ${rootname}.info || \
-	( -f ${rootname}.info && -M ${rootname}.info < -M ${rootname}.pin ))) then
+if ( ! -f ${rootname}.info || \
+	( -M ${rootname}.info < -M ${rootname}.pin )) then
    echo "qrouter (-i) failure:  No file ${rootname}.info." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -279,10 +279,9 @@ endif
 # Spot check:  Did vlog2Def produce file ${rootname}_preplace.def?
 #---------------------------------------------------------------------
 
-if ( !( -f ${layoutdir}/${rootname}_preplace.def || \
-	( -f ${layoutdir}/${rootname}_preplace.def && \
-	-M ${layoutdir}/${rootname}_preplace.def \
-	< -M ${rootname}.rtlnopwr.v ))) then
+if ( ! -f ${layoutdir}/${rootname}_preplace.def || \
+	( -M ${layoutdir}/${rootname}_preplace.def \
+	< -M ${rootname}.rtlnopwr.v )) then
    echo "vlog2Def failure:  No file ${rootname}_preplace.def." |& tee -a ${synthlog}
    echo "vlog2Def was called with arguments: ${lefpath} "
    echo "	-u $units -o ${layoutdir}/${rootname}_preplace.def"
@@ -385,8 +384,8 @@ endif
 
 set outfile=`ls outputs/ispd/${rootname}_preplace/experiment*/${rootname}_preplace_final.def --sort=time | head -1`
 
-if ( !( -f ${outfile} || \
-	( -f ${outfile} && -M ${outfile} < -M ${rootname}_preplace.def ))) then
+if ( ! -f ${outfile} || \
+	( -M ${outfile} < -M ${rootname}_preplace.def )) then
    echo "RePlAce failure:  No file ${rootname}_preplace_final.def." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -708,26 +707,26 @@ if ($makedef == 1) then
       # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
       #------------------------------------------------------------------
 
-      if ( !( -f ${rootname}.rtl.v || ( -f ${rootname}.rtl.v && \
-		-M ${rootname}.rtl.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtl.v || ( -M ${rootname}.rtl.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtl.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.rtlnopwr.v || ( -f ${rootname}.rtlnopwr.v && \
-		-M ${rootname}.rtlnopwr.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtlnopwr.v || ( -M ${rootname}.rtlnopwr.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.rtlbb.v || ( -f ${rootname}.rtlbb.v && \
-		-M ${rootname}.rtlbb.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtlbb.v || ( -M ${rootname}.rtlbb.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.spc || ( -f ${rootname}.spc && \
-		-M ${rootname}.spc < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.spc || ( -M ${rootname}.spc \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Spice failure:  No file ${rootname}.spc created." \
 		|& tee -a ${synthlog}
       endif

@@ -253,8 +253,7 @@ ${bindir}/magic -dnull -noconsole ${migrate_options} ${migratefile} |& tee -a ${
 #---------------------------------------------------------------------
 
 if ( ${useexisting} == 0 ) then
-   if ( !( -f ${rootname}.mag || ( -f ${rootname}.mag && \
-		-M ${rootname}.mag < -M ${rootname}.def ))) then
+   if ( ! -f ${rootname}.mag || ( -M ${rootname}.mag < -M ${rootname}.def )) then
       echo "Migration failure:  No .mag layout file generated." \
 		|& tee -a ${synthlog}
       echo "Premature exit." |& tee -a ${synthlog}
@@ -263,8 +262,7 @@ if ( ${useexisting} == 0 ) then
    endif
 endif
 
-if ( !( -f ${rootname}.lef || ( -f ${rootname}.lef && \
-	-M ${rootname}.lef < -M ${rootname}.def ))) then
+if ( ! -f ${rootname}.lef || ( -M ${rootname}.lef < -M ${rootname}.def )) then
    echo "Migration failure:  No project .lef macro file generated." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
@@ -272,8 +270,7 @@ if ( !( -f ${rootname}.lef || ( -f ${rootname}.lef && \
    exit 1
 endif
 
-if ( !( -f ${rootname}.spice || ( -f ${rootname}.spice && \
-	-M ${rootname}.spice < -M ${rootname}.def ))) then
+if ( ! -f ${rootname}.spice || ( -M ${rootname}.spice < -M ${rootname}.def )) then
    echo "Migration failure:  No project .spice extracted netlist generated." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}

@@ -247,16 +247,16 @@ endif
 # Spot check:  Did qrouter produce file ${rootname}_route.def?
 #---------------------------------------------------------------------
 
-if ( !( -f ${rootname}_route.def || ( -f ${rootname}_route.def && -M ${rootname}_route.def \
-		< -M ${rootname}.def ))) then
+if ( ! -f ${rootname}_route.def || ( -M ${rootname}_route.def \
+		< -M ${rootname}.def )) then
    echo "qrouter failure:  No output file ${rootname}_route.def." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
    exit 1
 endif
 
-if ( !( -f ${rootname}_route.rc || ( -f ${rootname}_route.rc && \
-		-M ${rootname}_route.rc < -M ${rootname}.def ))) then
+if ( ! -f ${rootname}_route.rc || ( -M ${rootname}_route.rc \
+		< -M ${rootname}.def )) then
    echo "qrouter failure:  No delay file ${rootname}_route.rc." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -267,8 +267,7 @@ endif
 # Spot check:  Did qrouter produce file failed.out?
 #---------------------------------------------------------------------
 
-if ( -f failed.out && ( -M failed.out \
-		> -M ${rootname}.def )) then
+if ( -f failed.out && ( -M failed.out > -M ${rootname}.def )) then
    echo "qrouter failure:  Not all nets were routed." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -372,26 +371,26 @@ else
    # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
    #------------------------------------------------------------------
 
-   if ( !( -f ${rootname}.rtl.anno.v || ( -f ${rootname}.rtl.anno.v && \
-		-M ${rootname}.rtl.anno.v < -M ${rootname}_postroute.v ))) then
+   if ( ! -f ${rootname}.rtl.anno.v || ( -M ${rootname}.rtl.anno.v \
+		< -M ${rootname}_postroute.v )) then
       echo "vlog2Verilog failure:  No file ${rootname}.rtl.anno.v created." \
 		|& tee -a ${synthlog}
    endif
 
-   if ( !( -f ${rootname}.rtlnopwr.anno.v || ( -f ${rootname}.rtlnopwr.anno.v && \
-		-M ${rootname}.rtlnopwr.anno.v < -M ${rootname}_postroute.v ))) then
+   if ( ! -f ${rootname}.rtlnopwr.anno.v || ( -M ${rootname}.rtlnopwr.anno.v \
+		< -M ${rootname}_postroute.v )) then
       echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.anno.v created." \
 		|& tee -a ${synthlog}
    endif
 
-   if ( !( -f ${rootname}.rtlbb.anno.v || ( -f ${rootname}.rtlbb.anno.v && \
-		-M ${rootname}.rtlbb.anno.v < -M ${rootname}_postroute.v ))) then
+   if ( ! -f ${rootname}.rtlbb.anno.v || ( -M ${rootname}.rtlbb.anno.v \
+		< -M ${rootname}_postroute.v )) then
       echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.anno.v created." \
 		|& tee -a ${synthlog}
    endif
 
-   if ( !( -f ${rootname}.anno.spc || ( -f ${rootname}.anno.spc && \
-		-M ${rootname}.anno.spc < -M ${rootname}_postroute.v ))) then
+   if ( ! -f ${rootname}.anno.spc || ( -M ${rootname}.anno.spc \
+		< -M ${rootname}_postroute.v )) then
       echo "vlog2Spice failure:  No file ${rootname}.anno.spc created." \
 		|& tee -a ${synthlog}
    endif

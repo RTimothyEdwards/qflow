@@ -224,8 +224,8 @@ ${bindir}/qrouter -i ${rootname}.info -c ${rootname}.cfg
 # Spot check:  Did qrouter produce file ${rootname}.info?
 #---------------------------------------------------------------------
 
-if ( !( -f ${rootname}.info || \
-	( -f ${rootname}.info && -M ${rootname}.info < -M ${rootname}.pin ))) then
+if ( ! -f ${rootname}.info || \
+	( -M ${rootname}.info < -M ${rootname}.pin )) then
    echo "qrouter (-i) failure:  No file ${rootname}.info." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -294,9 +294,8 @@ endif
 # Spot check:  Did vlog2Cel produce file ${rootname}.cel?
 #---------------------------------------------------------------------
 
-if ( !( -f ${layoutdir}/${rootname}.cel || \
-	( -f ${layoutdir}/${rootname}.cel && -M ${layoutdir}/${rootname}.cel \
-	< -M ${rootname}.rtlnopwr.v ))) then
+if ( ! -f ${layoutdir}/${rootname}.cel || \
+	( -M ${layoutdir}/${rootname}.cel < -M ${rootname}.rtlnopwr.v )) then
    echo "vlog2Cel failure:  No file ${rootname}.cel." |& tee -a ${synthlog}
    echo "vlog2Cel was called with arguments: ${lefpath} "
    echo "	-u $units -o ${layoutdir}/${rootname}.cel"
@@ -467,8 +466,8 @@ endif
 # Spot check:  Did GrayWolf produce file ${rootname}.pin?
 #---------------------------------------------------------------------
 
-if ( !( -f ${rootname}.pin || \
-	( -f ${rootname}.pin && -M ${rootname}.pin < -M ${rootname}.cel ))) then
+if ( ! -f ${rootname}.pin || \
+	( -M ${rootname}.pin < -M ${rootname}.cel )) then
    echo "GrayWolf failure:  No file ${rootname}.pin." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -579,8 +578,8 @@ if ($makedef == 1) then
    # Spot check:  Did place2def produce file ${rootname}.def?
    #---------------------------------------------------------------------
 
-   if ( !( -f ${rootname}.def || \
-	( -f ${rootname}.def && -M ${rootname}.def < -M ${rootname}.pin ))) then
+   if ( ! -f ${rootname}.def || \
+	( -M ${rootname}.def < -M ${rootname}.pin )) then
       echo "place2def failure:  No file ${rootname}.def." |& tee -a ${synthlog}
       echo "Premature exit." |& tee -a ${synthlog}
       echo "Synthesis flow stopped due to error condition." >> ${synthlog}
@@ -654,8 +653,8 @@ if ($makedef == 1) then
       # Check if the _mod.def output file was generated, and if so, rename it
       # back to plain .def.
 
-      if ( !( -f ${rootname}_mod.def || ( -f ${rootname}_mod.def && \
-		-M ${rootname}_mod.def < -M ${rootname}.def ))) then
+      if ( ! -f ${rootname}_mod.def || ( -M ${rootname}_mod.def \
+		    < -M ${rootname}.def )) then
           echo "Error (ignoring):"
 	  echo "   arrangepins.tcl failed to generate file ${rootname}_mod.def."
       else
@@ -903,26 +902,26 @@ if ($makedef == 1) then
       # Spot check:  Did vlog2Verilog or vlog2Spice exit with an error?
       #------------------------------------------------------------------
 
-      if ( !( -f ${rootname}.rtl.v || ( -f ${rootname}.rtl.v && \
-		-M ${rootname}.rtl.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtl.v || ( -M ${rootname}.rtl.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtl.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.rtlnopwr.v || ( -f ${rootname}.rtlnopwr.v && \
-		-M ${rootname}.rtlnopwr.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtlnopwr.v || ( -M ${rootname}.rtlnopwr.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtlnopwr.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.rtlbb.v || ( -f ${rootname}.rtlbb.v && \
-		-M ${rootname}.rtlbb.v < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.rtlbb.v || ( -M ${rootname}.rtlbb.v \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Verilog failure:  No file ${rootname}.rtlbb.v created." \
 		|& tee -a ${synthlog}
       endif
 
-      if ( !( -f ${rootname}.spc || ( -f ${rootname}.spc && \
-		-M ${rootname}.spc < -M ${rootname}_anno.v ))) then
+      if ( ! -f ${rootname}.spc || ( -M ${rootname}.spc \
+		    < -M ${rootname}_anno.v )) then
 	 echo "vlog2Spice failure:  No file ${rootname}.spc created." \
 		|& tee -a ${synthlog}
       endif

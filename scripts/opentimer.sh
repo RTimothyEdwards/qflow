@@ -208,8 +208,8 @@ if ($dodelays == 1) then
        cd ${synthdir}
 
        # Spot check for output file
-       if ( !( -f ${rootname}.spef || \
-		( -M ${rootname}.spef < -M ${layoutdir}/${rootname}.rc ))) then
+       if ( ! -f ${rootname}.spef || \
+		( -M ${rootname}.spef < -M ${layoutdir}/${rootname}.rc )) then
 	  echo "rc2dly failure:  No file ${rootname}.spef created." \
 		|& tee -a ${synthlog}
           echo "Premature exit." |& tee -a ${synthlog}

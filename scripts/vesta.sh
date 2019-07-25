@@ -208,8 +208,8 @@ if ($dodelays == 1) then
 
        # Spot check for output file (NOTE:  Currently not checking if SPEF
        # or SDF format files were created)
-       if ( !( -f ${rootname}.dly || \
-		( -M ${rootname}.dly < -M ${layoutdir}/${rootname}.rc ))) then
+       if ( ! -f ${rootname}.dly || \
+		( -M ${rootname}.dly < -M ${layoutdir}/${rootname}.rc )) then
 	  echo "rc2dly failure:  No file ${rootname}.dly created." \
 		|& tee -a ${synthlog}
           echo "Premature exit." |& tee -a ${synthlog}

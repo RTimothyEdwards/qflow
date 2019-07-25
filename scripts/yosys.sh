@@ -784,8 +784,8 @@ endif
 # Spot check:  Did vlogFanout produce an error?
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}_sized.v || \
-        ( -M ${modulename}_sized.v < -M ${modulename}_mapped.v ))) then
+if ( ! -f ${modulename}_sized.v || \
+        ( -M ${modulename}_sized.v < -M ${modulename}_mapped.v )) then
    echo "vlogFanout failure.  See file ${synthlog} for error messages." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
@@ -806,8 +806,8 @@ ${bindir}/vlog2Verilog -c -p -v ${vddnet} -g ${gndnet} ${postproc_options} \
 # Spot check:  Did vlog2Verilog produce an error?
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}.v || \
-        ( -M ${modulename}.v < -M ${modulename}_sized.v ))) then
+if ( ! -f ${modulename}.v || \
+        ( -M ${modulename}.v < -M ${modulename}_sized.v )) then
    echo "vlog2Verilog failure.  See file ${synthlog} for error messages." \
 	|& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
@@ -880,20 +880,20 @@ endif
 # so if they are missing, we flag a warning but do not exit.
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}.rtl.v || \
-        ( -M ${modulename}.rtl.v < -M ${modulename}.v ))) then
+if ( ! -f ${modulename}.rtl.v || \
+        ( -M ${modulename}.rtl.v < -M ${modulename}.v )) then
    echo "vlog2Verilog failure:  No file ${modulename}.rtl.v created." \
                 |& tee -a ${synthlog}
 endif
 
-if ( !( -f ${modulename}.rtlnopwr.v || \
-        ( -M ${modulename}.rtlnopwr.v < -M ${modulename}.v ))) then
+if ( ! -f ${modulename}.rtlnopwr.v || \
+        ( -M ${modulename}.rtlnopwr.v < -M ${modulename}.v )) then
    echo "vlog2Verilog failure:  No file ${modulename}.rtlnopwr.v created." \
                 |& tee -a ${synthlog}
 endif
 
-if ( !( -f ${modulename}.rtlbb.v || \
-        ( -M ${modulename}.rtlbb.v < -M ${modulename}.v ))) then
+if ( ! -f ${modulename}.rtlbb.v || \
+        ( -M ${modulename}.rtlbb.v < -M ${modulename}.v )) then
    echo "vlog2Verilog failure:  No file ${modulename}.rtlbb.v created." \
                 |& tee -a ${synthlog}
 endif
@@ -924,8 +924,8 @@ endif
 # so if they are missing, we flag a warning but do not exit.
 #---------------------------------------------------------------------
 
-if ( !( -f ${modulename}.spc || \
-        ( -M ${modulename}.spc < -M ${modulename}.v ))) then
+if ( ! -f ${modulename}.spc || \
+        ( -M ${modulename}.spc < -M ${modulename}.v )) then
    echo "vlog2Spice failure:  No file ${modulename}.spc created." \
                 |& tee -a ${synthlog}
 else
@@ -956,8 +956,8 @@ else
        ${scriptdir}/spi2xspice.py "${libertyoption}" ${xspice_options} \
 		${modulename}.spc ${modulename}.xspice
 
-       if ( !( -f ${modulename}.xspice || \
-		( -M ${modulename}.xspice < -M ${modulename}.spc ))) then
+       if ( ! -f ${modulename}.xspice || \
+		( -M ${modulename}.xspice < -M ${modulename}.spc )) then
           echo "spi2xspice.py failure:  No file ${modulename}.xspice created." \
 		|& tee -a ${synthlog}
        endif

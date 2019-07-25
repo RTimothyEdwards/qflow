@@ -80,16 +80,16 @@ endif
 # Check if migration was run.  Must have synthesis and layout extracted
 # netlists.  All netlists must be more recent than the project ".def" file.
 
-if ( ! ( -f ${synthdir}/${rootname}.spc || ( -f ${synthdir}/${rootname}.spc && \
-	-M ${synthdir}/${rootname}.spc < -M ${synthdir}/${rootname}.blif ))) then
+if ( ! -f ${synthdir}/${rootname}.spc || \
+	( -M ${synthdir}/${rootname}.spc < -M ${synthdir}/${rootname}.blif )) then
     echo "LVS failure: No schematic netlist found." |& tee -a ${synthlog}
     echo "Premature exit." |& tee -a ${synthlog}
     echo "Synthesis flow stopped due to error condition." >> ${synthlog}
     exit 1
 endif
 
-if ( ! ( -f ${layoutdir}/${rootname}.spice  || ( -f ${layoutdir}/${rootname}.spice && \
-	-M ${layoutdir}/${rootname}.spice < -M ${layoutdir}/${rootname}.def ))) then
+if ( ! -f ${layoutdir}/${rootname}.spice  || \
+	( -M ${layoutdir}/${rootname}.spice < -M ${layoutdir}/${rootname}.def )) then
     echo "LVS failure: No layout extracted netlist found;  migration was not run." \
 	|& tee -a ${synthlog}
     echo "Premature exit." |& tee -a ${synthlog}
@@ -162,7 +162,7 @@ ${bindir}/netgen ${lvs_options} -batch lvs "${rootname}.spice ${rootname}" \
 # Spot check:  Did netgen produce file comp.out?
 #---------------------------------------------------------------------
 
-if ( !( -f comp.out || ( -f comp.out && -M comp.out < -M ${rootname}.spice ))) then
+if ( ! -f comp.out || ( -M comp.out < -M ${rootname}.spice )) then
    echo "netgen failure:  No file comp.out." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
