@@ -160,7 +160,7 @@ ${bindir}/magic -dnull -noconsole ${gdsii_options} ${gengdsfile} |& tee -a ${syn
 # Spot check:  Did magic produce file ${rootname}.gds?
 #---------------------------------------------------------------------
 
-if ( ! -f ${rootname}.gds || ( -M ${rootname}.def < -M ${rootname}.gds )) then
+if ( ! -f ${rootname}.gds || ( -M ${rootname}.gds < -M ${rootname}.def )) then
    echo "magic failure:  No file ${rootname}.gds." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}
