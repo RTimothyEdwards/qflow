@@ -158,6 +158,14 @@ ${bindir}/netgen ${lvs_options} -batch lvs "${rootname}.spice ${rootname}" \
 	"${synthdir}/${rootname}.spc ${rootname}" ${setup_script} ${outfile} \
 	-json -blackbox |& tee -a ${synthlog}
 
+set errcond = $status
+if ( ${errcond} != 0 ) then
+   echo "netgen failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+   exit 1
+endif
+
 #---------------------------------------------------------------------
 # Spot check:  Did netgen produce file comp.out?
 #---------------------------------------------------------------------

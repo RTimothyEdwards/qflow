@@ -188,6 +188,14 @@ echo "Running magic $version"
 echo "magic -dnull -noconsole ${drc_options} ${rundrcfile}" |& tee -a ${synthlog} 
 ${bindir}/magic -dnull -noconsole ${drc_options} ${rundrcfile} |& tee -a ${synthlog}
 
+set errcond = $status
+if ( ${errcond} != 0 ) then
+   echo "magic failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+   exit 1
+endif
+
 #---------------------------------------------------------------------
 # Spot check:  Does the last line of the synthlog have "drc = 0"?
 #---------------------------------------------------------------------
