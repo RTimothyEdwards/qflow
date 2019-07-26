@@ -243,6 +243,14 @@ else
 		-e remaining:\ \[1-9\]0\\\?\$ -e \\\*\\\*\\\*
 endif
 
+set errcond = $status
+if ( ${errcond} != 0 ) then
+   echo "qrouter failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+   exit 1
+endif
+
 #---------------------------------------------------------------------
 # Spot check:  Did qrouter produce file ${rootname}_route.def?
 #---------------------------------------------------------------------
