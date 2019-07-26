@@ -11,7 +11,7 @@ if ($#argv < 2) then
 endif
 
 # Split out options from the main arguments (no options---this is a placeholder)
-set argline=(`getopt "" $argv[1-]`)
+set argline=(`getopt "p" $argv[1-]`)
 set cmdargs=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $2}'`
 set argc=`echo $cmdargs | wc -w`
 
@@ -24,11 +24,18 @@ else
    echo       <project_path> is the name of the project directory containing
    echo                 a file called qflow_vars.sh.
    echo       <source_name> is the root name of the verilog file, and
+   echo       [options] are:
+   echo                 -p      purge (keep sources only)
    exit 1
 endif
 
+set purge=0
+
 foreach option (${argline})
    switch (${option})
+      case -p:
+         set purge=1
+         breaksw
       case --:
 	 break
    endsw
@@ -82,6 +89,10 @@ rm -f ${origname}_mapped.v.orig
 rm -f ${origname}_mapped.v
 rm -f ${origname}_tmp.v
 
+if ( $purge == 1 ) then
+    rm -f ${origname}.ys
+endif
+
 #----------------------------------------------------------
 # Clean up files from synthesis.  Leave the final buffered
 # .blif netlist and the RTL verilog files
@@ -89,17 +100,34 @@ rm -f ${origname}_tmp.v
 
 cd ${synthdir}
 
-# rm -f ${origname}.v
 rm -f ${origname}_bak.v
 rm -f ${origname}_tmp.v
 rm -f ${rootname}_orig.v
 rm -f ${rootname}_sized.v
 rm -f ${rootname}_mapped.v
 rm -f ${rootname}_anno.v
+rm -f ${rootname}_postroute.v
+rm -f ${rootname}_mapped.v
 rm -f ${rootname}.anno.v
 rm -f ${rootname}_nofanout
-rm -f ${rootname}_powerground
 rm -f tmp.blif
+rm -f tmp.v
+
+if ( $purge == 1 ) then
+    rm -f ${origname}.v
+    rm -f ${rootname}.spc
+    rm -f ${rootname}.xspice
+    rm -f ${rootname}.spef
+    rm -f ${rootname}.sdf
+    rm -f ${rootname}.dly
+    rm -f ${rootname}.rtl.v
+    rm -f ${rootname}.rtlbb.v
+    rm -f ${rootname}.rtlnopwr.v
+    rm -f ${rootname}_synth.rtl.v
+    rm -f ${rootname}_synth.rtlbb.v
+    rm -f ${rootname}_synth.rtlnopwr.v
+    rm -f ${rootname}_powerground
+endif
 
 #----------------------------------------------------------
 # Clean up the (excessively numerous) GrayWolf files
@@ -113,22 +141,53 @@ rm -f ${rootname}.blk ${rootname}.gen ${rootname}.gsav ${rootname}.history
 rm -f ${rootname}.log ${rootname}.mcel ${rootname}.mdat ${rootname}.mgeo
 rm -f ${rootname}.mout ${rootname}.mpin ${rootname}.mpth ${rootname}.msav
 rm -f ${rootname}.mver ${rootname}.mvio ${rootname}.stat ${rootname}.out
-rm -f ${rootname}.mtmp ${rootname}.rc
-rm -f ${rootname}.pth ${rootname}.sav ${rootname}.scel
+rm -f ${rootname}.mtmp ${rootname}.pth ${rootname}.sav ${rootname}.scel
 rm -f ${rootname}.txt ${rootname}.info
 
+rm -f *.ext
+
 rm -f ${rootname}.pin ${rootname}.pl1 ${rootname}.pl2
-rm -f ${rootname}.cfg
 rm -f antenna.out fillcells.txt fail.out
 
 rm -f run_drc_map9v3.tcl
 rm -f generate_gds_map9v3.tcl
 rm -f migrate_map9v3.tcl
 
-# rm -f ${origname}_unroute.def
-
 rm -f cn
 rm -f failed
+
+if ( $purge == 1 ) then
+    rm -f comp.out
+    rm -f comp.json
+    rm -f qflow.magicrc
+    rm -f ${rootname}.spice
+    rm -f ${rootname}.cel
+    rm -f ${rootname}.cfg
+    rm -f ${rootname}.rc
+    rm -f ${rootname}.cel.bak
+    rm -f ${rootname}.lef
+    rm -f ${rootname}.def
+    rm -f ${rootname}_unroute.def
+    rm -f ${rootname}.mag
+    rm -f ${rootname}.obs
+    rm -f ${rootname}.gds
+    rm -f ${rootname}.par.orig
+endif
+
+cd ${logdir}
+
+if ( $purge == 1 ) then
+    rm -f drc.log
+    rm -f lvs.log
+    rm -f gdsii.log
+    rm -f migrate.log
+    rm -f place.log
+    rm -f post_sta.log
+    rm -f prep.log
+    rm -f route.log
+    rm -f sta.log
+    rm -f synth.log
+endif
 
 #------------------------------------------------------------
 # Done!

@@ -3427,83 +3427,14 @@ class QflowManager(ttk.Frame):
         self.update_idletasks()
         failed = False
 
-        srcdir = self.sourcedir
-        sdir = self.synthdir
-        ldir = self.layoutdir
-        logdir = self.logdir
-
-        # Remove files in qflow
-        rfiles = []
-        rfiles.append(srcdir + '/' + self.project + '_mapped.v')
-        rfiles.append(srcdir + '/' + self.project + '_mapped_tmp.v')
-
-        rfiles.append(sdir + '/' + self.project + '_anno.v')
-        rfiles.append(sdir + '/' + self.project + '_bak.v')
-        rfiles.append(sdir + '/' + self.project + '_nofanout')
-        rfiles.append(sdir + '/' + self.project + '_synth.rtl.v')
-        rfiles.append(sdir + '/' + self.project + '_synth.rtlbb.v')
-        rfiles.append(sdir + '/' + self.project + '_synth.rtlnopwr.v')
-        rfiles.append(sdir + '/' + self.project + '.rtl.v')
-        rfiles.append(sdir + '/' + self.project + '.rtlbb.v')
-        rfiles.append(sdir + '/' + self.project + '.rtlnopwr.v')
-        rfiles.append(sdir + '/tmp.v')
-
-        rfiles.append(ldir + '/' + self.project + '.info')
-        rfiles.append(ldir + '/' + self.project + '.mtmp')
-        rfiles.append(ldir + '/' + self.project + '.obs')
-        rfiles.append(ldir + '/' + self.project + '.pin')
-        rfiles.append(ldir + '/' + self.project + '.pl1')
-        rfiles.append(ldir + '/' + self.project + '.pl2')
-
-        # "purge" clears out all files except the minimum set needed to
-        # rebuild the design.
         if do_purge == 1:
-            rfiles.append(srcdir + '/' + self.project + '.ys')
-            rfiles.append(sdir + '/' + self.project + '.v')
-            rfiles.append(sdir + '/' + self.project + '.spc')
-            rfiles.append(sdir + '/' + self.project + '.xspice')
-            rfiles.append(sdir + '/' + self.project + '.rtl.v')
-            rfiles.append(sdir + '/' + self.project + '.rtlbb.v')
-            rfiles.append(sdir + '/' + self.project + '.rtlnopwr.v')
-            rfiles.append(sdir + '/' + self.project + '_synth.rtl.v')
-            rfiles.append(sdir + '/' + self.project + '_synth.rtlbb.v')
-            rfiles.append(sdir + '/' + self.project + '_synth.rtlnopwr.v')
-            rfiles.append(sdir + '/' + self.project + '.dly')
-            rfiles.append(sdir + '/' + self.project + '.spef')
-            rfiles.append(sdir + '/' + self.project + '.sdf')
-            rfiles.append(sdir + '/' + self.project + '_powerground')
-            rfiles.append(ldir + '/' + self.project + '.cel')
-            rfiles.append(ldir + '/' + self.project + '.cfg')
-            rfiles.append(ldir + '/' + self.project + '.def')
-            rfiles.append(ldir + '/' + self.project + '.lef')
-            rfiles.append(ldir + '/' + self.project + '.mag')
-            rfiles.append(ldir + '/' + self.project + '.gds')
-            rfiles.append(ldir + '/' + self.project + '.rc')
-            rfiles.append(ldir + '/comp.out')
-            rfiles.append(ldir + '/comp.json')
-            rfiles.append(ldir + '/qflow.magicrc')
-            rfiles.append(ldir + '/' + self.project + '_unroute.def')
-            rfiles.append(logdir + '/drc.log')
-            rfiles.append(logdir + '/lvs.log')
-            rfiles.append(logdir + '/gdsii.log')
-            rfiles.append(logdir + '/migrate.log')
-            rfiles.append(logdir + '/place.log')
-            rfiles.append(logdir + '/post_sta.log')
-            rfiles.append(logdir + '/prep.log')
-            rfiles.append(logdir + '/route.log')
-            rfiles.append(logdir + '/sta.log')
-            rfiles.append(logdir + '/synth.log')
-
-        for rfile in rfiles:
-            if os.path.exists(rfile):
-                os.remove(rfile)
-
-        # Remove .ext files in layout
-        if os.path.isdir(ldir):
-            mfiles = os.listdir(ldir)
-            for file in mfiles:
-                if os.path.splitext(file)[1] == '.ext':
-                    os.remove(ldir + '/' + file)
+            qcommand = 'purge'
+        else:
+            qcommand = 'clean'
+        cproc = subprocess.Popen(['qflow', self.project, qcommand],
+		    stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
+		    stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
+        cprocpair = cproc.communicate(timeout=1)
 
         if failed:
             self.toppane.checklist.clean_result.configure(text="Fail", style='red.TButton')
