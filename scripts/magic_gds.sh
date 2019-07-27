@@ -156,11 +156,19 @@ echo "Running magic $version"
 echo "magic -dnull -noconsole ${gdsii_options} ${gengdsfile}" |& tee -a ${synthlog} 
 ${bindir}/magic -dnull -noconsole ${gdsii_options} ${gengdsfile} |& tee -a ${synthlog}
 
+set errcond = $status
+if ( ${errcond} != 0 ) then
+   echo "magic failed with exit status ${errcond}" |& tee -a ${synthlog}
+   echo "Premature exit." |& tee -a ${synthlog}
+   echo "Synthesis flow stopped on error condition." >>& ${synthlog}
+   exit 1
+endif
+
 #---------------------------------------------------------------------
 # Spot check:  Did magic produce file ${rootname}.gds?
 #---------------------------------------------------------------------
 
-if ( ! -f ${rootname}.gds || ( -M ${rootname}.def < -M ${rootname}.gds )) then
+if ( ! -f ${rootname}.gds || ( -M ${rootname}.gds < -M ${rootname}.def )) then
    echo "magic failure:  No file ${rootname}.gds." |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
    echo "Synthesis flow stopped due to error condition." >> ${synthlog}

@@ -1237,6 +1237,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    struct netrec wb, *nb;
 	    char *eptr, *wirename;
 	    char is_assignment = FALSE;
+	    char is_wire = (strcmp(nexttok, "wire")) ? FALSE : TRUE;
 
 	    // Several allowed uses of "assign":
 	    // "assign a = b" joins two nets.
@@ -1249,17 +1250,35 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		if (!strcmp(nexttok, "=")) {
 		    is_assignment = TRUE;
 		}
+		else if (!strcmp(nexttok, "{")) {
+		    /* To be handled if joining nets is handled */
+		}
+		else if (!strcmp(nexttok, "}")) {
+		    /* To be handled if joining nets is handled */
+		}
 		else if (GetBusTok(&wb, &top->nets) == 0) {
-		    /* Handle bus notation */
-		    if ((nb = BusHashLookup(nexttok, &top->nets)) == NULL)
-			nb = Net(top, nexttok);
-		    if (nb->start == -1) {
-		        nb->start = wb.start;
-		        nb->end = wb.end;
+		    if (is_wire) {
+			/* Handle bus notation (wires only) */
+			if ((nb = BusHashLookup(nexttok, &top->nets)) == NULL)
+			    nb = Net(top, nexttok);
+			if (nb->start == -1) {
+			    nb->start = wb.start;
+			    nb->end = wb.end;
+			}
+			else {
+			    if (nb->start < wb.start) nb->start = wb.start;
+			    if (nb->end > wb.end) nb->end = wb.end;
+			}
 		    }
 		    else {
-			if (nb->start < wb.start) nb->start = wb.start;
-			if (nb->end > wb.end) nb->end = wb.end;
+			/* "assign" to a bus subnet.  This will be ignored  */
+			/* until this tool handles bus joining.  If the	    */
+			/* assignment is made on an undeclared wire, then   */
+			/* adjust the wire bounds.			    */
+			if (nb && nb->start == -1) {
+			    nb->start = wb.start;
+			    nb->end = wb.end;
+			}
 		    }
 		}
 		else {

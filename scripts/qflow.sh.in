@@ -52,6 +52,7 @@ set dolvs=0
 set dodrc=0
 set dogdsii=0
 set doclean=0
+set dopurge=0
 set dodisplay=0
 
 while ($#argv > 0)
@@ -178,6 +179,11 @@ while ($#argv > 0)
       case clean:
       case cleanup:
 	 set doclean=1
+	 set actions=1
+	 shift
+	 breaksw
+      case purge:
+	 set dopurge=1
 	 set actions=1
 	 shift
 	 breaksw
@@ -870,6 +876,11 @@ if ($doclean == 0) then
    echo -n "# " >> ${execfile}
 endif
 echo "${scriptdir}/cleanup.sh ${projectpath} ${modulename} || exit 1" >> ${execfile}
+
+if ($dopurge == 0) then
+   echo -n "# " >> ${execfile}
+endif
+echo "${scriptdir}/cleanup.sh -p ${projectpath} ${modulename} || exit 1" >> ${execfile}
 
 if ($dodisplay == 0) then
    echo -n "# " >> ${execfile}
