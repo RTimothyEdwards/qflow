@@ -197,13 +197,12 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
 		    if (*sp == '\n' || *sp == '\0') {
 			loc_getline(line, sizeof(line), libfile);
-			if (*line == '+') {
+			if (*line == '+')
 			    sp = line + 1;
-			    while (isspace(*sp) && (*sp != '\n')) sp++;
-			}
 			else
 			    break;
 		    }
+		    while (isspace(*sp) && (*sp != '\n')) sp++;
 
 		    /* Terminate port name and advance pointer */
 		    sp2 = sp;
