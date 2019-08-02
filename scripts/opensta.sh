@@ -230,16 +230,25 @@ cd ${synthdir}
 # Create a shell SDC file if one doesn't exist
 # (This remains to be done properly and will probably need to be done by a script)
 
+if ($dodelays == 1) then
+
+if ( !(-f ${rootname}_post.sdc )) then
+   echo "Creating example SDC file for timing" |& tee -a ${synthlog}
+   cat > ${rootname}_post.sdc << EOF
+create_clock -name clock -period 20 [get_ports clock]
+set_propagated_clock [all_clocks]
+EOF
+endif
+
+else
+
 if ( !(-f ${rootname}.sdc )) then
    echo "Creating example SDC file for timing" |& tee -a ${synthlog}
    cat > ${rootname}.sdc << EOF
 create_clock -name clock -period 20 [get_ports clock]
 EOF
-if ($dodelays == 1) then
-   cat >> ${rootname}.sdc << EOF
-set_propagated_clock [all_clocks]
-EOF
 endif
+
 endif
 
 # Create the input script for OpenSTA
@@ -267,8 +276,21 @@ read_sdf ${rootname}.sdf
 EOF
 endif
 
+if ($dodelays == 1) then
+
+cat >> ${rootname}.conf << EOF
+read_sdc ${rootname}_post.sdc
+EOF
+
+else
+
 cat >> ${rootname}.conf << EOF
 read_sdc ${rootname}.sdc
+EOF
+
+endif
+
+cat >> ${rootname}.conf << EOF
 check_setup
 report_annotated_check
 report_annotated_delay
