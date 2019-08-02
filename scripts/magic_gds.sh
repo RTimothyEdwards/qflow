@@ -140,10 +140,19 @@ gds read $gfile
 EOF
 end
 
+# NOTE: "*hier write disable" and "*array write disable" prevent
+# magic from doing an exhaustive search on GDS layer interactions
+# between standard cells.  This is disabled on the assumption that
+# the standard cells are properly designed and do not generate DRC
+# spacing errors when abutted.  The standard cells will be abstract
+# views, anyway, so only a few layers like metal1 are represented.
+
 cat >> ${gengdsfile} << EOF
 load $rootname
 select top cell
 expand
+cif *hier write disable
+cif *array write disable
 gds write $rootname
 quit
 EOF
