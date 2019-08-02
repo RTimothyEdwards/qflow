@@ -235,6 +235,11 @@ if ( !(-f ${rootname}.sdc )) then
    cat > ${rootname}.sdc << EOF
 create_clock -name clock -period 20 [get_ports clock]
 EOF
+if ($dodelays == 1) then
+   cat >> ${rootname}.sdc << EOF
+set_propagated_clock [all_clocks]
+EOF
+endif
 endif
 
 # Create the input script for OpenSTA
@@ -278,9 +283,9 @@ if ($dodelays == 1) then
 else
    echo "Running OpenSTA static timing analysis" |& tee -a ${synthlog}
 endif
-echo "sta ${opensta_options} -f ${rootname}.conf" |& tee -a ${synthlog}
+echo "sta ${opensta_options} ${rootname}.conf" |& tee -a ${synthlog}
 echo ""
-${bindir}/sta ${opensta_options} -f ${rootname}.conf |& tee -a ${synthlog}
+${bindir}/sta ${opensta_options} ${rootname}.conf |& tee -a ${synthlog}
 echo ""
 
 #------------------------------------------------------------
