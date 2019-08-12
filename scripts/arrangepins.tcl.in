@@ -725,6 +725,10 @@ if $debug {
 # Find the X ranges along top and bottom where we want to avoid
 # placing pins due to the presence of power supply stripe posts,
 # which tend to get in the way of routes.
+#
+# Expand each range by one track pitch to make sure routes can
+# go vertically from the pin without creating a DRC spacing error
+# with the power post.
 #-----------------------------------------------------------------
 
 set xbranges {}
@@ -733,10 +737,10 @@ dict for {pinname pinrec} $specialrec {
     catch {
 	set locxranges [dict get $pinrec xranges]
 	foreach xpair $locxranges {
-	    set xblow [/ [lindex $xpair 0] $botpitch]
-	    set xbhigh [/ [lindex $xpair 1] $botpitch]
-	    set xtlow [/ [lindex $xpair 0] $toppitch]
-	    set xthigh [/ [lindex $xpair 1] $toppitch]
+	    set xblow [- [/ [lindex $xpair 0] $botpitch] 1]
+	    set xbhigh [+ [/ [lindex $xpair 1] $botpitch] 1]
+	    set xtlow [- [/ [lindex $xpair 0] $toppitch] 1]
+	    set xthigh [+ [/ [lindex $xpair 1] $toppitch] 1]
 	    lappend xbranges [list $xblow $xbhigh]
 	    lappend xtranges [list $xtlow $xthigh]
 	}
