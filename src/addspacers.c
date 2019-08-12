@@ -63,6 +63,7 @@ typedef struct _corebbox {
     int lly; 
     int urx; 
     int ury; 
+    int urx_exp;    /* Expanded core urx */
     int sitew;	    /* Core site width */
     int siteh;	    /* Core site height */
     int fillmin;    /* Minimum fill cell width */
@@ -542,6 +543,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     corearea->llx = corellx;
     corearea->lly = corelly;
     corearea->urx = coreurx;
+    corearea->urx_exp = coreurx;
     corearea->ury = coreury;
     corearea->sitew = corew;
     corearea->siteh = coreh;
@@ -588,7 +590,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     int totalw;
     int orient;
     int nextx, totalfx;
-    FILLLIST fillseries, testfill, newfill;
+    FILLLIST fillseries, testfill, newfill, sfill;
     SINFO stripevals;
     char posname[32];
     GATE gate, newfillinst;
@@ -626,6 +628,54 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 	tw = stripewidth_i / corearea->sitew;
 	tr = stripewidth_i % corearea->sitew;
 	stripewidth_f = (tw + ((tr == 0) ? 0 : 1)) * corearea->sitew;
+    }
+
+    if (!(Flags & NOSTRETCH))
+    {
+	/* Find a series of fill cell macros to match the stripe width */
+	fillseries = NULL;
+	dx = stripewidth_f;
+	while (dx > 0) {
+	    int diff;
+
+	    for (testfill = fillcells; testfill; testfill = testfill->next) {
+		if (testfill->width <= dx) break;
+	    }
+	    if (testfill == NULL) {
+		/* This can happen if there is no fill cell that is the	*/
+		/* same width as the minimum site pitch.  If so, find	*/
+		/* the first non-minimum-size fill cell and change it	*/
+		/* to minimum size, then continue.			*/
+		for (testfill = fillcells; testfill && testfill->next;
+			    testfill = testfill->next);
+		for (sfill = fillseries; sfill; sfill = sfill->next)
+		    if (sfill->gate != testfill->gate) break;
+		if (sfill == NULL) {
+		    fprintf(stderr, "Warning: failed to find fill cell series matching"
+			    " the requested stripe width.\n");
+		    fprintf(stderr, "Stripe width will be modified as needed.\n");
+		    dx = 0;
+		    break;
+		}
+		diff = sfill->width - testfill->width;
+		sfill->gate = testfill->gate;
+		sfill->width = testfill->width;
+		dx += diff;
+	    }
+	    newfill = (FILLLIST)malloc(sizeof(struct filllist_));
+	    newfill->gate = testfill->gate;
+	    newfill->width = testfill->width;
+	    newfill->next = fillseries;
+	    fillseries = newfill;
+	    dx -= newfill->width;
+	}
+
+	/* In case the fill series width does not equal the expected	*/
+	/* stripe width, set the stripe width to the fill series width.	*/
+
+	stripewidth_f = 0;
+	for (sfill = fillseries; sfill; sfill = sfill->next)
+	    stripewidth_f += sfill->width;
     }
 
     /* Adjust stripepitch to the nearest core site unit width */
@@ -672,45 +722,6 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 		    stripepitch_t, (float)stripepitch_f / (float)scale);
 	}
 	totalw = corew + numstripes * stripewidth_f;
-
-	/* Find a series of fill cell macros to match the stripe width */
-	fillseries = NULL;
-	dx = stripewidth_f;
-	while (dx > 0) {
-	    FILLLIST sfill;
-	    int diff;
-
-	    for (testfill = fillcells; testfill; testfill = testfill->next) {
-		if (testfill->width <= dx) break;
-	    }
-	    if (testfill == NULL) {
-		/* This can happen if there is no fill cell that is the	*/
-		/* same width as the minimum site pitch.  If so, find	*/
-		/* the first non-minimum-size fill cell and change it	*/
-		/* to minimum size, then continue.			*/
-		for (testfill = fillcells; testfill && testfill->next;
-			    testfill = testfill->next);
-		for (sfill = fillseries; sfill; sfill = sfill->next)
-		    if (sfill->gate != testfill->gate) break;
-		if (sfill == NULL) {
-		    fprintf(stderr, "Error: failed to find fill cell series matching the"
-			    " stripe width.\n");
-		    fprintf(stderr, "Try specifying a different stripe width.\n");
-		    dx = 0;
-		    break;
-		}
-		diff = sfill->width - testfill->width;
-		sfill->gate = testfill->gate;
-		sfill->width = testfill->width;
-		dx += diff;
-	    }
-	    newfill = (FILLLIST)malloc(sizeof(struct filllist_));
-	    newfill->gate = testfill->gate;
-	    newfill->width = testfill->width;
-	    newfill->next = fillseries;
-	    fillseries = newfill;
-	    dx -= newfill->width;
-	}
 
 	/* Find offset to center of 1st power stripe that results in	*/
 	/* centering the stripes on the layout.				*/
@@ -828,6 +839,9 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 	tp = (int)(0.5 + (float)stripeoffset_i / (float)corearea->sitew);
 	stripeoffset_f = (tp * corearea->sitew);
     }
+
+    /* Record expanded area */
+    corearea->urx_exp = totalw + corearea->llx;
 
     /* Record and return final calculated power stripe pitch and width */
     stripevals->pitch = stripepitch_f;
@@ -1254,7 +1268,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	rails = prail;
 	
 	prail->offset = -mspace - stripevals->width / 2;
-	prail->pitch = corearea->urx;
+	prail->pitch = corearea->urx_exp;
 	prail->num = 1;
 	if ((n < 1) || (pattern[0] == 'P')) {
 	    prail->name = VddNet;
@@ -1300,7 +1314,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	rails = prail;
 	
 	prail->offset = mspace + stripevals->width / 2;
-	prail->pitch = corearea->urx;
+	prail->pitch = corearea->urx_exp;
 	prail->num = 1;
 	if ((n < 2) || (pattern[1] == 'G')) {
 	    prail->name = GndNet;
@@ -1337,7 +1351,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
 	    newpost->next = prail->posts;
 	    prail->posts = newpost;
 	}
-	prail->offset += corearea->urx;
+	prail->offset += corearea->urx_exp;
 	return rails;
     }
 
@@ -1434,7 +1448,7 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
  
 	prail->offset = stripevals->offset + p * stripevals->pitch;
 	prail->pitch = stripevals->pitch * n;
-	prail->num = 1 + (corearea->urx - prail->offset) / prail->pitch;
+	prail->num = 1 + (corearea->urx_exp - prail->offset) / prail->pitch;
 
 	/* Note this is not strdup(), so can compare string pointers */
 	prail->name = (pattern[p] == 'P') ? VddNet : GndNet;
@@ -1599,7 +1613,7 @@ output_rails(FILE *outfptr, PSTRIPE rail, COREBBOX corearea, float scale, int fi
 	output_rail(outfptr, rail, x, first, scale);
 	first = FALSE;
 	x += rail->pitch;
-	if (x > corearea->urx) break;
+	if (x > corearea->urx_exp) break;
     }
 }
 
