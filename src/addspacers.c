@@ -788,7 +788,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 
 		    totalfx += testfill->width;
 		}
-		nextx += stripepitch_f;
+		nextx += stripepitch_f - stripewidth_f;
 	    }
 	    orient = (orient == RN) ? RS : RN;
 	}
