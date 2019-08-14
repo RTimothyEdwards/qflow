@@ -412,11 +412,8 @@ int insert_buffers(struct cellrec *topcell, int cidx)
 			nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
 			if (nltest == NULL) break;
 			if (nltest->outputgate == NULL) break;
-			if (is_escaped) {
-			    sprintf(nodename + strlen(nodename) - 2, "_hier%d ", hier);
-			}
-			else
-			    sprintf(nodename, "%s_hier%d", nl->nodename, hier);
+			sprintf(spos, "_hier%d%s", hier,
+				    ((is_escaped == TRUE) ? " " : ""));
 			hier++;
 		    }
 
@@ -476,11 +473,8 @@ int insert_buffers(struct cellrec *topcell, int cidx)
 		nltest = (struct Nodelist *)HashLookup(nodename, &Nodehash);
 		if (nltest == NULL) break;
 		if (nltest->outputgate == NULL) break;
-		if (is_escaped) {
-		    sprintf(nodename + strlen(nodename) - 2, "_hier%d ", hier);
-		}
-		else
-		    sprintf(nodename, "%s_hier%d", nl->nodename, hier);
+		sprintf(spos, "_hier%d%s", hier,
+			((is_escaped == TRUE) ? " " : ""));
 		hier++;
 	    }
 
