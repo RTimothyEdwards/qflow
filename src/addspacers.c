@@ -802,7 +802,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 		px = (int)(roundf(gate->placedX * scale));
 		po = px - stripeoffset_f - (stripewidth_f / 2);
 		if (po > 0)
-		    pitches = 1 + po / stripepitch_f;
+		    pitches = 1 + po / (stripepitch_f - stripewidth_f);
 		else
 		    pitches = -1;
 		if (pitches <= 0) continue;
@@ -921,12 +921,12 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 
 	    po = illx - stripevals->offset - (stripevals->width / 2);
 	    if (po > 0) {
-		pitches = 1 + po / stripevals->pitch;
+		pitches = 1 + po / (stripevals->pitch - stripevals->width);
 		illx += pitches * stripevals->width;
 	    }
 	    po = iurx - stripevals->offset - (stripevals->width / 2);
 	    if (po > 0) {
-		pitches = 1 + po / stripevals->pitch;
+		pitches = 1 + po / (stripevals->pitch - stripevals->width);
 		iurx += pitches * stripevals->width;
 	    }
 
