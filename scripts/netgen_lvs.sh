@@ -81,7 +81,7 @@ endif
 # netlists.  All netlists must be more recent than the project ".def" file.
 
 if ( ! -f ${synthdir}/${rootname}.spc || \
-	( -M ${synthdir}/${rootname}.spc < -M ${synthdir}/${rootname}.blif )) then
+	( -M ${synthdir}/${rootname}.spc < -M ${synthdir}/${rootname}.rtl.v )) then
     echo "LVS failure: No schematic netlist found." |& tee -a ${synthlog}
     echo "Premature exit." |& tee -a ${synthlog}
     echo "Synthesis flow stopped due to error condition." >> ${synthlog}
