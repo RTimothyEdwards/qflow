@@ -110,6 +110,24 @@ int main (int argc, char *argv[])
 }
 
 /*--------------------------------------------------------------*/
+/* Verilog backslash notation, which is the most absurd syntax	*/
+/* in the known universe, is fundamentally incompatible with	*/
+/* SPICE.  The ad-hoc solution used by qflow is to replace	*/
+/* the trailing space with another backslash such that the	*/
+/* name is SPICE-compatible and the original syntax can be	*/
+/* recovered when needed.					*/
+/*--------------------------------------------------------------*/
+
+void backslash_fix(char *netname)
+{
+    char *sptr;
+
+    if (*netname == '\\')
+	if ((sptr = strchr(netname, ' ')) != NULL)
+	    *sptr = '\\';
+}
+
+/*--------------------------------------------------------------*/
 /* write_output ---  Write the SPICE netlist output		*/
 /*								*/
 /* ARGS: 							*/
@@ -466,6 +484,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			if (*portname == ',') portname++;
 			ssave = *epos;
 			*epos = '\0';
+			backslash_fix(portname);
 			fprintf(outfile, "%s", portname);
 			*epos = ssave;
 		    }
@@ -476,6 +495,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
 			if (wb.start < 0) {
 			    /* portname is not a bus */
+			    backslash_fix(portname);
 			    fprintf(outfile, "%s", portname);
 			}
 			else {
@@ -487,6 +507,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			    /* portname is a partial or full bus */
 			    dptr = strrchr(portname, '[');
 			    if (dptr) *dptr = '\0';
+			    backslash_fix(portname);
 			    if (flags & DO_DELIMITER)
 				fprintf(outfile, "%s<%d>", portname, lidx);
 			    else
@@ -496,6 +517,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 		    }
 		}
 		else {
+		    backslash_fix(port->net);
 		    fprintf(outfile, "%s", port->net);
 		}
 
