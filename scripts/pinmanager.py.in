@@ -384,15 +384,11 @@ class PinManager(tkinter.Toplevel):
 
             # To avoid allocation errors (X11 Pixmap, reason unknown)
             # and to make things generally, cleaner, if the pin list
-            # is longer than 12, then condense it.
+            # contains any vector longer than 12, then condense it.
 
-            if len(newgroup['pins']) > 12:
-                newgroup['pins'] = [newgroup['pins'][0] + '...' + newgroup['pins'][-1]]
-                newgroup['fixed'] = [newgroup['fixed'][0]]
-                newgroup['compressed'] = True
+            if len(newgroup['pins']) > 10:
+                newgroup = self.compress_group(newgroup)
 
-            print('newgroup pins = ' + str(len(newgroup['pins'])))
-            print('newgroup fixed = ' + str(len(newgroup['fixed'])))
         # Redraw
         self.populate()
         return
@@ -410,7 +406,6 @@ class PinManager(tkinter.Toplevel):
         newgroup = {}
         newgroup['pins'] = []
         newgroup['fixed'] = []
-        newgroup['compressed'] = False
         newgroup['name'] = group_name
         newgroup['sides'] = 'LRTB'
         newgroup['start'] = 0
@@ -637,7 +632,11 @@ class PinManager(tkinter.Toplevel):
                             else:
                                 newgroup['pins'].append(pinname)
                                 newgroup['fixed'].append(fixedtype)
-                                fullpinlist.remove(pinname)
+                                try:
+                                    fullpinlist.remove(pinname)
+                                except:
+                                    print('Error:  Pin ' + pinname + ' is not in the netlist!',
+					file=sys.stderr)
                         if rmatch:
                             restrictside = rmatch.group(1)
                             if not newgroup:
@@ -658,10 +657,8 @@ class PinManager(tkinter.Toplevel):
                 # Compress long groups, mostly to avoid tkinter pixmap allocation
                 # error.
                 for group in self.padgroups:
-                    if len(group['pins']) > 12:
-                        group['pins'] = [group['pins'][0] + '...' + group['pins'][-1]]
-                        group['fixed'] = [group['fixed'][0]]
-                        group['compressed'] = True
+                    if len(group['pins']) > 10:
+                        group = self.compress_group(group)
 
         if not loaded:
             if fnetlist == None:
@@ -717,6 +714,120 @@ class PinManager(tkinter.Toplevel):
                 else:
                     group['fixed'].append('nonfixed')
 
+    # Compress long vectors with contiguous components in a group
+    def compress_group(self, pingroup):
+
+        # If pin group is already compressed, uncompress it first.
+        newpingroup = self.uncompress_group(pingroup)
+
+        # Accept array delimiters [..], <..>, and (..)
+        del1rex = re.compile('([^\[]+)([\[])([0-9]+)([\]])')
+        del2rex = re.compile('([^<]+)([<])([0-9]+)([>])')
+        del3rex = re.compile('([^\(]+)([\(])([0-9]+)([\)])')
+
+        compgroup = newpingroup.copy()
+        compgroup['pins'] = []
+        compgroup['fixed'] = []
+
+        currroot = ''
+        firstidx = lastidx = -1
+
+        for pin, fixed in zip(newpingroup['pins'], newpingroup['fixed']):
+            pmatch = del1rex.match(pin)
+            if not pmatch:
+                pmatch = del2rex.match(pin)
+            if not pmatch:
+                pmatch = del3rex.match(pin)
+
+            if pmatch:
+                pinroot = pmatch.group(1)
+                delim1 = pmatch.group(2)
+                pinidx = int(pmatch.group(3))
+                delim2 = pmatch.group(4)
+            else:
+                pinroot = pin
+                pinidx = -1
+
+            if pinroot == currroot:
+                if pinidx == (lastidx - 1) or pinidx == (lastidx + 1):
+                    # Contiguous vector, so keep looking
+                    lastidx = pinidx
+                else:
+                    # Non-contiguous vector.  Dump the previous part
+                    if firstidx != lastidx:
+                        compgroup['pins'].append(currroot + delim1 + str(firstidx) + ':' + str(lastidx) + delim2)
+                    else:
+                        compgroup['pins'].append(currroot + delim1 + str(firstidx) + delim2)
+                    compgroup['fixed'].append(isfixed)
+                    firstidx = lastidx = pinidx
+            else:
+                if firstidx != lastidx:
+                    # Dump the compressed vector
+                    compgroup['pins'].append(currroot + delim1 + str(firstidx) + ':' + str(lastidx) + delim2)
+                    compgroup['fixed'].append(isfixed)
+                elif firstidx != -1:
+                    # Dump the single vector component as-is
+                    compgroup['pins'].append(currroot + delim1 + str(firstidx) + delim2)
+                    compgroup['fixed'].append(isfixed)
+                if not pmatch:
+                    # Not a vector, so just dump the signal as-is
+                    compgroup['pins'].append(pin)
+                    compgroup['fixed'].append(fixed)
+
+                # Record signal and look for more vector components
+                isfixed = fixed
+                currroot = pinroot
+                firstidx = lastidx = pinidx
+
+        # If there was a final vector group has not been output, do it now
+        if firstidx != lastidx:
+            compgroup['pins'].append(currroot + delim1 + str(firstidx) + ':' + str(lastidx) + delim2)
+            compgroup['fixed'].append(isfixed)
+        elif firstidx != -1:
+            compgroup['pins'].append(currroot + delim1 + str(firstidx) + delim2)
+            compgroup['fixed'].append(isfixed)
+
+        # Replace the group in self.padgroups
+        self.padgroups = [compgroup if item == pingroup else item for item in self.padgroups]
+
+        return compgroup
+
+    # Uncompress long vectors in a group that were compressed with compress_group()
+    # Note that unlike compress_group, the group in self.padgroups is not replaced.
+
+    def uncompress_group(self, pingroup):
+
+        # Accept array delimiters [..], <..>, and (..)
+        del1rex = re.compile('([^\[]+)([\[])([0-9]+):([0-9]+)([\]])')
+        del2rex = re.compile('([^<]+)([<])([0-9]+):([0-9]+)([>])')
+        del3rex = re.compile('([^\(]+)([\(])([0-9]+):([0-9]+)([\)])')
+
+        uncompgroup = pingroup.copy()
+        uncompgroup['pins'] = []
+        uncompgroup['fixed'] = []
+
+        for pin, fixed in zip(pingroup['pins'], pingroup['fixed']):
+            dmatch = del1rex.match(pin)
+            if not dmatch:
+                dmatch = del2rex.match(pin)
+            if not dmatch:
+                dmatch = del3rex.match(pin)
+
+            if dmatch:
+                rootname = dmatch.group(1)
+                delim1 = dmatch.group(2)
+                idx1 = int(dmatch.group(3))
+                idx2 = int(dmatch.group(4))
+                delim2 = dmatch.group(5)
+
+                for i in range(idx1,idx2+1):
+                    uncompgroup['pins'].append(rootname + delim1 + str(i) + delim2)
+                    uncompgroup['fixed'].append(fixed)
+            else:
+                 uncompgroup['pins'].append(pin)
+                 uncompgroup['fixed'].append(fixed)
+
+        return uncompgroup
 
     # Write out the .cel2 file
     def writepads(self, cel2file=None):
@@ -749,63 +860,18 @@ class PinManager(tkinter.Toplevel):
                         continue
 
                     print('Writing group ' + group['name'])
+                    outgroup = self.uncompress_group(group)
                     # while writing output, ignore empty groups
-                    if group['compressed'] == True:
-                        del1rex = re.compile('([^<]+)[<]([0-9]+)[>]\.\.\.[^<]+[<]([0-9]+)[>]')
-                        del2rex = re.compile('([^\[]+)[\[]([0-9]+)[\]]\.\.\.[^\[]+[\[]([0-9]+)[\]]')
-                        del3rex = re.compile('([^\(]+)[\(]([0-9]+)[\)]\.\.\.[^\(]+[\(]([0-9]+)[\)]')
-                        pin = group['pins'][0]
-                        fixed = group['fixed'][0]
-                        dmatch1 = del1rex.match(pin)
-                        dmatch2 = del2rex.match(pin)
-                        dmatch3 = del3rex.match(pin)
-                        if dmatch1:
-                            rootname = dmatch1.group(1)
-                            startval = int(dmatch1.group(2))
-                            endval = int(dmatch1.group(3))
-                            ds = '<'
-                            de = '>'
-                        elif dmatch2:
-                            rootname = dmatch2.group(1)
-                            startval = int(dmatch2.group(2))
-                            endval = int(dmatch2.group(3))
-                            ds = '['
-                            de = ']'
-                        elif dmatch3:
-                            rootname = dmatch3.group(1)
-                            startval = int(dmatch3.group(2))
-                            endval = int(dmatch3.group(3))
-                            ds = '('
-                            de = ')'
-                        else:
-                            continue
 
-                        print('padgroup ' + group['name'] + ' ' + group['permute'], file=ofile)
-                        if startval < endval:
-                            for j in range(startval,endval + 1):
-                                pin = rootname + ds + str(j) + de
-                                print('twpin_' + pin + '  ' + fixed, file=ofile)
-                        else:
-                            for j in range(startval,endval - 1, -1):
-                                pin = rootname + ds + str(j) + de
-                                print('twpin_' + pin + '  ' + fixed, file=ofile)
-                        if group['sides'] != '':
-                            print('restrict side ' + group['sides'], file=ofile)
-                        if group['start'] != 0 or group['stop'] != 100:
-                            fstart = str(group['start'] / 100.0)
-                            fstop = str(group['stop'] / 100.0)
-                            print('sidespace ' + fstart + ' ' + fstop, file=ofile)
-                        print('', file=ofile)
-
-                    elif len(group['pins']) > 0:
-                        print('padgroup ' + group['name'] + ' ' + group['permute'], file=ofile)
-                        for pin, fixed in zip(group['pins'], group['fixed']):
+                    if len(outgroup['pins']) > 0:
+                        print('padgroup ' + outgroup['name'] + ' ' + outgroup['permute'], file=ofile)
+                        for pin, fixed in zip(outgroup['pins'], outgroup['fixed']):
                             print('twpin_' + pin + '  ' + fixed, file=ofile)
-                        if group['sides'] != '':
-                            print('restrict side ' + group['sides'], file=ofile)
-                        if group['start'] != 0 or group['stop'] != 100:
-                            fstart = str(group['start'] / 100.0)
-                            fstop = str(group['stop'] / 100.0)
+                        if outgroup['sides'] != '':
+                            print('restrict side ' + outgroup['sides'], file=ofile)
+                        if outgroup['start'] != 0 or outgroup['stop'] != 100:
+                            fstart = str(outgroup['start'] / 100.0)
+                            fstop = str(outgroup['stop'] / 100.0)
                             print('sidespace ' + fstart + ' ' + fstop, file=ofile)
                         print('', file=ofile)
 
