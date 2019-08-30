@@ -24,6 +24,7 @@
 int write_output(struct cellrec *, unsigned char, char *);
 void helpmessage(FILE *outf);
 void cleanup_string(char *);
+int is_pwr_name(char *);
 
 char *VddNet = NULL;
 char *GndNet = NULL;
@@ -129,6 +130,22 @@ int main (int argc, char *argv[])
 }
 
 /*--------------------------------------------------------------*/
+/* Name compare for VddNet and GndNet.	Remove any trailing "!"	*/
+/* (global reference) from the net name.			*/
+/*--------------------------------------------------------------*/
+
+int is_pwr_name(char *text)
+{
+    int n = strlen(text);
+
+    if (*(text + n - 1) == '!') *(text + n - 1) = '\0';
+
+    if (!strcmp(text, VddNet)) return 0;
+    if (!strcmp(text, GndNet)) return 0;
+    return 1;
+}
+
+/*--------------------------------------------------------------*/
 /* String input cleanup	(mainly strip quoted text)		*/
 /*--------------------------------------------------------------*/
 
@@ -147,6 +164,11 @@ void cleanup_string(char *text)
           i++;
        }
        sptr[i] = '\0';
+    }
+
+    /* Remove any trailing "!" used as a global identifier */
+    if ((sptr > text) && (*(sptr - 1) == '!')) {
+	*(sptr - 1) = '\0';
     }
 }
 
@@ -177,8 +199,7 @@ struct nlist *output_wires(struct hashlist *p, void *cptr)
 		return NULL;
 	}
     }
-    else if (!strcmp(p->name, GndNet)) return NULL;
-    else if (!strcmp(p->name, VddNet)) return NULL;
+    else if (is_pwr_name(p->name)) return NULL;
 
     fprintf(outf, "wire ");
     if (net->start >= 0 && net->end >= 0) {
