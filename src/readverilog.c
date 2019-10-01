@@ -58,6 +58,20 @@ struct hashtable verilogparams;
 struct hashtable verilogdefs;
 struct hashtable verilogvectors;
 
+char dictinit = FALSE;
+
+/*------------------------------------------------------*/
+/* Structure for stacking nested `if[n]def		*/
+/*------------------------------------------------------*/
+
+struct ifstack {
+    int invert;
+    char *kl;
+    struct ifstack *next;
+};
+
+struct ifstack *condstack = NULL;
+
 /*------------------------------------------------------*/
 /* Stack handling (push and pop)			*/
 /*------------------------------------------------------*/
@@ -86,6 +100,20 @@ struct cellrec *PopStack(struct cellstack **top)
    free(stackptr);
 
    return cellptr;
+}
+
+/*----------------------------------------------------------------------*/
+/* Routine that can be called to pre-install a definition into the	*/
+/* verilogdefs hash table.						*/
+/*----------------------------------------------------------------------*/
+
+void VerilogDefine(char *key, char *value)
+{
+    if (dictinit == FALSE) {
+	InitializeHashTable(&verilogdefs, TINYHASHSIZE);
+	dictinit = TRUE;
+    }
+    HashPtrInstall(key, strdup(value), &verilogdefs);
 }
 
 /*----------------------------------------------------------------------*/
@@ -358,36 +386,178 @@ int GetNextLineNoNewline(char *delimiter)
 {
     char *newbuf;
     int testc;
+    int nested = 0;
+    char *s, *t, *w, e, *kl;
+    int len, dlen, vlen, addin;
+    unsigned char found;
 
     if (feof(infile)) return -1;
 
-    // This is more reliable than feof() ...
-    testc = getc(infile);
-    if (testc == -1) return -1;
-    ungetc(testc, infile);
+    while (1) {		/* May loop indefinitely in an `if[n]def conditional */
 
-    if (linesize == 0) {
-	/* Allocate memory for line */
-	linesize = 500;
-	line = (char *)malloc(linesize);
-	linetok = (char *)malloc(linesize);
-    }
-    fgets(line, linesize, infile);
-    while (strlen(line) == linesize - 1) {
-	newbuf = (char *)malloc(linesize + 500);
-	strcpy(newbuf, line);
-	free(line);
-	line = newbuf;
-	fgets(line + linesize - 1, 501, infile);
-	linesize += 500;
-	free(linetok);
-	linetok = (char *)malloc(linesize * sizeof(char));
-    }
-    vlinenum++;
-    strcpy(linetok, line);
-    TrimQuoted(linetok);
+	// This is more reliable than feof() ...
+	testc = getc(infile);
+	if (testc == -1) return -1;
+	ungetc(testc, infile);
 
-    nexttok = strdtok(linetok, WHITESPACE_DELIMITER, delimiter);
+	if (linesize == 0) {
+	    /* Allocate memory for line */
+	    linesize = 500;
+	    line = (char *)malloc(linesize);
+	    linetok = (char *)malloc(linesize);
+	}
+	fgets(line, linesize, infile);
+	while (strlen(line) == linesize - 1) {
+	    newbuf = (char *)malloc(linesize + 500);
+	    strcpy(newbuf, line);
+	    free(line);
+	    line = newbuf;
+	    fgets(line + linesize - 1, 501, infile);
+	    linesize += 500;
+	    free(linetok);
+	    linetok = (char *)malloc(linesize * sizeof(char));
+	}
+
+	/* Check for substitutions.  Make sure linetok is large enough 	*/
+	/* to hold the entire line after substitutions.			*/
+
+	found = FALSE;
+	addin = 0;
+	for (s = line; *s != '\0'; s++) {
+	    if (*s == '`') {
+		w = s + 1;
+		while (isalnum(*w)) w++;
+		e = *w;
+		*w = '\0';
+		kl = (char *)HashLookup(s + 1, &verilogdefs);
+		if (kl != NULL) {
+		    dlen = strlen(s);
+		    vlen = strlen(kl);
+		    addin += vlen - dlen + 1;
+		    found = TRUE;
+		}
+		*w = e;
+	    }
+	}
+	if (found) {
+	    len = strlen(line);
+	    if (len + addin > linesize) {
+		while (len + addin > linesize) linesize += 500;
+		free(linetok);
+		linetok = (char *)malloc(linesize);
+	    }
+	}
+
+	/* Make definition substitutions */
+
+	t = linetok;
+	for (s = line; *s != '\0'; s++) {
+	    if (*s == '`') {
+		w = s + 1;
+		while (isalnum(*w)) w++;
+		e = *w;
+		*w = '\0';
+		kl = (char *)HashLookup(s + 1, &verilogdefs);
+		if (kl != NULL) {
+		    strcpy(t, kl);
+		    t += strlen(t);
+		    s = w - 1;
+		}
+		else *t++ = *s;
+		*w = e;
+	    }
+	    else *t++ = *s;
+	}
+	*t = '\0';
+
+	TrimQuoted(linetok);
+	vlinenum++;
+
+	nexttok = strdtok(linetok, WHITESPACE_DELIMITER, delimiter);
+	if (nexttok == NULL) return 0;
+
+	/* Handle `ifdef, `ifndef, `elsif, `else, and `endif */
+
+	/* If currently skipping through a section, handle conditionals differently */
+	if (condstack) {
+	    if (((condstack->invert == 0) && (condstack->kl == NULL))
+			|| ((condstack->invert == 1) && (condstack->kl != NULL))) {
+		if (match(nexttok, "`ifdef") || match(nexttok, "`ifndef")) {
+		    nested++;
+		    continue;
+		}
+		else if (nested > 0) {
+		    if (match(nexttok, "`endif")) nested--;
+		    continue;
+		}
+		else if (nexttok[0] != '`') continue;
+	    }
+	}
+
+	/* Handle conditionals (not being skipped over) */
+
+	if (match(nexttok, "`endif")) {
+	    if (condstack == NULL) {
+		fprintf(stderr, "Error:  `endif without corresponding `if[n]def\n");
+	    }
+	    else {
+		struct ifstack *iftop = condstack;
+		condstack = condstack->next;
+		free(iftop);
+	    }
+	}
+
+	/* `if[n]def may be nested. */
+
+	else if (match(nexttok, "`ifdef") || match(nexttok, "`ifndef") ||
+			match(nexttok, "`elsif") || match(nexttok, "`else")) {
+
+	    /* Every `ifdef or `ifndef increases condstack by 1 */
+	    if (nexttok[1] == 'i') {
+		struct ifstack *newif = (struct ifstack *)malloc(sizeof(struct ifstack));
+		newif->next = condstack;
+		condstack = newif;
+	    }
+	    if (condstack == NULL) {
+		fprintf(stderr, "Error:  %s without `if[n]def\n", nexttok);
+		break;
+	    }
+	    else {
+		if (match(nexttok, "`else")) {
+		    /* Invert the sense of the if[n]def scope */
+		    condstack->invert = (condstack->invert == 1) ? 0 : 1;
+		}
+		else if (match(nexttok, "`elsif")) {
+		    nexttok = strdtok(NULL, WHITESPACE_DELIMITER, delimiter);
+		    if (nexttok == NULL) {
+			fprintf(stderr, "Error:  `elsif with no conditional.\n");
+			return 0;
+		    }
+		    /* Keep the same scope but redefine the parameter */
+		    condstack->invert = 0;
+		    condstack->kl = (char *)HashLookup(nexttok, &verilogdefs);
+		}
+		else {
+		    condstack->invert = (nexttok[3] == 'n') ? 1 : 0;
+		    nexttok = strdtok(NULL, WHITESPACE_DELIMITER, delimiter);
+		    if (nexttok == NULL) {
+			fprintf(stderr, "Error:  %s with no conditional.\n", nexttok);
+			return 0;
+		    }
+		    condstack->kl = (char *)HashLookup(nexttok, &verilogdefs);
+		}
+	    }
+	}
+	else if (condstack) {
+	    if (((condstack->invert == 0) && (condstack->kl == NULL))
+			|| ((condstack->invert == 1) && (condstack->kl != NULL)))
+		continue;
+	    else
+		break;
+	}
+	else
+	    break;
+    }
     return 0;
 }
 
@@ -1030,6 +1200,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			else if (!strcmp(nexttok, "inout"))
 			    port_type = PORT_INOUT;
 			else if (strcmp(nexttok, "real") && strcmp(nexttok, "logic")
+					&& strcmp(nexttok, "wire")
 					&& strcmp(nexttok, "integer")) {
 			    if (!strcmp(nexttok, "[")) {
 				if (GetBusTok(&wb, &top->nets) != 0) {
@@ -1195,39 +1366,6 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		if ((eqptr = strchr(nexttok, '=')) != NULL) {
 		    *eqptr = '\0';
 		    HashPtrInstall(nexttok, strdup(eqptr + 1), &verilogparams);
-		}
-	    }
-	}
-
-	/* Note:  This is just the most basic processing of conditionals,	*/
-	/* although it does handle nested conditionals.				*/
-    
-	else if (!strcmp(nexttok, "`ifdef") || !strcmp(nexttok, "`ifndef")) {
-	    char *kl;
-	    int nested = 0;
-            int invert = (nexttok[3] == 'n') ? 1 : 0;
-
-	    SkipTokNoNewline(VLOG_DELIMITERS);
-
-	    /* To be done:  Handle boolean arithmetic on conditionals */
-
-	    kl = (char *)HashLookup(nexttok, &verilogdefs);
-	    if (((invert == 0) && (kl == NULL))
-			|| ((invert == 1) && (kl != NULL))) {
-		/* Skip to matching `endif */
-		while (1) {
-		    SkipNewLine(VLOG_DELIMITERS);
-		    SkipTokComments(VLOG_DELIMITERS);
-		    if (EndParseFile()) break;
-		    if (!strcmp(nexttok, "`ifdef") || !strcmp(nexttok, "`ifndef")) {
-			nested++;
-		    }
-		    else if (!strcmp(nexttok, "`endif")) {
-			if (nested == 0)
-			    break;
-			else
-			    nested--;
-		    }
 		}
 	    }
 	}
@@ -1628,8 +1766,12 @@ struct cellrec *ReadVerilogTop(char *fname, int blackbox)
 	return NULL;
     }
 
+    if (dictinit == FALSE) {
+	/* verilogdefs may be pre-initialized by calling VerilogDefine() */
+	InitializeHashTable(&verilogdefs, TINYHASHSIZE);
+	dictinit = TRUE;
+    }
     InitializeHashTable(&verilogparams, TINYHASHSIZE);
-    InitializeHashTable(&verilogdefs, TINYHASHSIZE);
     InitializeHashTable(&verilogvectors, TINYHASHSIZE);
 
     ReadVerilogFile(fname, &CellStackPtr, blackbox);
