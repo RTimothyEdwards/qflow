@@ -49,6 +49,7 @@ int main (int argc, char *argv[])
 {
     int i, result = 0;
     int flags = 0;
+    char *eptr;
 
     char *vloginname = NULL;
     char *spclibname = NULL;
@@ -59,7 +60,7 @@ int main (int argc, char *argv[])
 
     struct cellrec *topcell = NULL;
 
-    while ((i = getopt(argc, argv, "hHidl:s:o:")) != EOF) {
+    while ((i = getopt(argc, argv, "hHidD:l:s:o:")) != EOF) {
 	switch (i) {
 	    case 'l':
 		newspicelib = (LinkedStringPtr)malloc(sizeof(LinkedString));
@@ -80,6 +81,16 @@ int main (int argc, char *argv[])
 	    case 'H':
 		helpmessage(stdout);
 		exit(0);
+		break;
+	    case 'D':
+		eptr = strchr(optarg, '=');
+		if (eptr != NULL) {
+		    *eptr = '\0';
+		    VerilogDefine(optarg, eptr + 1);
+		    *eptr = '=';
+		}
+		else
+		    VerilogDefine(optarg, "1");
 		break;
 	    default:
 		fprintf(stderr, "Unknown switch %c\n", (char)i);
@@ -356,14 +367,38 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 	    }
 	}
 
-	/* Search library records for subcircuit */
-
-	portlist = (struct portrec *)HashLookup(inst->cellname, &Libhash);
 	if (inst->arraystart == -1)
 	    fprintf(outfile, "X%s ", inst->instname);
 	else
 	    fprintf(outfile, "X%s[%d] ", inst->instname, instidx);
         pcount = 1;
+
+	/* Search library records for subcircuit */
+
+	portlist = (struct portrec *)HashLookup(inst->cellname, &Libhash);
+
+	/* If no library entry exists, complain about arbitrary port	*/
+	/* order, then use the instance's port names to create a port	*/
+	/* record entry.						*/
+
+	if (portlist == NULL) {
+	    fprintf(stderr, "Warning:  No SPICE subcircuit for %s.  Pin"
+			" order will be arbitrary.\n", inst->cellname);
+	    lastport = portlist = NULL;
+	    for (libport = inst->portlist; libport; libport = libport->next) {
+	    	newport = (struct portrec *)malloc(sizeof(struct portrec));
+		if (portlist == NULL)
+			portlist = newport;
+		else
+		    lastport->next = newport;
+		lastport = newport;
+		newport->name = strdup(libport->name);
+		newport->net = NULL;
+		newport->direction = libport->direction;
+		newport->next = NULL;
+	    }
+	    HashPtrInstall(inst->cellname, portlist, &Libhash);
+	}
 
 	/* Output pin connections in the order of the LEF record, which	*/
 	/* has been forced to match the port order of the SPICE library	*/
@@ -592,6 +627,7 @@ void helpmessage(FILE *fout)
     fprintf(fout, "   -h          Print this message\n");    
     fprintf(fout, "   -i          Generate include statement for library, not a dump.\n");
     fprintf(fout, "   -d          Convert array delimiter brackets to angle brackets.\n");
+    fprintf(fout, "   -D <key>=<value>  Preregister a verilog definition.\n");
     fprintf(fout, "   -l <path>   Specify path to SPICE library of standard cells.\n");
     fprintf(fout, "   -o <path>   Specify path to output SPICE file.\n");
     fprintf(fout, "\n");
