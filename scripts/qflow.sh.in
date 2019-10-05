@@ -29,9 +29,9 @@ endif
 # by -p.  If the environment variable does not exist, the project
 # root directory is assumed to be the current working directory.
 
-set project=`printenv QFLOW_PROJECT_ROOT`
-if ( $project == "" ) then
-   set project=`pwd`
+set projectpath=`printenv QFLOW_PROJECT_ROOT`
+if ( $projectpath == "" ) then
+   set projectpath=`pwd`
 endif
 
 set modulename=""
@@ -287,7 +287,7 @@ else
    echo "Technology set to $tech"
 endif
 
-source QFLOW_SCRIPT_DIR/checkdirs.sh ${tech} ${project}
+source QFLOW_SCRIPT_DIR/checkdirs.sh ${tech} ${projectpath}
 if ($status == 1) then
    echo "Failure to verify working directories."
    echo "Check QFLOW_PROJECT_ROOT environment variable."
@@ -347,6 +347,11 @@ if ($vsource == "") then
    endif
 endif
 
+# Replace home path in vsource with tilde escape if needed
+if ( ${vsource} != "" ) then
+   set vsource="`echo $vsource | sed -e 's,^${HOME},~,'`"
+endif
+
 #------------------------------------------------------------------
 # Source the technology initialization script
 #------------------------------------------------------------------
@@ -364,9 +369,9 @@ endif
 # have not been selected.  Finally, source the script.
 #------------------------------------------------------------------
 
-set varfile=${projectpath}/qflow_vars.sh
-set execfile=${projectpath}/qflow_exec.sh
-set userfile=${projectpath}/project_vars.sh
+set varfile="${projectpath}"/qflow_vars.sh
+set execfile="${projectpath}"/qflow_exec.sh
+set userfile="${projectpath}"/project_vars.sh
 
 #------------------------------------------------------------------
 # Check if a variables file exists.  If so, note that we are
@@ -387,7 +392,7 @@ endif
 
 echo "#\!/bin/tcsh -f" > ${varfile}
 echo "#-------------------------------------------" >> ${varfile}
-echo "# qflow variables for project ${project}" >> ${varfile}
+echo "# qflow variables for project ${projectpath}" >> ${varfile}
 echo "#-------------------------------------------" >> ${varfile}
 echo "" >> ${varfile}
 
@@ -405,7 +410,7 @@ echo "" >> ${varfile}
 
 echo "#\!/bin/tcsh -f" > ${execfile}
 echo "#-------------------------------------------" >> ${execfile}
-echo "# qflow exec script for project ${project}" >> ${execfile}
+echo "# qflow exec script for project ${projectpath}" >> ${execfile}
 echo "#-------------------------------------------" >> ${execfile}
 echo "" >> ${execfile}
 
@@ -477,7 +482,7 @@ endif
 if ( ! -f ${userfile} ) then
    echo "#\!/bin/tcsh -f" > ${userfile}
    echo "#------------------------------------------------------------" >> ${userfile}
-   echo "# project variables for project ${project}" >> ${userfile}
+   echo "# project variables for project ${projectpath}" >> ${userfile}
    echo "#------------------------------------------------------------" >> ${userfile}
    echo "" >> ${userfile}
 
