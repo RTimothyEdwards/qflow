@@ -57,32 +57,45 @@ if ($#argv != 1 && $#argv != 2) then
 endif
 
 set techname=${argv[1]}
+
+# Environment variable overrides the project root path in all cases
+# except when the project root path is specified on the command line
+# by -p.  If the environment variable does not exist, the project
+# root directory is assumed to be the current working directory.
+
 if ($#argv == 2) then
    set projectpath=${argv[2]}
 else
    set projectpath=`pwd`
 endif
 
+#-----------------------------------------------------------------
+# For portability, convert the home directory to the tilde escape
+# Note that projectpath must be quoted every time to preserve the ~
+#-----------------------------------------------------------------
+
+set projectpath="`echo $projectpath | sed -e 's,^${HOME},~,'`"
+
 #----------------------------------------------------
 # Check for standard working directories
 #----------------------------------------------------
 
 if ( -d ${projectpath}/source ) then
-   set sourcedir=${projectpath}/source
+   set sourcedir="${projectpath}"/source
 else
-   set sourcedir=${projectpath}
+   set sourcedir="${projectpath}"
 endif
 
 if ( -d ${projectpath}/synthesis ) then
-   set synthdir=${projectpath}/synthesis
+   set synthdir="${projectpath}"/synthesis
 else
-   set synthdir=${projectpath}
+   set synthdir="${projectpath}"
 endif
 
 if ( -d ${projectpath}/layout ) then
-   set layoutdir=${projectpath}/layout
+   set layoutdir="${projectpath}"/layout
 else
-   set layoutdir=${projectpath}
+   set layoutdir="${projectpath}"
 endif
 
 #----------------------------------------------------
@@ -114,13 +127,13 @@ if ($techdir != "") then
 endif
 
 if ( -d ${projectpath}/tech/${techname} ) then
-   set techdir=${projectpath}/tech/${techname}
+   set techdir="${projectpath}"/tech/${techname}
 else
    if ( -d ${projectpath}/${techname} ) then
-      set techdir=${projectpath}/${techname}
+      set techdir="${projectpath}"/${techname}
    else
       if ( -d ${projectpath}/tech && -r ${projectpath}/tech/${techname}.sh ) then
-	 set techdir=${projectpath}/tech
+	 set techdir="${projectpath}"/tech
       else
 	 if ( -d SUBST_TECH_DIR/${techname} ) then
 	    set techdir=SUBST_TECH_DIR/${techname}

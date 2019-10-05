@@ -1699,17 +1699,17 @@ class QflowManager(ttk.Frame):
                         key = vmatch.group(1)
                         value = vmatch.group(2)
                         if key == 'projectpath':
-                            self.rootpath = value
+                            self.rootpath = os.path.expanduser(value)
                         elif key == 'techdir':
-                            tdir = value
+                            tdir = os.path.expanduser(value)
                         elif key == 'sourcedir':
-                            srcdir = value
+                            srcdir = os.path.expanduser(value)
                         elif key == 'synthdir':
-                            sdir = value
+                            sdir = os.path.expanduser(value)
                         elif key == 'layoutdir':
-                            ldir = value
+                            ldir = os.path.expanduser(value)
                         elif key == 'logdir':
-                            logdir = value
+                            logdir = os.path.expanduser(value)
                         elif key == 'techname':
                             pdkname = value
         
