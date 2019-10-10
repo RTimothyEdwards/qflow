@@ -1,0 +1,42 @@
+#
+# qflow project included technology osu035_redm4 files
+#
+
+# Main compiler arguments
+CFLAGS = @CFLAGS@
+DEFS = @DEFS@
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
+INSTALL = @INSTALL@
+
+QFLOW_LIB_DIR = @QFLOW_LIB_DIR@
+
+TECH_FILES = osu035_redm4.par osu035_redm4.sh osu035_redm4.magicrc osu035.prm
+TECH_FILES += osu035_redm4_stdcells.lef osu035_stdcells.sp osu035_stdcells.lib
+TECH_FILES += osu035_stdcells.v osu035_redm4_setup.tcl osu035_stdcells.gds2
+
+TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+
+# Substitute the target qflow tech directory name in .magicrc so that magic
+# can find the OSU035_REDM4 techfile
+
+all: osu035_redm4.magicrc
+
+install: ${TECH_FILES}
+	@echo "Installing osu035_redm4 tech files"
+	$(INSTALL) -d $(DESTDIR)$(TECHINSTALL)/osu035_redm4
+	for target in $(TECH_FILES); do \
+	   $(INSTALL) $$target $(DESTDIR)$(TECHINSTALL)/osu035_redm4 ;\
+	done
+
+osu035_redm4.magicrc: osu035_redm4.magicrc.in Makefile
+	sed < $< -e '/QFLOW_LIB_DIR/s#QFLOW_LIB_DIR#$(QFLOW_LIB_DIR)#' > $@
+
+clean:
+	$(RM) -f osu035_redm4.magicrc
+
+distclean:
+	$(RM) -f osu035_redm4.magicrc
+
+uninstall:
+
