@@ -316,6 +316,7 @@ void InputParseError(FILE *f)
 /*----------------------------------------------------------------------*/
 /* TrimQuoted() ---                                                     */
 /* Remove spaces from inside single- or double-quoted strings.          */
+/* Exclude bit values (e.g., "1'b0")					*/
 /*----------------------------------------------------------------------*/
 
 void TrimQuoted(char *line)
@@ -331,9 +332,16 @@ void TrimQuoted(char *line)
     {
 	changed = FALSE;
 	qstart = strchr(lptr, '\'');
+	if (qstart && (qstart > lptr)) {
+	    if (isdigit(*(qstart - 1))) {
+		lptr = qstart + 1;
+		changed = TRUE;
+		continue;
+	    }
+	}
 	if (qstart)
 	{
-	    qend = strchr(qstart + 1, '\'');
+	    qend = strrchr(qstart + 1, '\'');
 	    if (qend && (qend > qstart)) {
 		slen = strlen(lptr);
 		for (lptr = qstart + 1; lptr < qend; lptr++) {
@@ -726,42 +734,46 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	SkipTokComments(VLOG_DELIMITERS);
 
 	// Check for parameter names and substitute values if found.
-	if (nexttok[0] == '`') {
-	    kl = (char *)HashLookup(nexttok + 1, &verilogdefs);
+	result = sscanf(nexttok, "%d", &start);
+	if (result != 1) {
+	    char *aptr = NULL;
+	    char addin;
+
+	    // Check for "+/-(n)" at the end of a parameter name
+	    aptr = strrchr(nexttok, '+');
+	    if (aptr == NULL) aptr = strrchr(nexttok, '-');
+	    if (aptr != NULL) {
+		addin = *aptr;
+		*aptr = '\0';
+	    }
+
+	    // Is name in the parameter list?
+	    kl = (char *)HashLookup(nexttok, &verilogparams);
 	    if (kl == NULL) {
-		fprintf(stdout, "Unknown definition %s found in array "
-			"notation (line %d).\n", nexttok, vlinenum);
+		fprintf(stdout, "Array value %s is not a number or a "
+				"parameter (line %d).\n", nexttok, vlinenum);
 		return 1;
 	    }
 	    else {
 		result = sscanf(kl, "%d", &start);
 		if (result != 1) {
-		    fprintf(stdout, "Cannot parse first digit from parameter "
-				"%s value %s (line %d)\n", nexttok, kl, vlinenum);
-		    return 1;
-		}
-	    }
-	}
-	else {
-	    result = sscanf(nexttok, "%d", &start);
-	    if (result != 1) {
-		// Is name in the parameter list?
-	        kl = (char *)HashLookup(nexttok, &verilogparams);
-		if (kl == NULL) {
-		    fprintf(stdout, "Array value %s is not a number or a "
-				"parameter (line %d).\n", nexttok, vlinenum);
-		    return 1;
-		}
-		else {
-		    result = sscanf(kl, "%d", &start);
-		    if (result != 1) {
-		        fprintf(stdout, "Parameter %s has value %s that cannot be parsed"
+		    fprintf(stdout, "Parameter %s has value %s that cannot be parsed"
 				" as an integer (line %d).\n", nexttok, kl, vlinenum);
-			return 1;
-		    }
+		    return 1;
 		}
 	    }
+	    if (aptr != NULL) {
+		int addval;
+		*aptr = addin;
+		if (sscanf(aptr + 1, "%d", &addval) != 1) {
+		    fprintf(stdout, "Unable to parse parameter increment \"%s\" "
+			    "(line %d).\n", aptr, vlinenum);
+		    return 1;
+		}
+		start += (addin == '+') ? addval : -addval;
+	    }
 	}
+
 	SkipTokComments(VLOG_DELIMITERS);
 	if (!strcmp(nexttok, "]")) {
 	    result = 1;
@@ -776,42 +788,44 @@ int GetBusTok(struct netrec *wb, struct hashtable *nets)
 	    SkipTokComments(VLOG_DELIMITERS);
 
 	    // Check for parameter names and substitute values if found.
-	    if (nexttok[0] == '`') {
-		kl = (char *)HashLookup(nexttok + 1, &verilogdefs);
+	    result = sscanf(nexttok, "%d", &end);
+	    if (result != 1) {
+		char *aptr = NULL;
+		char addin;
+
+		// Check for "+/-(n)" at the end of a parameter name
+		aptr = strrchr(nexttok, '+');
+		if (aptr == NULL) aptr = strrchr(nexttok, '-');
+		if (aptr != NULL) {
+		    addin = *aptr;
+		    *aptr = '\0';
+		}
+
+		// Is name in the parameter list?
+	        kl = (char *)HashLookup(nexttok, &verilogparams);
 		if (kl == NULL) {
-		    fprintf(stdout, "Unknown definition %s found in array "
-				"notation (line %d).\n", nexttok, vlinenum);
+		    fprintf(stdout, "Array value %s is not a number or a "
+				"parameter (line %d).\n", nexttok, vlinenum);
 		    return 1;
 		}
 		else {
 		    result = sscanf(kl, "%d", &end);
 		    if (result != 1) {
-			fprintf(stdout, "Cannot parse second digit from parameter "
-					"%s value %s (line %d)\n", nexttok, kl,
-					vlinenum);
+		        fprintf(stdout, "Parameter %s has value %s that cannot"
+				" be parsed as an integer (line %d).\n",
+				nexttok, kl, vlinenum);
 			return 1;
 		    }
 		}
-	    }
-	    else {
-		result = sscanf(nexttok, "%d", &end);
-		if (result != 1) {
-		    // Is name in the parameter list?
-	            kl = (char *)HashLookup(nexttok, &verilogparams);
-		    if (kl == NULL) {
-			fprintf(stdout, "Array value %s is not a number or a "
-					"parameter (line %d).\n", nexttok, vlinenum);
+		if (aptr != NULL) {
+		    int addval;
+		    *aptr = addin;
+		    if (sscanf(aptr + 1, "%d", &addval) != 1) {
+			fprintf(stdout, "Unable to parse parameter increment \"%s\" "
+				"(line %d).\n", aptr, vlinenum);
 			return 1;
 		    }
-		    else {
-			result = sscanf(kl, "%d", &end);
-			if (result != 1) {
-		            fprintf(stdout, "Parameter %s has value %s that cannot"
-					" be parsed as an integer (line %d).\n",
-					nexttok, kl, vlinenum);
-			    return 1;
-			}
-		    }
+		    end += (addin == '+') ? addval : -addval;
 		}
 	    }
 	}
@@ -1354,32 +1368,69 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    else	 
 		HashPtrInstall(key, strdup(nexttok), &verilogdefs);
 	}
-	else if (!strcmp(nexttok, "localparam")) {
-	    // Pick up key = value pairs and store in current cell
+	else if (!strcmp(nexttok, "parameter") || !strcmp(nexttok, "localparam")) {
+	    char *paramkey = NULL;
+	    char *paramval = NULL;
+
+	    // Pick up key = value pairs and store in current cell.  Look only
+	    // at the keyword before "=".  Then set the definition as everything
+	    // remaining in the line, excluding comments, until the end-of-statement
+
 	    while (nexttok != NULL)
 	    {
 		/* Parse for parameters used in expressions.  Save	*/
 		/* parameters in the "verilogparams" hash table.	*/
 
-		SkipTokNoNewline(VLOG_DELIMITERS);
+		SkipTok(VLOG_DELIMITERS);
 		if ((nexttok == NULL) || (nexttok[0] == '\0')) break;
-		if ((eqptr = strchr(nexttok, '=')) != NULL) {
-		    *eqptr = '\0';
-		    HashPtrInstall(nexttok, strdup(eqptr + 1), &verilogparams);
+		if (!strcmp(nexttok, "=")) {
+		    /* Pick up remainder of statement */
+		    while (nexttok != NULL) {
+			SkipTokNoNewline("X///**/X;,");
+			if (nexttok == NULL) break;
+			if (!strcmp(nexttok, ";") || !strcmp(nexttok, ",")) break;
+			if (paramval == NULL) paramval = strdup(nexttok);
+			else {
+			    char *paramlast;
+			    /* Append nexttok to paramval */
+			    paramlast = paramval;
+			    paramval = (char *)malloc(strlen(paramlast) +
+					strlen(nexttok) + 2);
+			    sprintf(paramval, "%s %s", paramlast, nexttok);
+			    free(paramlast);
+			}
+		    }
+		    HashPtrInstall(paramkey, paramval, &verilogparams);
+		    free(paramval);
+		    paramval = NULL;
+		    if ((nexttok == NULL) || !strcmp(nexttok, ";")) break;
+		}
+		else {
+		    if (paramkey != NULL) free(paramkey);
+		    paramkey = strdup(nexttok);
 		}
 	    }
+	    if (paramval != NULL) free(paramval);
+	    if (paramkey != NULL) free(paramkey);
 	}
-
+	else if (!strcmp(nexttok, "real") || !strcmp(nexttok, "integer")) {
+	    fprintf(stdout, "Ignoring '%s' in module '%s' (line %d)\n",
+		    nexttok, top->name, vlinenum);
+	    while (strcmp(nexttok, ";")) SkipTok("X///**/X,;");
+	    continue;
+	}
 	else if (!strcmp(nexttok, "wire") ||
 		 !strcmp(nexttok, "assign")) {	/* wire = node */
 	    struct netrec wb, *nb;
 	    char *eptr, *wirename;
 	    char is_assignment = FALSE;
+	    char is_lhs_bundle = FALSE, is_rhs_bundle = FALSE;
 	    char is_wire = (strcmp(nexttok, "wire")) ? FALSE : TRUE;
 
 	    // Several allowed uses of "assign":
 	    // "assign a = b" joins two nets.
-	    // "assign a = {b, c, ...}" creates a bus from components.
+	    // "assign a = {b, c, ...}" creates a signal bundle from components.
+	    // "assign {a, b ...} = {c, d, ...}" creates a bundle from another bundle.
 	    // "assign" using any boolean arithmetic is not structural verilog.
 
 	    SkipTokNoNewline(VLOG_DELIMITERS);
@@ -1389,10 +1440,20 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		    is_assignment = TRUE;
 		}
 		else if (!strcmp(nexttok, "{")) {
-		    /* To be handled if joining nets is handled */
+		    /* To be done:  allow nested bundles */
+		    if (is_assignment == FALSE) is_lhs_bundle = TRUE;
+		    else is_rhs_bundle = TRUE;
 		}
 		else if (!strcmp(nexttok, "}")) {
-		    /* To be handled if joining nets is handled */
+		    if (is_assignment == FALSE) is_lhs_bundle = FALSE;
+		    else is_rhs_bundle = FALSE;
+		}
+		else if (!strcmp(nexttok, ",")) {
+		    if (is_lhs_bundle == FALSE && is_rhs_bundle == FALSE) {
+			fprintf(stdout, "Indecipherable assignment (line %d).\n");
+			goto skip_endmodule;
+		    }
+		    /* Otherwise do nothing;  moving to the next bundle component */
 		}
 		else if (GetBusTok(&wb, &top->nets) == 0) {
 		    if (is_wire) {
@@ -1421,16 +1482,33 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		}
 		else {
 		    if (is_assignment) {
+			char *qptr;
+			int idum;
+
 			if (BusHashLookup(nexttok, &top->nets) != NULL) {
 			    /* Join nets */
 			    /* (WIP) */
 			}
-			else if (*nexttok == '1' && *(nexttok + 1) == '\'' &&
-			    (*(nexttok + 3) == '1' || *(nexttok + 3) == '0')) {
-			
-			    // Power/Ground denoted by, e.g., "vdd = 1'b1".
-			    // Only need to record the net, no further action
-			    // needed.
+			else if ((qptr = strchr(nexttok, '\'')) != NULL) {
+			    *qptr = '\0';
+			    if (sscanf(nexttok, "%d", &idum) == 1) {
+				if ((strchr(qptr + 1, 'x') == NULL) &&
+					(strchr(qptr + 1, 'X') == NULL) &&
+					(strchr(qptr + 1, 'z') == NULL) &&
+					(strchr(qptr + 1, 'Z') == NULL)) {
+				    // Power/Ground denoted by, e.g., "vdd = 1'b1".
+				    // Only need to record the net, no further action
+				    // needed.
+				}
+				else {
+				    fprintf(stdout, "Assignment is not a net "
+					    "(line %d).\n", vlinenum);
+				    fprintf(stdout, "Module '%s' is not structural "
+					    "verilog,  making black-box.\n", top->name);
+				    goto skip_endmodule;
+				}
+			    }
+			    *qptr = '\'';
 			}
 			else {
 			    fprintf(stdout, "Assignment is not a net (line %d).\n",
@@ -1458,18 +1536,24 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    // Ignore any other directive starting with a backtick
 	    SkipNewLine(VLOG_DELIMITERS);
 	}
-	else if (!strcmp(nexttok, "reg") || !strcmp(nexttok, "always")) {
+	else if (!strcmp(nexttok, "reg") || !strcmp(nexttok, "always") ||
+		!strcmp(nexttok, "specify") || !strcmp(nexttok, "initial")) {
+	    fprintf(stdout, "Behavioral keyword '%s' found in source.\n", nexttok);
 	    fprintf(stdout, "Module '%s' is not structural verilog, making "
 			"black-box.\n", top->name);
 	    goto skip_endmodule;
 	}
 	else {	/* module instances */
+	    char ignore;
 	    int itype, arraymax, arraymin;
 	    struct instance *thisinst;
 
 	    thisinst = AppendInstance(top, nexttok);
 
 	    SkipTokComments(VLOG_DELIMITERS);
+
+nextinst:
+	    ignore = FALSE;
 
 	    // Next token must be '#(' (parameters) or an instance name
 
@@ -1562,10 +1646,15 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		    // We need to look for pins of the type ".name(value)"
 
 		    if (nexttok[0] != '.') {
-			fprintf(stdout, "Badly formed subcircuit pin "
-				"line at \"%s\" (line %d)\n",
+			fprintf(stdout, "Ignoring subcircuit with no pin names "
+				"at \"%s\" (line %d)\n",
 				nexttok, vlinenum);
-			SkipNewLine(VLOG_DELIMITERS);
+			while (nexttok != NULL) {
+			    SkipTokComments(VLOG_DELIMITERS);
+			    if (match(nexttok, ";")) break;
+			}
+			ignore = TRUE;
+			break;
 		    }
 		    else {
 			new_port = InstPort(thisinst, strdup(nexttok + 1), NULL);
@@ -1691,10 +1780,19 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		fprintf(stdout, "Expected to find instance pin block but got "
 				"\"%s\" (line %d)\n", nexttok, vlinenum);
 	    }
+	    if (ignore == TRUE) continue;	/* moving along. . . */
 
-	    /* Instance should end with a semicolon */
+	    /* Verilog allows multiple instances of a single cell type to be	*/
+	    /* chained together in a comma-separated list.			*/
+
 	    SkipTokComments(VLOG_DELIMITERS);
-	    if (strcmp(nexttok, ";")) {
+	    if (!strcmp(nexttok, ",")) {
+		goto nextinst;
+	    }
+
+	    /* Otherwise, instance must end with a semicolon */
+
+	    else if (strcmp(nexttok, ";")) {
 		fprintf(stdout, "Expected to find end of instance but got "
 				"\"%s\" (line %d)\n", nexttok, vlinenum);
 	    }

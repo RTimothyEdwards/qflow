@@ -311,7 +311,7 @@ fi
 
 AC_SUBST(HAVE_QROUTER)
 
-AC_OUTPUT(Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile)
+AC_OUTPUT(Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu035_redm4/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile)
 
 echo ""
 echo "Configuration results:"
