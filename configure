@@ -4654,7 +4654,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile"
+ac_config_files="$ac_config_files Makefile scripts/Makefile src/Makefile tech/Makefile tech/osu050/Makefile tech/osu035/Makefile tech/osu035_redm4/Makefile tech/osu018/Makefile tech/gscl45nm/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5368,6 +5368,7 @@ do
     "tech/Makefile") CONFIG_FILES="$CONFIG_FILES tech/Makefile" ;;
     "tech/osu050/Makefile") CONFIG_FILES="$CONFIG_FILES tech/osu050/Makefile" ;;
     "tech/osu035/Makefile") CONFIG_FILES="$CONFIG_FILES tech/osu035/Makefile" ;;
+    "tech/osu035_redm4/Makefile") CONFIG_FILES="$CONFIG_FILES tech/osu035_redm4/Makefile" ;;
     "tech/osu018/Makefile") CONFIG_FILES="$CONFIG_FILES tech/osu018/Makefile" ;;
     "tech/gscl45nm/Makefile") CONFIG_FILES="$CONFIG_FILES tech/gscl45nm/Makefile" ;;
 
