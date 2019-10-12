@@ -4,7 +4,9 @@ src/Makefile
 tech/Makefile
 tech/osu018/Makefile
 tech/osu035/Makefile
+tech/osu035_redm4/Makefile
 tech/osu050/Makefile
+tech/gscl45nm/Makefile
 config.status
 config.cache
 config.log
@@ -31,6 +33,8 @@ src/spice2delay
 src/vesta
 tech/osu018/osu018.magicrc
 tech/osu035/osu035.magicrc
+tech/osu035_redm4/osu035_redm4.magicrc
 tech/osu050/osu050.magicrc
+tech/gscl45nm/gscl45nm.magicrc
 *~
 UPDATE_ME

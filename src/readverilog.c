@@ -1434,7 +1434,11 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    // "assign" using any boolean arithmetic is not structural verilog.
 
 	    SkipTokNoNewline(VLOG_DELIMITERS);
-	    if (!strcmp(nexttok, "real")) SkipTokNoNewline(VLOG_DELIMITERS);
+	    if (!strcmp(nexttok, "real"))
+		SkipTokNoNewline(VLOG_DELIMITERS);
+	    else if (!strcmp(nexttok, "logic"))
+		SkipTokNoNewline(VLOG_DELIMITERS);
+
 	    while (nexttok != NULL) {
 		if (!strcmp(nexttok, "=")) {
 		    is_assignment = TRUE;
@@ -1449,11 +1453,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 		    else is_rhs_bundle = FALSE;
 		}
 		else if (!strcmp(nexttok, ",")) {
-		    if (is_lhs_bundle == FALSE && is_rhs_bundle == FALSE) {
-			fprintf(stdout, "Indecipherable assignment (line %d).\n");
-			goto skip_endmodule;
-		    }
-		    /* Otherwise do nothing;  moving to the next bundle component */
+		    /* Do nothing;  moving to the next wire or bundle component */
 		}
 		else if (GetBusTok(&wb, &top->nets) == 0) {
 		    if (is_wire) {
