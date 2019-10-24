@@ -284,7 +284,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 
 	if (flags & DO_INCLUDE) {
 	    libfile = fopen(libname, "r");
-	    if (libname != NULL) {
+	    if (libfile != NULL) {
 		fprintf(outfile, "** Start of included library %s\n", libname);
 		/* Write out the subcircuit library file verbatim */
 		while (loc_getline(line, sizeof(line), libfile) > 0)
