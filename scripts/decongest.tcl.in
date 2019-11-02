@@ -470,8 +470,11 @@ while {[gets $flef line] >= 0} {
 	 # Remember this for later if it's a decap fill cell
 	 lappend decapcells $macroname
       } elseif {$antennacell != "" && [regexp "^$antennacell" $macroname] == 1} {
-	 # Remember this for later if it's a antenna fill cell
+	 # Remember this for later if it's an antenna fill cell
 	 lappend antennacells $macroname
+      } elseif {$bodytiecell != "" && [regexp "^$bodytiecell" $macroname] == 1} {
+	 # Remember this for later if it's a body tie cell
+	 lappend bodytiecells $macroname
       }
    } elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
       skip_section $flef $layername
