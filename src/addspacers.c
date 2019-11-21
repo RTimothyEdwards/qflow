@@ -117,6 +117,9 @@ typedef struct _powerstripe {
 /* Hash table of instances hashed by (X, Y) position */
 struct hashtable CellPosTable;
 
+/* Hash table of site macros hashed by site name */
+struct hashtable SiteDefTable;
+
 /* Forward declarations */
 unsigned char check_overcell_capable(unsigned char Flags);
 FILLLIST generate_fill(char *fillcellname, float rscale, COREBBOX corearea,
@@ -281,7 +284,8 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     GATE gate, newfillinst;
     ROW row;
     int isfill, orient;
-    int corew = 1, coreh = 0, testh;
+    int defcorew = 1, defcoreh = 0, testh;
+    int corew = 1, coreh = 0;
     int instx, insty, instw, insth, fnamelen;
     int x, y, dx, nx, fillmin;
     char posname[32];
@@ -294,25 +298,29 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     FILLLIST fillcells = NULL;
     FILLLIST newfill, testfill;
 
+    InitializeHashTable(&SiteDefTable, TINYHASHSIZE);
+
     /* Parse library macros and find CORE SITE definition */
 
     for (gate = GateInfo; gate; gate = gate->next)
     {
+	/* NOTE: "site_" is prepended during DEF read */
 	if (!strncmp(gate->gatename, "site_", 5)) {
 	    if (gate->gateclass == MACRO_CLASS_CORE) {
-		corew = (int)(roundf(gate->width * scale));
-		testh = (int)(roundf(gate->height * scale));
+		defcorew = (int)(roundf(gate->width * scale));
+		defcoreh = (int)(roundf(gate->height * scale));
 		// Sometimes there are multiple-height core sites. . .
-		if (coreh == 0 || (testh < coreh)) coreh = testh;
+		if (defcoreh == 0 || (testh < defcoreh)) defcoreh = testh;
+		HashPtrInstall(gate->gatename, gate, &SiteDefTable);
 	    }
 	}
     }
-    if (corew == 0) {
+    if (defcorew == 0) {
 	fprintf(stderr, "Warning: failed to find any core site.\n");
 	/* Use route pitch for step size */
-	corew = (int)(roundf(LefGetRoutePitch(0) * scale));
+	defcorew = (int)(roundf(LefGetRoutePitch(0) * scale));
     }
-    if (corew == 0) {
+    if (defcorew == 0) {
 	fprintf(stderr, "Error: failed to find any core site or route pitch.\n");
 	return NULL;
     }
@@ -383,10 +391,6 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	fprintf(stderr, "Error: failed to find any core site or standard cell height.\n");
 	return NULL;
     }
-    if (Flags & VERBOSE)
-	fprintf(stdout, "Core site is %g x %g um\n",
-		(float)corew / scale, (float)coreh / scale);
-
 
     /* Rehash all instances by position */
     /* Find minimum and maximum bounds, and record cell in lower left position */
@@ -418,6 +422,28 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	    if (insty < corelly) corelly = insty;
 	    else if (insty + insth > coreury) coreury = insty + insth;
 	}
+    }
+
+    if (Flags & VERBOSE) {
+	row = DefFindRow(corelly);
+	if (row) {
+	    sprintf(posname, "site_%s", row->sitename);
+	    gate = (GATE)HashLookup(posname, &SiteDefTable);
+	    if (gate) {
+		corew = (int)(roundf(gate->width * scale));
+		coreh = (int)(roundf(gate->height * scale));
+	    }
+	    else {
+		corew = defcorew;
+		coreh = defcoreh;
+	    }
+	}
+	else {
+	    corew = defcorew;
+	    coreh = defcoreh;
+	}
+	fprintf(stdout, "Default core site is %g x %g um\n",
+		    (float)defcorew / scale, (float)defcoreh / scale);
     }
 
     fprintf(stdout, "Initial core layout: (%d %d) to (%d %d) (scale um * %d)\n",
@@ -457,6 +483,17 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     /* used to define a non-rectangular core area (to be done)	    */
 
     for (y = corelly; y < coreury; y += coreh) {
+	corew = defcorew;
+	coreh = defcoreh;
+	row = DefFindRow(y);
+	if (row) {
+	    sprintf(posname, "site_%s", row->sitename);
+	    gate = (GATE)HashLookup(posname, &SiteDefTable);
+	    if (gate) {
+		corew = (int)(roundf(gate->width * scale));
+		coreh = (int)(roundf(gate->height * scale));
+	    }
+	}
 	x = corellx;
 	while (x < coreurx) {
 	    sprintf(posname, "%dx%d", x, y);
@@ -506,7 +543,6 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		    newfillinst->placedX = (double)x / (double)scale;
 		    newfillinst->placedY = (double)y / (double)scale;
 		    newfillinst->clientdata = (void *)NULL;
-		    row = DefFindRow(y);
 		    newfillinst->orient = (row) ? row->orient : orient;
 		    DefAddGateInstance(newfillinst);
 
@@ -1141,6 +1177,11 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     DSEG r;
     ROW row;
 
+    if (stripevals->width == 0 || stripevals->pitch == 0 || stripevals->number == 0) {
+	fprintf(stderr, "No stripe information supplied;  no stripes generated.\n");
+	return NULL;
+    }
+
     lbot = 0;
     for (i = 0; i < fillgate->nodes; i++) {
 	testuse = fillgate->use[i];
@@ -1167,6 +1208,11 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     /* bottom or top.							*/
 
     r = fillcells->gate->taps[i];
+    if (r == NULL) {
+	fprintf(stderr, "Failed to find taps on standard cell:  Has the technology "
+		"LEF file been read?\n");
+	return NULL;
+    }
     vdd_ymin =  (int)(roundf(r->y1 * scale));
     vdd_ymax =  (int)(roundf(r->y2 * scale));
     vdd_xmin =  (int)(roundf(r->x1 * scale));
