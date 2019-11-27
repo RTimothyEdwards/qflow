@@ -382,12 +382,12 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     if (fillcells) {
 	testh = (int)(roundf(fillcells->gate->height * scale));
-	if ((coreh == 0) || (coreh < testh)) {
+	if ((defcoreh == 0) || (defcoreh < testh)) {
 	    /* Use fill cell height for core height */
-	    coreh = testh;
+	    defcoreh = testh;
 	}
     }
-    if (coreh == 0) {
+    if (defcoreh == 0) {
 	fprintf(stderr, "Error: failed to find any core site or standard cell height.\n");
 	return NULL;
     }
@@ -429,18 +429,10 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	if (row) {
 	    sprintf(posname, "site_%s", row->sitename);
 	    gate = (GATE)HashLookup(posname, &SiteDefTable);
-	    if (gate) {
-		corew = (int)(roundf(gate->width * scale));
-		coreh = (int)(roundf(gate->height * scale));
+	    if (gate && (gate->width > 0) && (gate->height > 0)) {
+		defcorew = (int)(roundf(gate->width * scale));
+		defcoreh = (int)(roundf(gate->height * scale));
 	    }
-	    else {
-		corew = defcorew;
-		coreh = defcoreh;
-	    }
-	}
-	else {
-	    corew = defcorew;
-	    coreh = defcoreh;
 	}
 	fprintf(stdout, "Default core site is %g x %g um\n",
 		    (float)defcorew / scale, (float)defcoreh / scale);
@@ -482,14 +474,14 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     /* NOTE:  This routine does not account for obstruction areas   */
     /* used to define a non-rectangular core area (to be done)	    */
 
-    for (y = corelly; y < coreury; y += coreh) {
+    for (y = corelly; y < coreury;) {
 	corew = defcorew;
 	coreh = defcoreh;
 	row = DefFindRow(y);
 	if (row) {
 	    sprintf(posname, "site_%s", row->sitename);
 	    gate = (GATE)HashLookup(posname, &SiteDefTable);
-	    if (gate) {
+	    if (gate && (gate->width > 0) && (gate->height > 0)) {
 		corew = (int)(roundf(gate->width * scale));
 		coreh = (int)(roundf(gate->height * scale));
 	    }
@@ -568,6 +560,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	/* Flip orientation each row (NOTE:  This is not needed if ROW	*/
 	/* statements are in the DEF file!				*/
 	orient = (orient == RN) ? RS : RN;
+	y += coreh;
     }
 
     if (fillcells) {
