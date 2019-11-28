@@ -150,7 +150,10 @@ def write_models(cellsused, celldefs, ofile, timing):
                         psubs = psubbed
 
                     try:
-                        tval = eval('(' + psubs + ')&1')
+                        # Note: parse_pin may strip parentheses so add double
+                        # parentheses to make sure the final &1 applies to
+                        # the whole expression.
+                        tval = eval('((' + psubs + '))&1')
                     except (SyntaxError, NameError):
                         tabstr = ''
                         print("Could not evaluate function " + cellrec['function'][k])
@@ -231,6 +234,7 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
     subname = os.path.splitext(fileroot)[0]
 
     cellsused = []
+    pindefs = {}
 
     # Make first pass to determine if there is more than one subcircuit in
     # the main file.
@@ -343,13 +347,22 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                         else:
                             dclk = pins[i]
 
+                    # Normally 'data' will resolve to a pin name.  BUT,
+                    # scan flops can have complicated expressions for
+                    # next_state.  These should NOT be used by synthesis,
+                    # but check for them anyway, so they do not cause
+                    # the program to fault.
                     if 'data' in cellrec:
                         datapin = cellrec['data']
                         if datapin[0] == '~':
                             subpin = datapin[1:]
                         else:
                             subpin = datapin
-                        i = cellrec['spicepins'].index(subpin)
+                        try:
+                            i = cellrec['spicepins'].index(subpin)
+                        except:
+                            ddata = 'ERROR'
+                            print('Pin ' + subpin + ' of subckt ' + cellname + ' cannot be parsed.', file=sys.stderr)
                         if pins[i] in pindefs:
                             pindefs[pins[i]] = 'input'
                         if datapin[0] == '~':
@@ -720,7 +733,7 @@ def read_liberty(filein, debug):
 
             lmatch = cellrex.match(line)
             if lmatch:
-                cellname = lmatch.group(1)
+                cellname = lmatch.group(1).strip('"')
                 if debug:
                     print("Found cell " + cellname)
                 cellrec = {}
