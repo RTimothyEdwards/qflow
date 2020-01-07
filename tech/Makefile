@@ -9,9 +9,9 @@ LIBS =
 LDFLAGS = 
 INSTALL = /bin/install -c
 
-QFLOW_LIB_DIR = /usr/local/share/qflow
+QFLOW_LIB_DIR = /home/tim/cad/share/qflow
 
-TECH_DIRS = osu050 osu035 osu018 gscl45nm
+TECH_DIRS = osu050 osu035 osu035_redm4 osu018 gscl45nm
 
 TECHINSTALL = ${QFLOW_LIB_DIR}/tech
 

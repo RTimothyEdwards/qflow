@@ -10,10 +10,10 @@ LDFLAGS =
 INSTALL = /bin/install -c
 
 VERSION = 1.3
-REVISION = 11
+REVISION = 17
 
-QFLOW_LIB_DIR = /usr/local/share/qflow
-QFLOW_BIN_DIR = /usr/local/bin
+QFLOW_LIB_DIR = /home/tim/cad/share/qflow
+QFLOW_BIN_DIR = /home/tim/cad/bin
 TCLSH_PATH = /bin/tclsh
 ENV_PATH = /bin/env
 HAVE_PYTHON3 = yes
@@ -93,6 +93,7 @@ qflow_manager.py: qflow_manager.py.in
 	-e '/QFLOW_VERSION/s#QFLOW_VERSION#$(VERSION)#' \
 	-e '/QFLOW_REVISION/s#QFLOW_REVISION#$(REVISION)#' \
 	-e '/SUBST_TECH_DIR/s#SUBST_TECH_DIR#$(TECHINSTALL)#' \
+	-e '/SUBST_EXEC_DIR/s#SUBST_EXEC_DIR#$(EXECINSTALL)#' \
 	-e '/SUBST_SCRIPT_DIR/s#SUBST_SCRIPT_DIR#$(SCRIPTINSTALL)#' \
 	-e '/SUBST_BIN_DIR/s#SUBST_BIN_DIR#$(QFLOWEXECPATH)#' \
 	-e '/HAVE_OPENTIMER/s#HAVE_OPENTIMER#$(HAVE_OPENTIMER)#' \

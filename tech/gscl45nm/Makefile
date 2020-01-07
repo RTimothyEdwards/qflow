@@ -9,7 +9,7 @@ LIBS =
 LDFLAGS = 
 INSTALL = /bin/install -c
 
-QFLOW_LIB_DIR = /usr/local/share/qflow
+QFLOW_LIB_DIR = /home/tim/cad/share/qflow
 
 TECH_FILES = gscl45nm.par gscl45nm.lef gscl45nm.sh
 TECH_FILES += gscl45nm.sp gscl45nm.magicrc gscl45nm.prm
