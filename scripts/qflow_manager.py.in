@@ -46,6 +46,7 @@ prefsfile = '~/.qflow/prefs.json'
 qflow_bin_dir = 'SUBST_BIN_DIR'
 qflow_script_dir = 'SUBST_SCRIPT_DIR'
 qflow_tech_dir = 'SUBST_TECH_DIR'
+qflow_exec_dir = 'SUBST_EXEC_DIR'
 
 # Qflow version information
 qflow_version = 'QFLOW_VERSION' + '.' + 'QFLOW_REVISION'
@@ -2818,7 +2819,7 @@ class QflowManager(ttk.Frame):
             technode = self.pdknode.get()
 
             self.print('Running: qflow -p ' + self.rootpath + ' -T ' + technode + ' ' + self.project)
-            p = subprocess.Popen(['qflow', '-p', self.rootpath, '-T', technode,
+            p = subprocess.Popen([qflow_exec_dir + '/qflow', '-p', self.rootpath, '-T', technode,
 			self.project], stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = self.rootpath)
             qflowpair = p.communicate(timeout=10)
 
@@ -2886,7 +2887,7 @@ class QflowManager(ttk.Frame):
         self.update_idletasks()
         failed = False
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'synthesize'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'synthesize'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         synthdir = self.synthdir
@@ -2938,7 +2939,7 @@ class QflowManager(ttk.Frame):
         self.pinmanager.writepads(cel2file)
 
         # Run the qflow placement script
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'place'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'place'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = layoutdir + '/' + self.project + '.def'
@@ -2978,7 +2979,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'sta'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'sta'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/sta.log'
@@ -3028,7 +3029,7 @@ class QflowManager(ttk.Frame):
         if os.path.exists(unroute):
             shutil.copy(unroute, filename)
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'route'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'route'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         try:
@@ -3067,7 +3068,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'backanno'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'backanno'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/post_sta.log'
@@ -3109,7 +3110,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'migrate'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'migrate'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.layoutdir + '/' + self.project + '.spice'
@@ -3156,7 +3157,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'drc'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'drc'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/drc.log'
@@ -3203,7 +3204,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'lvs'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'lvs'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/lvs.log'
@@ -3250,7 +3251,7 @@ class QflowManager(ttk.Frame):
         # Check for long format option and update project_vars.sh
         self.update_project_vars()
 
-        self.qflowproc = subprocess.Popen(['qflow', self.project, 'gdsii'],
+        self.qflowproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, 'gdsii'],
 		stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         filename = self.logdir + '/gdsii.log'
@@ -3431,7 +3432,7 @@ class QflowManager(ttk.Frame):
             qcommand = 'purge'
         else:
             qcommand = 'clean'
-        cproc = subprocess.Popen(['qflow', self.project, qcommand],
+        cproc = subprocess.Popen([qflow_exec_dir + '/qflow', self.project, qcommand],
 		    stdin = subprocess.DEVNULL, stdout = subprocess.PIPE,
 		    stderr = subprocess.PIPE, bufsize = 0, cwd = self.rootpath)
         cprocpair = cproc.communicate(timeout=1)
