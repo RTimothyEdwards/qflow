@@ -169,6 +169,7 @@ class QflowManager(ttk.Frame):
 
         self.magicgtype = None
         self.magicversion = None
+        self.qflowversion = None
 
         # Create the pin manager
         self.pinmanager = PinManager(self, fontsize = fontsize)
@@ -1713,6 +1714,8 @@ class QflowManager(ttk.Frame):
                             logdir = os.path.expanduser(value)
                         elif key == 'techname':
                             pdkname = value
+                        elif key == 'qflowversion':
+                            self.qflowversion = value
         
         self.sourcedir = srcdir
         self.synthdir = sdir
@@ -2196,6 +2199,44 @@ class QflowManager(ttk.Frame):
         parfile = ldir + '/' + self.project + '.par'
         if os.path.exists(parfile):
             os.remove(parfile)
+
+    # Find the qflow version.  The easiest way is to find the value of the
+    # the variable "qflowversion" in the qflow_vars.sh file.  Older versions
+    # of qflow don't support this, though, so if the variable is not found,
+    # then determine the version by looking at the first command in
+    # qflow_exec.sh.  If it calls script "synthesize.sh", then it is qflow
+    # version 1.3, otherwise version 1.4.
+
+    def read_qflow_version(self):
+        backup = self.qflowversion
+        self.qflowversion = None
+        varrex = re.compile('^[ \t]*set[ \t]+([^ \t]+)[ \t]*=[ \t]*([^ \t\n#]+)')
+        varsfile = self.rootpath + '/qflow_vars.sh'
+        if os.path.exists(varsfile):
+            with open(varsfile, 'r') as ifile:
+                for line in ifile:
+                    vmatch = varrex.match(line)
+                    if vmatch:
+                        key = vmatch.group(1)
+                        value = vmatch.group(2)
+                        if key == 'qflowversion':
+                            self.qflowversion = value
+
+        if not self.qflowversion:
+            self.qflowversion = '1.4.0'
+            execfile = self.rootpath + '/qflow_exec.sh'
+            cmdrex = re.compile('#?[ \t]*([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+')
+            if os.path.exists(execfile):
+                with open(execfile, 'r') as ifile:
+                    for line in ifile:
+                        cmatch = cmdrex.match(line)
+                        if cmatch:
+                            command = cmatch.group(1)
+                            if 'synthesize.sh' in command:
+                                self.qflowversion = '1.3.0'
+
+        if not self.qflowversion:
+            self.qflowversion = backup
 
     # Read an existing project_vars.sh file and seed the values in the GUI
     # It is okay for project_vars.sh file not to exist (GUI values will
@@ -4002,6 +4043,20 @@ class QflowManager(ttk.Frame):
             # Set the verilog source
             self.set_verilog(self.verilog)
 
+            # Determine the version of qflow used
+            self.read_qflow_version()
+            # This version of the GUI manager does not support projects made
+            # in qflow version 1.3.
+            if self.qflowversion.startswith('1.3'):
+                print('', file=sys.stderr)
+                print('IMPORTANT:', file=sys.stderr)
+                print('   This project was configured with qflow version 1.3.', file=sys.stderr)
+                print('   Only use the 1.3 GUI manager with this project!', file=sys.stderr)
+                print('   Or, remove qflow_vars.sh and qflow_exec.sh and rebuild to use with qflow 1.4.', file=sys.stderr)
+                print('   All synthesis, place, and route will be reset if changed to version 1.4.', file=sys.stderr)
+                print('', file=sys.stderr)
+                sys.exit(1)
+
             # Read from the project_vars.sh file
             self.read_project_vars(remove = False)
 
@@ -4118,10 +4173,7 @@ if __name__ == '__main__':
     root = tkinter.Tk()
     app = QflowManager(root)
 
-    if numargs <= 1:
-        self.print('No technology set from command line.  Will check current directory.')
-        app.set_pdk(None, None)
-    else:
+    if numargs > 1:
         tech_name = sys.argv[1]
         app.set_pdk(None, tech_name)
 

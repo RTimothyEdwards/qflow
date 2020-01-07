@@ -4,6 +4,9 @@
 # qflow.sh --- main program shell script
 #------------------------------------------------------------------
 
+# The version of qflow is determined at compile/install time
+set qflowversion=QFLOW_VERSION.QFLOW_REVISION
+
 # Environment variable overrides the tech type in all cases except
 # when the technology is specified on the command line by -T.  If
 # the environment variable is not set, the technology defaults to
@@ -396,6 +399,7 @@ echo "# qflow variables for project ${projectpath}" >> ${varfile}
 echo "#-------------------------------------------" >> ${varfile}
 echo "" >> ${varfile}
 
+echo "set qflowversion=${qflowversion}" >> ${varfile}
 echo "set projectpath=${projectpath}" >> ${varfile}
 echo "set techdir=${techdir}" >> ${varfile}
 echo "set sourcedir=${sourcedir}" >> ${varfile}
