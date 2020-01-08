@@ -166,7 +166,7 @@ int main (int argc, char *argv[])
     Flags = 0;
     stripewidth_t = stripepitch_t = 0.0;
 
-    while ((i = getopt(argc, argv, "hHvOn:o:l:p:g:f:w:P:s:")) != EOF) {
+    while ((i = getopt(argc, argv, "hHvOno:l:p:g:f:w:P:s:")) != EOF) {
         switch( i ) {
 	    case 'v':
 		Flags |= VERBOSE;
