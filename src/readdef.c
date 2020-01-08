@@ -1626,6 +1626,20 @@ DefReadComponents(FILE *f, char *sname, float oscale, int total)
 		}
 		token = LefNextToken(f, TRUE);
 
+		// Watch for backslash-escaped instance names that have
+		// been sanitized for use in SPICE netlists with an
+		// extra backslash replacing the space, which needs to
+		// be converted back.
+
+		if (*usename == '\\') {
+		    char *sptr, *bptr;
+		    sptr = strchr(usename, ' ');
+		    if (sptr == NULL) {
+		        bptr = strrchr(usename + 1, '\\');
+		        if (bptr != NULL) *bptr = ' ';
+		    }
+		}
+
 		/* Find the corresponding macro */
 		OK = 0;
 		for (gateginfo = GateInfo; gateginfo; gateginfo = gateginfo->next) {

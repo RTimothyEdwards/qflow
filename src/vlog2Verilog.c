@@ -639,19 +639,25 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 	    RecurseHashTablePointer(&inst->propdict, output_props, outfptr);
 	    fprintf(outfptr, ") ");
 	}
-	if (inst->cellname)
-	    fprintf(outfptr, "%s", inst->instname);
-	else {
+	if (!(inst->cellname)) {
 	    fprintf(outfptr, "vlog2Verilog:  No cell for instance %s\n", inst->instname);
 	    result = 1;		// Set error result but continue output.
 	}
-	if (inst->arraystart != -1) {
+	if (inst->arraystart == -1)
+	    fprintf(outfptr, "%s", inst->instname);
+	else {
 	    if (Flags & BIT_BLAST) {
 		if (arrayidx == -1) arrayidx = inst->arraystart;
-		fprintf(outfptr, "[%d]", arrayidx);
+		fprintf(outfptr, "%s[%d]", inst->instname, arrayidx);
+	    }
+	    else if (inst->arraystart == inst->arrayend) {
+		// NOTE:  This case is probably coming from incorrect handling
+		// in DEF2Verilog which needs to be fixed at the source.
+		fprintf(outfptr, "\%s[%d] ", inst->instname, inst->arraystart);
 	    }
 	    else {
-		fprintf(outfptr, " [%d:%d]", inst->arraystart, inst->arrayend);
+		fprintf(outfptr, "%s [%d:%d]", inst->instname,
+			    inst->arraystart, inst->arrayend);
 	    }
 	}
 	fprintf(outfptr, " (\n");

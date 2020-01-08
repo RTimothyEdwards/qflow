@@ -191,12 +191,25 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 	arrayidx = inst->arraystart;
 	while (1) {
 
-	    if (arrayidx != -1)
-	        fprintf(outfptr, "cell %d %s:%s[%d]\n", cellidx, inst->cellname,
+	    if (arrayidx != -1) {
+		// NOTE:  I think it is not legal to name an instance with an
+                // array delimiter, so backslash-escape it.  Note that another
+                // backslash replaces the final space to make the name SPICE-
+		// compatible.
+	        fprintf(outfptr, "cell %d %s:\\%s[%d]\\\n", cellidx, inst->cellname,
 			inst->instname, arrayidx);
-	    else
+	    }
+	    else {
+		// Watch for backslash notation in instance names (see below
+		// for similar handling of net names).
+		if (*inst->instname == '\\') {
+		    char *inameptr = strchr(inst->instname, ' ');
+		    if (inameptr != NULL) *inameptr = '\\';
+		}
+
 	        fprintf(outfptr, "cell %d %s:%s\n", cellidx, inst->cellname,
 			inst->instname);
+	    }
 	    fprintf(outfptr, "left %d right %d bottom %d top %d\n",
 			cllx, curx, clly, cury);
 	    cellidx++;
