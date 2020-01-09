@@ -305,9 +305,9 @@ if ($dodelays == 1) then
 else
    echo "Running OpenSTA static timing analysis" |& tee -a ${synthlog}
 endif
-echo "sta ${opensta_options} ${rootname}.conf" |& tee -a ${synthlog}
+echo "sta ${opensta_options} < ${rootname}.conf" |& tee -a ${synthlog}
 echo ""
-${bindir}/sta ${opensta_options} ${rootname}.conf |& tee -a ${synthlog}
+${bindir}/sta ${opensta_options} < ${rootname}.conf |& tee -a ${synthlog}
 echo ""
 
 #------------------------------------------------------------
