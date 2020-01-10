@@ -3838,8 +3838,6 @@ class QflowManager(ttk.Frame):
     def set_pdk(self, pdkdir, pdkname):
         global qflow_tech_dir
 
-        print('Diagnostic:  Calling set_pdk.')
-
         # If pdkdir is None, then check if pdkname is (first) in tech/ and
         # then in the install tech directory.  Otherwise, look for pdkname
         # in pdkdir.  If pdkname has an extension (like ".sh"), then
