@@ -715,8 +715,10 @@ if ($makedef == 1) then
          set via_stacks="all"
       endif
       echo "via stack ${via_stacks}" >> ${rootname}.cfg
-      echo "vdd $vddnet" >> ${rootname}.cfg
-      echo "gnd $gndnet" >> ${rootname}.cfg
+      set vddonly = `echo $vddnet | cut -d"," -f1`
+      set gndonly = `echo $gndnet | cut -d"," -f1`
+      echo "vdd $vddonly" >> ${rootname}.cfg
+      echo "gnd $gndonly" >> ${rootname}.cfg
 
    else
       echo "# qrouter configuration for project ${rootname}" > ${rootname}.cfg
