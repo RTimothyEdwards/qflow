@@ -3411,7 +3411,7 @@ class QflowManager(ttk.Frame):
 
         self.print('Change technology to ' + newpdk + ' requested.')
 
-        # Okay to just reset if still in preparation
+        # Okay to just reset w/o confirmation if still in preparation
         if self.status != 'prep' and self.status != 'begin':
             warning = 'Confirm change of technology to ' + newpdk + '?'
             confirm = ProtectedConfirmDialog(self, warning).result
@@ -3420,33 +3420,39 @@ class QflowManager(ttk.Frame):
                return
             self.print('Technology change confirmed!')
 
-        self.currentpdk = newpdk
+        self.purge.set(1)
+        self.reset.set(1)
+        self.qflow_cleanup()
 
         # Remove the master script files, or the original PDK just gets
         # read back from qflow_vars.sh.  project_vars.sh has PDK-related
         # information in it, and qflow_exec.sh is irrelevant anyway.
+        # This must be done after "qflow purge" because the cleanup
+        # script depends on the presence of qflow_vars.sh.
 
-        # self.print('Diagnostic:  Removing master setup files.')
-        if os.path.exists('qflow_vars.sh'):
-            os.remove('qflow_vars.sh')
-        if os.path.exists('qflow_exec.sh'):
-            os.remove('qflow_exec.sh')
-        if os.path.exists('project_vars.sh'):
-            os.remove('project_vars.sh')
+        self.print('Diagnostic:  Removing master setup files.')
+        if os.path.exists(self.rootpath + '/qflow_vars.sh'):
+            os.remove(self.rootpath + '/qflow_vars.sh')
+        if os.path.exists(self.rootpath + '/qflow_exec.sh'):
+            os.remove(self.rootpath + '/qflow_exec.sh')
+        if os.path.exists(self.rootpath + '/project_vars.sh'):
+            os.remove(self.rootpath + '/project_vars.sh')
 
-        # self.print('Diagnostic:  Removing magic startup script.')
+        self.print('Diagnostic:  Removing magic startup script.')
         ldir = self.layoutdir
         if os.path.exists(ldir + '/.magicrc'):
             os.remove(ldir + '/.magicrc')
+
+        self.currentpdk = newpdk
 
         # Set the PDK directory path to match the PDK name
         for testname, testdir in zip(self.allpdknodes, self.allpdkdirs):
             if testname == newpdk:
                 self.pdkdir = testdir
 
-        self.purge.set(1)
-        self.reset.set(1)
-        self.qflow_cleanup()
+        self.set_pdk(self.pdkdir, newpdk)
+
+        self.print('Diagnostic:  Now running get_status/set_status.')
         self.qflow_get_status()
         self.gui_set_status()
 
@@ -3831,6 +3837,8 @@ class QflowManager(ttk.Frame):
 
     def set_pdk(self, pdkdir, pdkname):
         global qflow_tech_dir
+
+        print('Diagnostic:  Calling set_pdk.')
 
         # If pdkdir is None, then check if pdkname is (first) in tech/ and
         # then in the install tech directory.  Otherwise, look for pdkname
