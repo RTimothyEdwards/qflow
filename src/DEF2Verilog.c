@@ -50,6 +50,7 @@ int main (int argc, char *argv[])
     unsigned char Flags;
     float rscale;
     struct cellrec *topcell;
+    char *cptr;
 
     char *definname = NULL;
     char *vloginname = NULL;
@@ -70,9 +71,11 @@ int main (int argc, char *argv[])
 		break;
 	    case 'p':
 		VddNet = strdup(optarg);
+		if ((cptr = strchr(VddNet, ',')) != NULL) *cptr = '\0';
 		break;
 	    case 'g':
 		GndNet = strdup(optarg);
+		if ((cptr = strchr(GndNet, ',')) != NULL) *cptr = '\0';
 		break;
 	    case 'o':
 		vlogoutname = strdup(optarg);

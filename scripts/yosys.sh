@@ -706,8 +706,9 @@ else
 #---------------------------------------------------------------------
 
    rm -f ${modulename}_nofanout
-   echo $gndnet > ${modulename}_nofanout
-   echo $vddnet >> ${modulename}_nofanout
+   # If there are multiple power or ground names, put them on separate lines
+   echo ${gndnet:s/,/\n/} > ${modulename}_nofanout
+   echo ${vddnet:s/,/\n/} >> ${modulename}_nofanout
 
    if (! $?fanout_options) then
       set fanout_options=""

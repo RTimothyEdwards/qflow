@@ -28,6 +28,8 @@ int is_pwr_name(char *);
 
 char *VddNet = NULL;
 char *GndNet = NULL;
+char *VddTap = NULL;
+char *GndTap = NULL;
 char *AntennaCell = NULL;
 
 struct hashtable Lefhash;
@@ -49,6 +51,7 @@ int main (int argc, char *argv[])
 
     char *vloginname = NULL;
     char *vlogoutname = NULL;
+    char *cptr;
     struct cellrec *topcell;
 
     Flags = (unsigned char)IMPLICIT_POWER;
@@ -88,6 +91,11 @@ int main (int argc, char *argv[])
 	    case 'v':
 		free(VddNet);
 		VddNet = strdup(optarg);
+		if ((cptr = strchr(VddNet, ',')) != NULL) {
+		    *cptr = '\0';
+		    VddTap = strdup(cptr + 1);
+		    cleanup_string(VddTap);
+		}
 		cleanup_string(VddNet);
 		break;
 	    case 'o':
@@ -96,6 +104,11 @@ int main (int argc, char *argv[])
 	    case 'g':
 		free(GndNet);
 		GndNet = strdup(optarg);
+		if ((cptr = strchr(GndNet, ',')) != NULL) {
+		    *cptr = '\0';
+		    GndTap = strdup(cptr + 1);
+		    cleanup_string(GndTap);
+		}
 		cleanup_string(GndNet);
 		break;
 	    default:
@@ -131,7 +144,9 @@ int main (int argc, char *argv[])
 
 /*--------------------------------------------------------------*/
 /* Name compare for VddNet and GndNet.	Remove any trailing "!"	*/
-/* (global reference) from the net name.			*/
+/* (global reference) from the net name.  Note that for cells	*/
+/* requiring tap cells there may be multiple power and ground	*/
+/* names, comma-separated.  Match any in the list.		*/
 /*--------------------------------------------------------------*/
 
 int is_pwr_name(char *text)
@@ -140,9 +155,11 @@ int is_pwr_name(char *text)
 
     if (*(text + n - 1) == '!') *(text + n - 1) = '\0';
 
-    if (!strcmp(text, VddNet)) return 0;
-    if (!strcmp(text, GndNet)) return 0;
-    return 1;
+    if (!strcmp(text, VddNet)) return 1;
+    if (!strcmp(text, GndNet)) return 1;
+    if (!strcmp(text, VddTap)) return 1;
+    if (!strcmp(text, GndTap)) return 1;
+    return 0;
 }
 
 /*--------------------------------------------------------------*/
@@ -593,7 +610,9 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 
     if (Flags & IMPLICIT_POWER) {
 	fprintf(outfptr, "    inout %s,\n", VddNet);
-	fprintf(outfptr, "    inout %s,\n", GndNet);
+	fprintf(outfptr, "    inout %s", GndNet);
+	if (topcell->portlist) fprintf(outfptr, ",");
+	fprintf(outfptr, "\n");
     }
 
     for (port = topcell->portlist; port; port = port->next) {
@@ -673,24 +692,34 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 
 	    if (gate) {
 		int n;
-		u_char found = 0;
+		u_char found = 0, need = 2;
+		if (VddTap != NULL) need++;
+		if (GndTap != NULL) need++;
 		for (n = 0; n < gate->nodes; n++) {
 		    if (gate->use[n] == PORT_USE_POWER) {
-			fprintf(outfptr, "    .%s(%s),\n", gate->node[n], VddNet);
+			if (found > 0) fprintf(outfptr, ",\n");
+			fprintf(outfptr, "    .%s(%s)", gate->node[n], VddNet);
 			found++;
 		    }
 		    else if (gate->use[n] == PORT_USE_GROUND) {
-			fprintf(outfptr, "    .%s(%s),\n", gate->node[n], GndNet);
+			if (found > 0) fprintf(outfptr, ",\n");
+			fprintf(outfptr, "    .%s(%s)", gate->node[n], GndNet);
 			found++;
 		    }
-		    if (found == 2) break;
+		    if (found == need) break;
 		}
 	    }
 	    else {
 		/* Fall back on VddNet and GndNet names */
 		fprintf(outfptr, "    .%s(%s),\n", GndNet, GndNet);
-		fprintf(outfptr, "    .%s(%s),\n", VddNet, VddNet);
+		if (GndTap != NULL)
+		    fprintf(outfptr, "    .%s(%s),\n", GndTap, GndNet);
+		fprintf(outfptr, "    .%s(%s)", VddNet, VddNet);
+		if (VddTap != NULL)
+		    fprintf(outfptr, ",\n    .%s(%s)", VddTap, VddNet);
 	    }
+	    if (inst->portlist) fprintf(outfptr, ",");
+	    fprintf(outfptr, "\n");
 	}
 
 	/* Write each port and net connection */
