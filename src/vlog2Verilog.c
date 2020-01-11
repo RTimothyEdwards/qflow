@@ -157,8 +157,8 @@ int is_pwr_name(char *text)
 
     if (!strcmp(text, VddNet)) return 1;
     if (!strcmp(text, GndNet)) return 1;
-    if (!strcmp(text, VddTap)) return 1;
-    if (!strcmp(text, GndTap)) return 1;
+    if ((VddTap != NULL) && !strcmp(text, VddTap)) return 1;
+    if ((GndTap != NULL) && !strcmp(text, GndTap)) return 1;
     return 0;
 }
 
