@@ -4,6 +4,12 @@
 #
 # Read LEF file up to the first macro with a PIN record having
 # USE POWER and one having USE GROUND.  Return the pin names.
+# If the library has tap cells, then there may be multiple
+# power and ground pins, and all names should be returned.  For
+# 4-net power/ground, it is the responsibility of the calling
+# script to use the power/ground names in the setup file to
+# disambiguate between the actual power buses and the tap
+# connections.
 #
 #---------------------------------------------------------------------------
 namespace path {::tcl::mathop ::tcl::mathfunc}
@@ -17,8 +23,8 @@ puts stdout "Running getpowerground.tcl"
 
 set lefname [lindex $argv 0]
 
-set vddnet ""
-set gndnet ""
+set vddnet {}
+set gndnet {}
 
 #-----------------------------------------------------------------
 # Open lef file for reading
@@ -58,9 +64,13 @@ proc parse_pin {leffile pinname} {
         if [regexp {[ \t]*USE[ \t]+([^ \t]+)[ \t]*;} $line lmatch portuse] {
             set portuse [string toupper $portuse]
             if {$portuse == "GROUND"} {
-                set gndnet $pinname
+	        if {[lsearch $gndnet $pinname] < 0} {
+		    lappend gndnet $pinname
+		}
 	    } elseif {$portuse == "POWER"} {
-                set vddnet $pinname
+	        if {[lsearch $vddnet $pinname] < 0} {
+		    lappend vddnet $pinname
+		}
             }
         } elseif [regexp {[ \t]*END[ \t]+([^ \t]+)[ \t]*$} $line lmatch pintest] {
             if {"$pintest" == "$pinname"} {
@@ -106,8 +116,14 @@ while {[gets $flef line] >= 0} {
       # Parse the "macro" statement
       parse_macro $flef $macroname
       # Probably the power and ground nets will be set after the first
-      # macro is read.
-      if {($vddnet != "") && ($gndnet != "")} {break}
+      # macro is read.  Watch for unbalanced number of vdd net names and
+      # gnd net names caused by having a single-sided tap cell as the
+      # first macro.
+      if {([llength $vddnet] > 1) && ([llength $gndnet] > 1)} {
+	 break
+      } elseif {([llength $vddnet] == 1) && ([llength $gndnet] == 1)} {
+	 break
+      }
    } elseif [regexp {[ \t]*LAYER[ \t]+([^ \t]+)} $line lmatch layername] {
       skip_section $flef $layername
    } elseif [regexp {[ \t]*VIA[ \t]+([^ \t]+)} $line lmatch vianame] {
@@ -149,6 +165,7 @@ while {[gets $flef line] >= 0} {
 
 close $flef
 
-puts stdout "vddnet=$vddnet"
-puts stdout "gndnet=$gndnet"
+# Use a comma to separate multiple power and ground names
+puts stdout "vddnet=[join $vddnet ","]"
+puts stdout "gndnet=[join $gndnet ","]"
 puts stdout "Done with getpowerground.tcl"

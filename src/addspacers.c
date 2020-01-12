@@ -151,6 +151,7 @@ int main (int argc, char *argv[])
     FILLLIST fillcells;
     SINFO stripevals;
     PSTRIPE rails;
+    char *cptr;
 
     char *definname = NULL;
     char *fillcellname = NULL;
@@ -225,9 +226,11 @@ int main (int argc, char *argv[])
                 break;
             case 'p':
                 VddNet = strdup(optarg);
+		if ((cptr = strchr(VddNet, ',')) != NULL) *cptr = '\0';
                 break;
             case 'g':
                 GndNet = strdup(optarg);
+		if ((cptr = strchr(GndNet, ',')) != NULL) *cptr = '\0';
                 break;
             default:
                 fprintf(stderr,"Bad switch \"%c\"\n", (char)i);
