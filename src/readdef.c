@@ -685,6 +685,17 @@ DefReadNets(FILE *f, char *sname, float oscale, char special, int total)
 		    {
 			token = LefNextToken(f, TRUE);  /* get pin or gate */
 			strcpy(instname, token);
+
+			/* Check for instname with sanitized backslash syntax */
+			if (*instname == '\\') {
+			    char *sptr, *bptr;
+			    sptr = strchr(instname, ' ');
+			    if (sptr == NULL) {
+			        bptr = strrchr(instname + 1, '\\');
+			        if (bptr != NULL) *bptr = ' ';
+			    }
+			}
+
 			token = LefNextToken(f, TRUE);	/* get node name */
 
 			if (!strcasecmp(instname, "pin")) {
