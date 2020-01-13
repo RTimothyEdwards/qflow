@@ -1863,13 +1863,25 @@ write_output(char *definname, char *defoutname, float scale,
 	fprintf(outfptr, "COMPONENTS %d ;\n", Numgates);
 	for (gate = endgate; gate ; gate = gate->last) {
 	    int px, py;
+	    char *sptr;
 	    if (gate->gatetype == NULL) continue;
+
+	    // Watch for backslash-escaped instance names.  Even when
+	    // converting DEF to DEF, the DEF read routine converts
+	    // back to verilog notation, so addspacers needs to convert
+	    // once again back to the SPICE-sanitized syntax.
+
+	    if (*gate->gatename == '\\')
+	        if ((sptr = strchr(gate->gatename, ' ')) != NULL)
+		    *sptr = '\\';
 
 	    px =  (int)(roundf(gate->placedX * scale));
 	    py =  (int)(roundf(gate->placedY * scale));
 	    fprintf(outfptr, "- %s %s + PLACED ( %d %d ) %s ;\n",
 		gate->gatename, gate->gatetype->gatename,
 		px, py, gate_to_orient(gate->orient));
+
+	    if (sptr != NULL) *sptr = ' ';
 	}
 	fprintf(outfptr, "END COMPONENTS\n\n");
     }
