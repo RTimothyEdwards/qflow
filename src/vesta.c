@@ -2807,6 +2807,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
 	    testconn->refinst = NULL;       // No associated instance
 	    testconn->tag = NULL;
 	    testconn->metric = -1.0;
+	    testconn->icDelay = 0.0;
 	    testconn->visited = (unsigned char)0;
 	    testconn->prvector = NULL;
 	    testconn->pfvector = NULL;
@@ -2839,6 +2840,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
 		testconn->refinst = NULL;   // No associated instance
 		testconn->tag = NULL;
 		testconn->metric = -1.0;
+		testconn->icDelay = 0.0;
 		testconn->visited = (unsigned char)0;
 		testconn->prvector = NULL;
 		testconn->pfvector = NULL;
@@ -2907,6 +2909,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
             newconn->refnet = NULL;
             newconn->tag = NULL;
             newconn->metric = -1.0;
+	    newconn->icDelay = 0.0;
 	    newconn->visited = (unsigned char)0;
             newconn->prvector = NULL;
             newconn->pfvector = NULL;
@@ -3282,14 +3285,14 @@ delayRead(FILE *fdly, struct hashtable *Nethash)
 		    if (debug == 1)
                         fprintf(stdout, "\tNet connects to output and has no "
 				"receiving instance pin\n");
-                    testconn->icDelay = strtof(saveptr, NULL);
+                    testconn->icDelay = strtod(saveptr, NULL);
                 } else {
 		    if (debug == 1)
                         fprintf(stdout, "\trefinstname: %s\n", testconn->refinst->name);
 
                     if (!strcmp(testconn->refinst->name, c)) {
 
-                        testconn->icDelay = strtof(saveptr, NULL);
+                        testconn->icDelay = strtod(saveptr, NULL);
                         break;
                     }
                 }
