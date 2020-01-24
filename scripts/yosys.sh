@@ -247,7 +247,8 @@ EOF
    set yerrcnt = `echo $yerrors | wc -c`
 
    if ($yerrcnt > 1) then
-      ${bindir}/yosys -s ${modulename}.ys >& ${synthlog}
+      # NOTE: Do not pass yosys stdout but look only at stderr! 
+      ( ${bindir}/yosys -s ${modulename}.ys > /dev/null ) >& ${synthlog}
       echo "Errors detected in verilog source, need to be corrected." \
 		|& tee -a ${synthlog}
       echo "See file ${synthlog} for error output."
@@ -388,7 +389,8 @@ EOF
          set newdep = `echo $yerrors | cut -d " " -f 3 | cut -c3- | cut -d "'" -f 1`
          set uniquedeplist = "${uniquedeplist} ${newdep}"
       else
-         ${bindir}/yosys -s ${modulename}.ys >& ${synthlog}
+         # NOTE: Do not pass yosys stdout but look only at stderr! 
+         ( ${bindir}/yosys -s ${modulename}.ys > /dev/null ) >& ${synthlog}
          echo "Errors detected in verilog source, need to be corrected." \
 		|& tee -a ${synthlog}
          echo "See file ${synthlog} for error output."
