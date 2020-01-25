@@ -1863,7 +1863,7 @@ write_output(char *definname, char *defoutname, float scale,
 	fprintf(outfptr, "COMPONENTS %d ;\n", Numgates);
 	for (gate = endgate; gate ; gate = gate->last) {
 	    int px, py;
-	    char *sptr;
+	    char *sptr = NULL;
 	    if (gate->gatetype == NULL) continue;
 
 	    // Watch for backslash-escaped instance names.  Even when
