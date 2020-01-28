@@ -16,7 +16,7 @@ TECH_FILES += gscl45nm.sp gscl45nm.magicrc gscl45nm.prm
 TECH_FILES += gscl45nm.tech gscl45nm.lib gscl45nm.gds
 TECH_FILES += gscl45nm.v gscl45nm_setup.tcl
 
-TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+TECHINSTALL = @DIST_DIR@/share/qflow/tech
 
 # Substitute the target qflow tech directory name in .magicrc so that magic
 # can find the gscl45nm techfile

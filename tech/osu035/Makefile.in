@@ -16,7 +16,7 @@ TECH_FILES += osu035_stdcells.sp osu035.magicrc osu035.prm
 TECH_FILES += SCN4M_SUBM.20.tech osu035_stdcells.lib
 TECH_FILES += osu035_stdcells.v osu035_setup.tcl osu035_stdcells.gds2
 
-TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+TECHINSTALL = @DIST_DIR@/share/qflow/tech
 
 # Substitute the target qflow tech directory name in .magicrc so that magic
 # can find the OSU035 techfile
