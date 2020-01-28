@@ -235,7 +235,7 @@ AC_ARG_WITH(DIST_DIR,
   if test "$withval" = "no" -o "$withval" = "NO" ; then
      DIST_DIR="\${exec_prefix}"
   else
-     DIST_DIR=$arg
+     DIST_DIR=${withval}
   fi
 ], )
 
