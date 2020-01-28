@@ -225,6 +225,20 @@ AC_ARG_WITH(bindir,
    QFLOW_BIN_DIR=${prefix}/bin
 ])
 
+# For distributed installs, where the run-time files are installed in a
+# place that is a temporary staging area, like DESTDIR, but unlike DESTDIR,
+# the prefix is replaced by the destination directory, rather than appended
+# to it.
+DIST_DIR="\${exec_prefix}"
+AC_ARG_WITH(DIST_DIR,
+[  --with-distdir=DIR       install into location DIR for distribution], [
+  if test "$withval" = "no" -o "$withval" = "NO" ; then
+     DIST_DIR="\${exec_prefix}"
+  else
+     DIST_DIR=$arg
+  fi
+], )
+
 dnl AC_SUBST(QFLOW_YOSYS_PATH)
 dnl AC_SUBST(QFLOW_GRAYWOLF_PATH)
 dnl AC_SUBST(QFLOW_REPLACE_PATH)
@@ -246,6 +260,8 @@ AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(LD)
 AC_SUBST(STDLIBS)
+
+AC_SUBST(DIST_DIR)
 
 if test "x${ac_cv_path_QFLOW_YOSYS_PATH}" == "x"; then
    HAVE_YOSYS=0
