@@ -230,7 +230,7 @@ AC_ARG_WITH(bindir,
 # the prefix is replaced by the destination directory, rather than appended
 # to it.
 DIST_DIR="\${exec_prefix}"
-AC_ARG_WITH(DIST_DIR,
+AC_ARG_WITH(distdir,
 [  --with-distdir=DIR       install into location DIR for distribution], [
   if test "$withval" = "no" -o "$withval" = "NO" ; then
      DIST_DIR="\${exec_prefix}"
