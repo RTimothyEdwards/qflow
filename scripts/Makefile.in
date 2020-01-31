@@ -70,6 +70,11 @@ TECHINSTALL = ${QFLOW_LIB_DIR}/tech
 QFLOWEXECPATH = ${QFLOW_LIB_DIR}/bin
 EXECINSTALL = ${QFLOW_BIN_DIR}
 
+INSTALL_SCRIPTINSTALL = @DIST_DIR@/share/qflow/scripts
+INSTALL_TECHINSTALL = @DIST_DIR@/share/qflow/tech
+INSTALL_QFLOWEXECPATH = @DIST_DIR@/share/qflow/bin
+INSTALL_EXECINSTALL = @DIST_DIR@/bin
+
 all:	$(MAIN_SCRIPT).in qflow.sh
 	$(MAKE) launcher
 
@@ -196,25 +201,25 @@ arrangepins.tcl: arrangepins.tcl.in
 
 install: $(TCL_SCRIPTS) $(PYTHON_SCRIPTS) $(SHELL_SCRIPTS) $(MAIN_SCRIPT) $(HELP_TEXT)
 	@echo "Installing qflow TCL scripts"
-	$(INSTALL) -d $(DESTDIR)${SCRIPTINSTALL}
+	$(INSTALL) -d $(DESTDIR)${INSTALL_SCRIPTINSTALL}
 	for target in $(TCL_SCRIPTS); do \
-	   $(INSTALL) $$target $(DESTDIR)${SCRIPTINSTALL} ;\
+	   $(INSTALL) $$target $(DESTDIR)${INSTALL_SCRIPTINSTALL} ;\
 	done
 	@echo "Installing qflow shell scripts"
 	for target in $(SHELL_SCRIPTS); do \
-	   $(INSTALL) $$target $(DESTDIR)${SCRIPTINSTALL} ;\
+	   $(INSTALL) $$target $(DESTDIR)${INSTALL_SCRIPTINSTALL} ;\
 	done
 	@echo "Installing qflow python scripts"
 	for target in $(PYTHON_SCRIPTS); do \
-	   $(INSTALL) $$target $(DESTDIR)${SCRIPTINSTALL} ;\
+	   $(INSTALL) $$target $(DESTDIR)${INSTALL_SCRIPTINSTALL} ;\
 	done
 	@echo "Installing help text files"
 	for target in $(HELP_TEXT); do \
-	   $(INSTALL) $$target $(DESTDIR)${SCRIPTINSTALL} ;\
+	   $(INSTALL) $$target $(DESTDIR)${INSTALL_SCRIPTINSTALL} ;\
 	done
 	@echo "Installing qflow executable"
-	$(INSTALL) -d $(DESTDIR)${EXECINSTALL}
-	$(INSTALL) ${MAIN_SCRIPT} $(DESTDIR)${EXECINSTALL}
+	$(INSTALL) -d $(DESTDIR)${INSTALL_EXECINSTALL}
+	$(INSTALL) ${MAIN_SCRIPT} $(DESTDIR)${INSTALL_EXECINSTALL}
 
 clean:
 	$(RM) $(MAIN_SCRIPT)

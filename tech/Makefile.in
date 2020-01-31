@@ -13,7 +13,7 @@ QFLOW_LIB_DIR = @QFLOW_LIB_DIR@
 
 TECH_DIRS = osu050 osu035 osu035_redm4 osu018 gscl45nm
 
-TECHINSTALL = ${QFLOW_LIB_DIR}/tech
+TECHINSTALL = @DIST_DIR@/share/qflow/tech
 
 all:
 	@echo "Making all in tech directories"
@@ -42,5 +42,5 @@ distclean:
 
 uninstall:
 	@echo "Uninstalling built-in tech files
-	$(RM) -rf ${TECHINSTALL}
+	$(RM) -rf $(DESTDIR)${TECHINSTALL}
 

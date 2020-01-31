@@ -594,6 +594,7 @@ HAVE_OPENTIMER
 HAVE_NETGEN
 HAVE_MAGIC
 HAVE_YOSYS
+DIST_DIR
 STDLIBS
 LD
 QFLOW_LIB_DIR
@@ -690,6 +691,7 @@ with_opensta
 with_replace
 with_libdir
 with_bindir
+with_distdir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1326,6 +1328,7 @@ Optional Packages:
   --with-replace=DIR		path to RePlAce
   --with-libdir=DIR			path to qflow runtime files
   --with-bindir=DIR			path to qflow launch script
+  --with-distdir=DIR       install into location DIR for distribution
 
 Some influential environment variables:
   CC          C compiler command
@@ -4881,6 +4884,26 @@ else
    QFLOW_BIN_DIR=${prefix}/bin
 
 fi
+
+
+# For distributed installs, where the run-time files are installed in a
+# place that is a temporary staging area, like DESTDIR, but unlike DESTDIR,
+# the prefix is replaced by the destination directory, rather than appended
+# to it.
+DIST_DIR="\${exec_prefix}"
+
+# Check whether --with-distdir was given.
+if test "${with_distdir+set}" = set; then :
+  withval=$with_distdir;
+  if test "$withval" = "no" -o "$withval" = "NO" ; then
+     DIST_DIR="\${exec_prefix}"
+  else
+     DIST_DIR=${withval}
+  fi
+
+fi
+
+
 
 
 
