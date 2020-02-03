@@ -287,7 +287,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     GATE gate, newfillinst;
     ROW row;
     int isfill, orient;
-    int defcorew = 1, defcoreh = 0, testh;
+    int defcorew = 1, defcoreh = 0, testh, fillh;
     int corew = 1, coreh = 0;
     int instx, insty, instw, insth, fnamelen;
     int x, y, dx, nx, fillmin;
@@ -305,6 +305,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     /* Parse library macros and find CORE SITE definition */
 
+    testh = 0;
     for (gate = GateInfo; gate; gate = gate->next)
     {
 	/* NOTE: "site_" is prepended during DEF read */
@@ -312,9 +313,11 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	    if (gate->gateclass == MACRO_CLASS_CORE) {
 		defcorew = (int)(roundf(gate->width * scale));
 		defcoreh = (int)(roundf(gate->height * scale));
-		// Sometimes there are multiple-height core sites. . .
-		if (defcoreh == 0 || (testh < defcoreh)) defcoreh = testh;
-		HashPtrInstall(gate->gatename, gate, &SiteDefTable);
+		if (defcoreh > 0) {
+		    if ((testh == 0) || (defcoreh < testh))
+			testh = defcoreh;
+		    HashPtrInstall(gate->gatename, gate, &SiteDefTable);
+		}
 	    }
 	}
     }
@@ -384,10 +387,10 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     }
 
     if (fillcells) {
-	testh = (int)(roundf(fillcells->gate->height * scale));
-	if ((defcoreh == 0) || (defcoreh < testh)) {
+	fillh = (int)(roundf(fillcells->gate->height * scale));
+	if ((defcoreh == 0) || (defcoreh < fillh)) {
 	    /* Use fill cell height for core height */
-	    defcoreh = testh;
+	    defcoreh = fillh;
 	}
     }
     if (defcoreh == 0) {
@@ -402,6 +405,8 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     for (gate = Nlgates; gate; gate = gate->next)
     {
+	int locy;
+
 	/* Do not evaluate pins, only core cells */
 	if (gate->gatetype == NULL) continue;
 
@@ -411,6 +416,18 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	insth = (int)(roundf(gate->height * scale));
 	sprintf(posname, "%dx%d", instx, insty);
 	HashPtrInstall(posname, gate, &CellPosTable);
+
+	/* If cell is a multiple row height, mark its position in all	*/
+	/* rows that it occupies.					*/
+
+	if (insth > defcoreh) {
+	    locy = insty + defcoreh;
+	    while (locy < insty + insth) {
+		sprintf(posname, "%dx%d", instx, locy);
+		HashPtrInstall(posname, gate, &CellPosTable);
+		locy += defcoreh;
+	    }
+	}
 
 	if (corellx == coreurx) {
 	    corellx = instx;
@@ -941,6 +958,8 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 
     while (1) {
 	if (fgets(line, 256, fobsin) == NULL) break;
+
+	if ((stripevals->pitch == 0) || (stripevals->width == 0)) break;
 
 	if (!strncmp(line, "obstruction", 11)) {
 	    sscanf(line + 11, "%g %g %g %g %s", &fllx, &flly, &furx, &fury, layer);
