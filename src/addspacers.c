@@ -574,7 +574,14 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		}
 	    }
 	    else {
-		x += (int)(roundf(gate->width * scale));
+		int gw = (int)(roundf(gate->width * scale));
+		int m = gw / corew;
+		if (corew * m != gw) {
+		    fprintf(stdout, "Cell %s is not aligned with site boundary.\n",
+				gate->gatename);
+		    gw = corew * (m + 1);   /* Move to the next site boundary */
+		}
+		x += gw;
 	    }
 	}
 	/* Flip orientation each row (NOTE:  This is not needed if ROW	*/
