@@ -287,7 +287,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     GATE gate, newfillinst;
     ROW row;
     int isfill, orient;
-    int defcorew = 1, defcoreh = 0, testh;
+    int defcorew = 1, defcoreh = 0, testh, fillh;
     int corew = 1, coreh = 0;
     int instx, insty, instw, insth, fnamelen;
     int x, y, dx, nx, fillmin;
@@ -305,6 +305,7 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     /* Parse library macros and find CORE SITE definition */
 
+    testh = 0;
     for (gate = GateInfo; gate; gate = gate->next)
     {
 	/* NOTE: "site_" is prepended during DEF read */
@@ -312,9 +313,11 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	    if (gate->gateclass == MACRO_CLASS_CORE) {
 		defcorew = (int)(roundf(gate->width * scale));
 		defcoreh = (int)(roundf(gate->height * scale));
-		// Sometimes there are multiple-height core sites. . .
-		if (defcoreh == 0 || (testh < defcoreh)) defcoreh = testh;
-		HashPtrInstall(gate->gatename, gate, &SiteDefTable);
+		if (defcoreh > 0) {
+		    if ((testh == 0) || (defcoreh < testh))
+			testh = defcoreh;
+		    HashPtrInstall(gate->gatename, gate, &SiteDefTable);
+		}
 	    }
 	}
     }
@@ -384,10 +387,10 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
     }
 
     if (fillcells) {
-	testh = (int)(roundf(fillcells->gate->height * scale));
-	if ((defcoreh == 0) || (defcoreh < testh)) {
+	fillh = (int)(roundf(fillcells->gate->height * scale));
+	if ((defcoreh == 0) || (defcoreh < fillh)) {
 	    /* Use fill cell height for core height */
-	    defcoreh = testh;
+	    defcoreh = fillh;
 	}
     }
     if (defcoreh == 0) {
@@ -400,6 +403,8 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 
     InitializeHashTable(&CellPosTable, LARGEHASHSIZE);
 
+    /* Do one pass to get core boundaries */
+
     for (gate = Nlgates; gate; gate = gate->next)
     {
 	/* Do not evaluate pins, only core cells */
@@ -409,8 +414,6 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	insty = (int)(roundf(gate->placedY * scale));
 	instw = (int)(roundf(gate->width * scale));
 	insth = (int)(roundf(gate->height * scale));
-	sprintf(posname, "%dx%d", instx, insty);
-	HashPtrInstall(posname, gate, &CellPosTable);
 
 	if (corellx == coreurx) {
 	    corellx = instx;
@@ -426,6 +429,49 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 	    else if (insty + insth > coreury) coreury = insty + insth;
 	}
     }
+
+    /* Do second pass to record cell positions in a hash table */
+
+    for (gate = Nlgates; gate; gate = gate->next)
+    {
+	int locy, m;
+
+	/* Do not evaluate pins, only core cells */
+	if (gate->gatetype == NULL) continue;
+
+	instx = (int)(roundf(gate->placedX * scale));
+	insty = (int)(roundf(gate->placedY * scale));
+	instw = (int)(roundf(gate->width * scale));
+	insth = (int)(roundf(gate->height * scale));
+
+	/* If cell left boundary does not align with core sites,    */
+	/* adjust is so that it does.  Note that this does not	    */
+	/* change the actual position of the cell, just how it is   */
+	/* marked in the table of cells searched by position.	    */
+
+	m = (instx - corellx) / defcorew;
+	if ((corellx + m * defcorew) != instx) {
+	    fprintf(stdout, "Cell %s left edge is not aligned with "
+				"site boundary.\n", gate->gatename);
+	    instx = corellx + m * defcorew;
+	}
+
+	sprintf(posname, "%dx%d", instx, insty);
+	HashPtrInstall(posname, gate, &CellPosTable);
+
+	/* If cell is a multiple row height, mark its position in all	*/
+	/* rows that it occupies.					*/
+
+	if (insth > defcoreh) {
+	    locy = insty + defcoreh;
+	    while (locy < insty + insth) {
+		sprintf(posname, "%dx%d", instx, locy);
+		HashPtrInstall(posname, gate, &CellPosTable);
+		locy += defcoreh;
+	    }
+	}
+    }
+
 
     if (Flags & VERBOSE) {
 	row = DefFindRow(corelly);
@@ -557,7 +603,14 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		}
 	    }
 	    else {
-		x += (int)(roundf(gate->width * scale));
+		int gw = (int)(roundf(gate->width * scale));
+		int m = gw / corew;
+		if ((corew * m) != gw) {
+		    fprintf(stdout, "Cell %s right edge is not aligned with "
+				"site boundary.\n", gate->gatename);
+		    gw = corew * (m + 1);   /* Move to the next site boundary */
+		}
+		x += gw;
 	    }
 	}
 	/* Flip orientation each row (NOTE:  This is not needed if ROW	*/
@@ -941,6 +994,8 @@ fix_obstructions(char *definname, SINFO stripevals, float scale,
 
     while (1) {
 	if (fgets(line, 256, fobsin) == NULL) break;
+
+	if ((stripevals->pitch == 0) || (stripevals->width == 0)) break;
 
 	if (!strncmp(line, "obstruction", 11)) {
 	    sscanf(line + 11, "%g %g %g %g %s", &fllx, &flly, &furx, &fury, layer);
