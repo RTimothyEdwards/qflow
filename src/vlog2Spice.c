@@ -510,7 +510,7 @@ int write_output(struct cellrec *topcell, LinkedStringPtr spicelibs,
 			/* this implementation.			    */
 
 			while (*portname != '}' && *portname != '\0') portname++;
-			for (k = 0; k < idx; k++) {
+			for (k = 0; k <= idx; k++) {
 			    epos = portname;
 			    portname--;
 			    while (*portname != ',' && portname > port->net)
