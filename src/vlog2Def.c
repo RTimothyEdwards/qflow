@@ -221,6 +221,11 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect,
     LefList slef;
     LefList routelayer[3];
 
+    if (topcell == NULL) {
+	fprintf(stderr, "No top-level cell data;  cannot continue.\n");
+	return 1;
+    }
+
     /* Open the output file (unless name is NULL, in which case use stdout) */
     if (outname != NULL) {
 	outfptr = fopen(outname, "w");
@@ -270,27 +275,215 @@ int write_output(struct cellrec *topcell, int hasmacros, float aspect,
     }
     totalwidth = 0;
     for (inst = topcell->instlist; inst; inst = inst->next) {
+	int j;
+	GATE gate;
+	gate = HashLookup(inst->cellname, &LEFhash);
+
 	for (port = inst->portlist; port; port = port->next) {
 
-	    nlink = (linkedNetPtr)malloc(sizeof(linkedNet));
-	    nlink->instname = inst->instname;
-	    nlink->pinname = port->name;
-	    nlink->next = NULL;
+	    char *netsptr;
 
-	    if ((nsrch = HashLookup(port->net, &Nodehash)) != NULL) {
-		while (nsrch->next) nsrch = nsrch->next;
-		nsrch->next = nlink;
+	    /* Code for handling vectors mostly copied from vlog2Cel.c. */
+	    /* Note, however, that this program is given a synthesized	*/
+	    /* netlist and there are no instance arrays.  If that is	*/
+	    /* ever not true, then this code needs to be expanded to	*/
+	    /* include handling of instance arrays.			*/
+
+	    /* Determine and handle the four cases of a port and a net	*/
+	    /* being an array or a single signal.			*/
+
+	    int is_port_bus = FALSE;
+	    int is_net_bus = FALSE;
+
+            /* Verilog backslash-escaped names have spaces that     */
+            /* break pretty much every other format, so replace     */
+            /* the space with the (much more sensible) second       */
+            /* backslash.  This can be detected and changed         */
+            /* back by programs converting the syntax back into     */
+            /* verilog.                                             */
+
+	    netsptr = port->net;
+	    if (*port->net == '\\') {
+	        netsptr = strchr(port->net, ' ');
+	        if (netsptr != NULL) *netsptr = '\\';
 	    }
-	    else {
-		HashPtrInstall(port->net, nlink, &Nodehash);
-		nnet++;
+
+            /* Find the port name in the gate pin list */
+            for (j = 0; j < gate->nodes; j++) {
+                if (!strcmp(port->name, gate->node[j])) break;
+            }
+            if (j == gate->nodes) {
+                /* Is this a bus? */
+                for (j = 0; j < gate->nodes; j++) {
+                    char *delim = strrchr(gate->node[j], '[');
+                    if (delim != NULL) {
+                        *delim = '\0';
+                        if (!strcmp(port->name, gate->node[j]))
+                            is_port_bus = TRUE;
+                        *delim = '[';
+                        if (is_port_bus) break;
+                    }
+                }
+            }
+
+            /* Check if the net itself is an array */
+            net = HashLookup(port->net, &topcell->nets);
+            if (net && (net->start != -1)) {
+                char *sptr, *dptr, *cptr;
+
+                is_net_bus = TRUE;
+
+                /* However, if net name is a 1-bit bus subnet, then */
+                /* it is not considered to be a bus.  Note that     */
+                /* brackets inside a verilog backslash-escaped name */
+                /* are not array indicators.                        */
+
+                dptr = strchr(netsptr, '[');
+                if (dptr) {
+                    cptr = strchr(dptr + 1, ':');
+                    if (!cptr) {
+                        is_net_bus = FALSE;
+                    }
+                }
+            }
+	    else if (!net && port->net[0] == '{') {
+		/* net is a signal bundle */
+		is_net_bus = TRUE;
+	    }
+
+            if (j == gate->nodes) {
+                fprintf(stderr, "Error:  Pin \"%s\" not found in LEF macro \"%s\"!\n",
+                        port->name, gate->gatename);
+            }
+            else if (is_net_bus == FALSE) {
+
+		nlink = (linkedNetPtr)malloc(sizeof(linkedNet));
+		nlink->instname = inst->instname;
+		nlink->pinname = port->name;
+		nlink->next = NULL;
+
+		if ((nsrch = HashLookup(port->net, &Nodehash)) != NULL) {
+		    while (nsrch->next) nsrch = nsrch->next;
+		    nsrch->next = nlink;
+		}
+		else {
+		    HashPtrInstall(port->net, nlink, &Nodehash);
+		    nnet++;
+		}
+	    }
+            else {  // is_net_bus == TRUE
+
+		char *apin, *anet, *dptr, *cptr;
+		int a, pidx, armax, armin;
+
+		armax = armin = 0;
+		for (j = 0; j < gate->nodes; j++) {
+		    char *delim, *sptr;
+
+		    sptr = gate->node[j];
+		    if (*sptr == '\\') sptr = strchr(sptr, ' ');
+		    if (sptr == NULL) sptr = gate->node[j];
+		    delim = strrchr(sptr, '[');
+		    if (delim != NULL) {
+			*delim = '\0';
+			if (!strcmp(port->name, gate->node[j])) {
+			    if (sscanf(delim + 1, "%d", &pidx) == 1) {
+				if (pidx > armax) armax = pidx;
+				if (pidx < armin) armin = pidx;
+			    }
+			}
+			*delim = '[';
+		    }
+		}
+
+		/* To do:  Need to check if array is high-to-low or low-to-high */
+		/* Presently assuming arrays are always defined high-to-low	*/
+
+		apin = (char *)malloc(strlen(port->name) + 15);
+		for (a = armax; a >= armin; a--) {
+		    if (is_port_bus)
+			sprintf(apin, "%s[%d]", port->name, a);
+		    else
+			sprintf(apin, "%s", port->name);
+
+		    /* If net is not delimited by {...} then it is also	*/
+		    /* an array.  Otherwise, find the nth element in	*/
+		    /* the brace-enclosed set.				*/
+
+		    /* To do: if any component of the array is a vector	*/
+		    /* then we need to count bits in that vector.	*/
+
+		    if (*port->net == '{') {
+			int aidx;
+			char *sptr, ssave;
+			char *pptr = port->net + 1;
+			for (aidx = 0; aidx < (armax - a); aidx++) {
+			    sptr = pptr;
+			    while (*sptr != ',' && *sptr != '}') sptr++;
+			    pptr = sptr + 1;
+			}
+			sptr = pptr;
+			if (*sptr != '\0') {
+			    while (*sptr != ',' && *sptr != '}') sptr++;
+			    ssave = *sptr;
+			    *sptr = '\0';
+			    anet = (char *)malloc(strlen(pptr) + 1);
+			    sprintf(anet, "%s", pptr);
+			    *sptr = ssave;
+			}
+			else {
+			    anet = NULL;	/* Must handle this error! */
+			}
+		    }
+		    else if (((dptr = strrchr(netsptr, '[')) != NULL) &&
+				((cptr = strrchr(netsptr, ':')) != NULL)) {
+			int fhigh, flow, fidx;
+			sscanf(dptr + 1, "%d", &fhigh);
+			sscanf(cptr + 1, "%d", &flow);
+			if (fhigh > flow) fidx = fhigh - (armax - a);
+			else fidx = flow + (armax - a);
+			anet = (char *)malloc(strlen(port->net) + 15);
+			*dptr = '\0';
+			sprintf(anet, "%s[%d]", port->net, fidx);
+			*dptr = '[';
+		    }
+		    else {
+			anet = (char *)malloc(strlen(port->net) + 15);
+			sprintf(anet, "%s[%d]", port->net, a);
+		    }
+
+		    /* Find the corresponding port bit */
+		    for (j = 0; j < gate->nodes; j++) {
+			if (anet == NULL) break;
+			if (!strcmp(apin, gate->node[j])) {
+
+			    nlink = (linkedNetPtr)malloc(sizeof(linkedNet));
+			    nlink->instname = inst->instname;
+			    nlink->pinname = gate->node[j];
+			    nlink->next = NULL;
+
+			    if ((nsrch = HashLookup(anet, &Nodehash)) != NULL) {
+				while (nsrch->next) nsrch = nsrch->next;
+				nsrch->next = nlink;
+			    }
+			    else {
+				HashPtrInstall(anet, nlink, &Nodehash);
+				nnet++;
+			    }
+			    break;
+			}
+		    }
+		    free(anet);
+		    if (j == gate->nodes) {
+			fprintf(stderr, "Error:  Failed to find port %s in cell %s"
+				    " port list!\n", port->name, inst->cellname);
+		    }
+		}
+		free(apin);
 	    }
 	}
 
 	if (hasmacros) {
-	    GATE gate;
-	
-	    gate = HashLookup(inst->cellname, &LEFhash);
 	    if (gate) {
 		/* Make sure this is a core cell */
 		if (gate->gateclass == MACRO_CLASS_CORE) {
