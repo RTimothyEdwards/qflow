@@ -1,0 +1,57 @@
+CIF/GDS layer map
+------------------------------------------
+CIF  GDS
+name layer	description
+------------------------------------------
+CWN  42 0	nwell
+CRW  65 0	nwell resistor
+CWND 92 0	nwell resistor marker
+CWP  41 0	pwell
+CAA  43 0	active (diffusion)
+CSN  45 0	N+ implant
+CSP  44 0	P+ implant
+CRD  66 0	active/poly resistor marker
+CCA  48 0	active (diffusion) contact
+CCC  25 0	generic contact
+CPG  46 0	polysilicon
+CCP  47 0	poly contact
+CV1  50 0	via1
+CV2  61 0	via2
+CV3  30 0	via3
+CV4  32 0	via4
+CV5  36 0	via5
+CM1  49 0	metal1
+CRM  70 0	metal resistor marker
+CRF  71 0	metal1 resistor
+CMFP 81 0	metal1 pin
+CM2  51 0	metal2
+CRS  72 0	metal2 resistor
+CMSP 82 0	metal2 pin
+100 100 0	poly fill
+101 101 0	metal1 fill
+102 102 0	metal2 fill
+103 103 0	metal3 fill
+104 104 0	metal4 fill
+105 105 0	metal5 fill
+106 106 0	metal6 fill
+109 109 0	active (diffusion) fill
+119 119 0	implant fill
+110 110 0	active/poly/metal fill (?)
+CM3  62 0	metal3
+CRT  73 0	metal3 resistor
+CMTP 83 0	metal3 pin
+CM4  31 0	metal4
+CRQ  74 0	metal4 resistor
+CMQP 84 0	metal4 pin
+CM5  33 0	metal5
+CRP  75 0	metal5 resistor
+CMPP 85 0	metal5 pin
+CM6  37 0	metal6
+CR6  76 0	metal6 resistor
+CM6P 85 0	metal6 pin
+CTM  35 0	redistribution metal
+CRI  79 0	redistribution resistor
+XP   26 0	pad
+COG  52 0	pad cut (overglass)
+CFI  27 0	field implant
+CX   63 0	comment
