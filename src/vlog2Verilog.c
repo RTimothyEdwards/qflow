@@ -715,7 +715,7 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		    /* accepted as Truth.				    */
 		    if (GndTap != NULL) {
 			if (found > 0) fprintf(outfptr, ",\n");
-			fprintf(outfptr, "    .%s(%s),\n", GndTap, GndNet);
+			fprintf(outfptr, "    .%s(%s)", GndTap, GndNet);
 			found++;
 		    }
 		    if (VddTap != NULL) {
