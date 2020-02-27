@@ -713,10 +713,15 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		    /* contain pin entries for the taps.  The tap names	    */
 		    /* passed to vlog2Verilog in the command line will be   */
 		    /* accepted as Truth.				    */
-		    if (GndTap != NULL)
+		    if (GndTap != NULL) {
+			if (found > 0) fprintf(outfptr, ",\n");
 			fprintf(outfptr, "    .%s(%s),\n", GndTap, GndNet);
-		    if (VddTap != NULL)
-			fprintf(outfptr, ",\n    .%s(%s)", VddTap, VddNet);
+			found++;
+		    }
+		    if (VddTap != NULL) {
+			if (found > 0) fprintf(outfptr, ",\n");
+			fprintf(outfptr, "    .%s(%s)", VddTap, VddNet);
+		    }
 		}
 	    }
 	    else {
