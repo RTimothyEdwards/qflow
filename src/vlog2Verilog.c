@@ -708,6 +708,21 @@ int write_output(struct cellrec *topcell, unsigned char Flags, char *outname)
 		    }
 		    if (found == need) break;
 		}
+		if (found < need) {
+		    /* Handle the annoying case in which LEF files do not   */
+		    /* contain pin entries for the taps.  The tap names	    */
+		    /* passed to vlog2Verilog in the command line will be   */
+		    /* accepted as Truth.				    */
+		    if (GndTap != NULL) {
+			if (found > 0) fprintf(outfptr, ",\n");
+			fprintf(outfptr, "    .%s(%s)", GndTap, GndNet);
+			found++;
+		    }
+		    if (VddTap != NULL) {
+			if (found > 0) fprintf(outfptr, ",\n");
+			fprintf(outfptr, "    .%s(%s)", VddTap, VddNet);
+		    }
+		}
 	    }
 	    else {
 		/* Fall back on VddNet and GndNet names */

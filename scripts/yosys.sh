@@ -647,6 +647,9 @@ if !($?gndnet) then
     set gndnet = "GND"
 endif
 
+set orig_vddnet = $vddnet
+set orig_gndnet = $gndnet
+
 echo "Running getpowerground to determine power and ground net names." |& tee -a ${synthlog}
 echo "getpowerground.tcl ${lefpath}" |& tee -a ${synthlog}
 set powerground = `${scriptdir}/getpowerground.tcl ${lefpath} | grep =`
@@ -661,6 +664,25 @@ set testnettype = `echo $testnet | cut -d= -f1`
 set testnetname = `echo $testnet | cut -d= -f2`
 if ( "$testnetname" != "" ) then
    set $testnettype = $testnetname
+endif
+
+# NOTE:  Sometimes LEF files may not have tap pins.  If the power and/or
+# ground nets in the setup .sh file have two entries per net but the
+# nets returned by getpowerground.tcl have only one entry per net, then
+# add the tap names from the setup file.
+
+set setuphastap = `echo $orig_vddnet | grep , | wc -w`
+set lefhastap = `echo $vddnet | grep , | wc -w`
+if ( $setuphastap == 1 && $lefhastap == 0 ) then
+    set tapname = `echo $orig_vddnet | cut -d',' -f2`
+    set vddnet = "${vddnet},${tapname}"
+endif
+
+set setuphastap = `echo $orig_gndnet | grep , | wc -w`
+set lefhastap = `echo $gndnet | grep , | wc -w`
+if ( $setuphastap == 1 && $lefhastap == 0 ) then
+    set tapname = `echo $orig_gndnet | cut -d',' -f2`
+    set gndnet = "${gndnet},${tapname}"
 endif
 
 echo set vddnet=\"${vddnet}\" > ${synthdir}/${modulename}_powerground
