@@ -1236,6 +1236,53 @@ LefReadLayer(FILE *f, u_char obstruct)
 
 /*
  *------------------------------------------------------------
+ * LefReadLefPoint --
+ *
+ *	Read a LEF point record from the file and return,
+ *	in the two float pointer arguments, the LEF X and
+ *	Y coordinates.
+ *
+ * Results:
+ *	Return 0 on success, 1 on failure.
+ *
+ * Side Effects:
+ *	Reads input from file f.
+ *	Returns values in pointers xp and yp.
+ *
+ * Notes:
+ *	This is used to read the ORIGIN statement.  The LEF/DEF spec
+ *	insists that a "pt" must be contained in parentheses, but
+ *	this is never seen in the ORIGIN statement of actual LEF
+ *	files.  So this routine accepts either notation as correct.
+ *
+ *------------------------------------------------------------
+ */
+
+int
+LefReadLefPoint(FILE *f, float *x, float *y)
+{
+    char *token;
+    u_char needMatch = FALSE;
+
+    token = LefNextToken(f, TRUE);
+    if (*token == '(')
+    {
+	token = LefNextToken(f, TRUE);
+	needMatch = TRUE;
+    }
+    if (!token || sscanf(token, "%f", x) != 1) return 1;
+    token = LefNextToken(f, TRUE);
+    if (!token || sscanf(token, "%f", y) != 1) return 1;
+    if (needMatch)
+    {
+	token = LefNextToken(f, TRUE);
+	if (*token != ')') return 1;
+    }
+    return 0;
+}
+
+/*
+ *------------------------------------------------------------
  * LefReadRect --
  *
  *	Read a LEF "RECT" record from the file, and
@@ -2308,10 +2355,7 @@ size_error:
 		LefEndStatement(f);
 		break;
 	    case LEF_ORIGIN:
-		token = LefNextToken(f, TRUE);
-		if (!token || sscanf(token, "%f", &x) != 1) goto origin_error;
-		token = LefNextToken(f, TRUE);
-		if (!token || sscanf(token, "%f", &y) != 1) goto origin_error;
+		if (LefReadLefPoint(f, &x, &y) != 0) goto origin_error;
 
 		lefBBox.x1 = -x;
 		lefBBox.y1 = -y;
@@ -3115,7 +3159,7 @@ LefReadLayerSection(f, lname, mode, lefl)
 		/* seen, ignore the rest of the via section.  Only the	*/
 		/* explicitly defined VIA types will be used.		*/
 		LefError(LEF_WARNING, "NOTE:  Old format VIARULE ignored.\n");
-		lefl->lefClass == CLASS_IGNORE;
+		lefl->lefClass = CLASS_IGNORE;
 		LefEndStatement(f);
 		/* LefSkipSection(f, lname); */  /* Continue parsing */
 		break;
