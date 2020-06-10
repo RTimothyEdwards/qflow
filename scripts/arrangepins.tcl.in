@@ -184,8 +184,14 @@ while {[gets $fdef line] >= 0} {
 	    # Find the unique set of rows
 	    set numrows [llength $yrows]
 	    set lastyrow [lindex $yrows [- $numrows 1]]
-	    set prevyrow [lindex $yrows [- $numrows 2]]
-	    set rowheight [- $lastyrow $prevyrow]
+	    if {$numrows > 1} {
+	        set prevyrow [lindex $yrows [- $numrows 2]]
+	        set rowheight [- $lastyrow $prevyrow]
+	    } else {
+		# This is a hack default, in case of a one-row layout.
+		# Need to get the row height information from the cell or SITE.
+	        set rowheight 1000
+	    }
 
 	    # Sort the X value ranges in each row
 	    foreach yval $yrows {
