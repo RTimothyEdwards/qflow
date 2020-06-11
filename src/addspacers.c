@@ -805,7 +805,22 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 
 	    fprintf(stdout, "Stripe pitch reduced from %g to %g to fit in layout\n",
 		    stripepitch_t, (float)stripepitch_f / (float)scale);
+
+	    if (stripepitch_f < stripewidth_f * 2) {
+		/* pitch is less than width after recomputing.  Usually means	*/
+		/* the design is too small for any stripes at all, and stripe	*/
+		/* fill should be disabled.					*/
+
+		fprintf(stderr, "Warning: Design is too small for power stripes "
+			"(pitch = %g, width = %g)!\n",
+			(float)stripepitch_f / (float)scale,
+			(float)stripewidth_f / (float)scale);
+		return stripevals;
+	    }
 	}
+    }
+    if (!(Flags & NOSTRETCH))
+    {
 	totalw = corew + numstripes * stripewidth_f;
 
 	/* Find offset to center of 1st power stripe that results in	*/
