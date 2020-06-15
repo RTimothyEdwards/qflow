@@ -2271,6 +2271,7 @@ LefReadMacro(f, mname, oscale)
     lefMacro->last = (GATE)NULL;
     lefMacro->nodes = 0;
     lefMacro->orient = 0;
+    lefMacro->restrict = FALSE;
     // Allocate memory for up to 10 pins initially
     lefMacro->taps = (DSEG *)malloc(10 * sizeof(DSEG));
     lefMacro->noderec = (NODE *)malloc(10 * sizeof(NODE));
@@ -2371,11 +2372,17 @@ origin_error:
 		LefEndStatement(f);
 		break;
 	    case LEF_SYMMETRY:
+		/* 'SYMMETRY X' (but not 'X Y') indicates no left-right flipping */
 		token = LefNextToken(f, TRUE);
-		if (*token != '\n')
-		    // DBPropPut(lefMacro, "LEFsymmetry", token + strlen(token) + 1);
-		    ;
-		LefEndStatement(f);
+		if (*token != '\n') {
+		    if (strchr(token, 'X') != NULL) lefMacro->restrict = TRUE;
+		    token = LefNextToken(f, TRUE);
+		    if (*token != '\n') {
+			if (strchr(token, 'Y') != NULL) lefMacro->restrict = FALSE;
+		    }
+		}
+		if (token && (*token != ';'))
+		    LefEndStatement(f);
 		break;
 	    case LEF_SOURCE:
 		token = LefNextToken(f, TRUE);
@@ -3450,6 +3457,7 @@ LefRead(inName)
 	gateginfo->placedX = 0.0;
 	gateginfo->placedY = 0.0;
 	gateginfo->nodes = 1;
+	gateginfo->restrict = FALSE;
 
         gateginfo->taps = (DSEG *)malloc(sizeof(DSEG));
         gateginfo->noderec = (NODE *)malloc(sizeof(NODE));
