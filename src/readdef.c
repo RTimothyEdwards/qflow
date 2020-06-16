@@ -1017,6 +1017,7 @@ DefReadPins(FILE *f, char *sname, float oscale, int total)
 		gate->node[0] = NULL;
 		gate->direction[0] = PORT_CLASS_DEFAULT;
 		gate->area[0] = 0.0;
+		gate->restrict = FALSE;
 		gate->clientdata = (void *)NULL;
 
 		/* Now do a search through the line for "+" entries	*/
@@ -1432,6 +1433,7 @@ DefAddGateInstance(GATE gate)
     gate->width = gateginfo->width;   
     gate->height = gateginfo->height;   
     gate->nodes = gateginfo->nodes;   
+    gate->restrict = gateginfo->restrict;   
     gate->obs = (DSEG)NULL;
 
     gate->taps = (DSEG *)malloc(gate->nodes * sizeof(DSEG));
@@ -1669,6 +1671,7 @@ DefReadComponents(FILE *f, char *sname, float oscale, int total)
 		    gate = (GATE)malloc(sizeof(struct gate_));
 		    gate->gatename = strdup(usename);
 		    gate->gatetype = gateginfo;
+		    gate->restrict = FALSE;
 		    gate->clientdata = (void *)NULL;
 		}
 		
