@@ -171,7 +171,7 @@ struct gate_ {
     double placedX;                 
     double placedY;
     int orient;
-    u_char restrict;	// TRUE if macro cannot be right-left mirrored
+    u_char nomirror;	// TRUE if macro cannot be right-left mirrored
     void *clientdata;	// This space for rent
 };
 

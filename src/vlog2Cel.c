@@ -210,7 +210,7 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 	        fprintf(outfptr, "cell %d %s:%s\n", cellidx, inst->cellname,
 			inst->instname);
 	    }
-	    if (gateginfo->restrict == TRUE) {
+	    if (gateginfo->nomirror == TRUE) {
 		// LEF "SYMMETRY X" translates to .cel formate "nomirror"
 		fprintf(outfptr, "nomirror\n");
 	    }

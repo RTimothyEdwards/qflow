@@ -585,9 +585,9 @@ generate_fill(char *fillcellname, float scale, COREBBOX corearea, unsigned char 
 		    newfillinst->placedY = (double)y / (double)scale;
 		    newfillinst->clientdata = (void *)NULL;
 		    newfillinst->orient = (row) ? row->orient : orient;
-		    newfillinst->restrict = testfill->gate->restrict;
+		    newfillinst->nomirror = testfill->gate->nomirror;
 		    /* Flip-restricted cells must be either "N" or "FS" */
-		    if ((newfillinst->restrict == TRUE) &&
+		    if ((newfillinst->nomirror == TRUE) &&
 			    (newfillinst->orient == RS)) newfillinst->orient |= RF;
 		    DefAddGateInstance(newfillinst);
 
@@ -883,11 +883,11 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 		    newfillinst->placedX = (double)(x + totalfx) / (double)scale;
 		    newfillinst->placedY = (double)y / (double)scale;
 		    newfillinst->clientdata = (void *)NULL;
-		    newfillinst->restrict = testfill->gate->restrict;
+		    newfillinst->nomirror = testfill->gate->nomirror;
 		    row = DefFindRow(y);
 		    newfillinst->orient = (row) ? row->orient : orient;
 		    /* Flip-restricted cells must be either "N" or "FS" */
-		    if ((newfillinst->restrict == TRUE) &&
+		    if ((newfillinst->nomirror == TRUE) &&
 			    (newfillinst->orient == RS)) newfillinst->orient |= RF;
 		    DefAddGateInstance(newfillinst);
 
