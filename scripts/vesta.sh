@@ -5,11 +5,6 @@
 # Tim Edwards, 10/29/13, for Open Circuit Design
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  vesta.sh [options] <project_path> <source_name>"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "ad" $argv[1-]`)
 
@@ -29,7 +24,6 @@ else
    echo "      [options] are:"
    echo "                -d      use delay file to back-annotate wire delays"
    echo "                -a      append to log file (do not overwrite)"
-   echo
    exit 1
 endif
 

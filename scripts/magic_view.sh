@@ -5,16 +5,6 @@
 # Tim Edwards, April 2013
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  magic_view.sh [options] <project_path> <source_name>"
-   echo "Options:"
-   echo "        -g      Use GDS view of standard cells (default auto-detect)"
-   echo "        -l      Use LEF view of standard cells"
-   echo "        -d      Use DEF view of layout (default auto-detect)"
-   echo "        -m      Use magic database view of layout"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "gldm" $argv[1-]`)
 set cmdargs=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $2}'`
@@ -29,6 +19,11 @@ else
    echo "      <project_path> is the name of the project directory containing"
    echo "                a file called qflow_vars.sh."
    echo "      <source_name> is the root name of the verilog file, and"
+   echo "      [options] are:"
+   echo "        -g      Use GDS view of standard cells (default auto-detect)"
+   echo "        -l      Use LEF view of standard cells"
+   echo "        -d      Use DEF view of layout (default auto-detect)"
+   echo "        -m      Use magic database view of layout"
    exit 1
 endif
 

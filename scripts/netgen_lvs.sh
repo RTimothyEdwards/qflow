@@ -5,11 +5,6 @@
 # Tim Edwards, 8/20/18, for Open Circuit Design
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  netgen_lvs.sh [options] <project_path> <source_name>"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "" $argv[1-]`)
 
