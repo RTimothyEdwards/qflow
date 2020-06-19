@@ -7,7 +7,7 @@
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  replace.sh <project_path> <source_name>
+   echo "Usage:  replace.sh <project_path> <source_name>"
    exit 1
 endif
 
@@ -20,18 +20,18 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  replace.sh [options] <project_path> <source_name>
-   echo   where
-   echo       <project_path> is the name of the project directory containing
-   echo                 a file called qflow_vars.sh.
-   echo       <source_name> is the root name of the verilog file, and
-   echo       [options] are:
-   echo			-k	keep working files
-   echo			-d	generate DEF file for routing
-   echo			-f	final placement.  Don't run if routing succeeded
+   echo "Usage:  replace.sh [options] <project_path> <source_name>"
+   echo "  where"
+   echo "      <project_path> is the name of the project directory containing"
+   echo "                a file called qflow_vars.sh."
+   echo "      <source_name> is the root name of the verilog file, and"
+   echo "      [options] are:"
+   echo "                -k      keep working files"
+   echo "                -d      generate DEF file for routing"
+   echo "                -f      final placement.  Don't run if routing succeeded"
    echo
-   echo	  Options to specific tools can be specified with the following
-   echo	  variables in project_vars.sh:
+   echo "  Options to specific tools can be specified with the following"
+   echo "  variables in project_vars.sh:"
    echo
    echo
    exit 1

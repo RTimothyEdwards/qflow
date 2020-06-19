@@ -6,7 +6,7 @@
 #----------------------------------------------------------
 
 if ($#argv < 2) then
-   echo Usage:  vesta.sh [options] <project_path> <source_name>
+   echo "Usage:  vesta.sh [options] <project_path> <source_name>"
    exit 1
 endif
 
@@ -21,14 +21,14 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  vesta.sh [options] <project_path> <source_name>
-   echo   where
-   echo       <project_path> is the name of the project directory containing
-   echo                 a file called qflow_vars.sh.
-   echo       <source_name> is the root name of the verilog file
-   echo	      [options] are:
-   echo			-d	use delay file to back-annotate wire delays
-   echo			-a	append to log file (do not overwrite)
+   echo "Usage:  vesta.sh [options] <project_path> <source_name>"
+   echo "  where"
+   echo "      <project_path> is the name of the project directory containing"
+   echo "                a file called qflow_vars.sh."
+   echo "      <source_name> is the root name of the verilog file"
+   echo "      [options] are:"
+   echo "                -d      use delay file to back-annotate wire delays"
+   echo "                -a      append to log file (do not overwrite)"
    echo
    exit 1
 endif

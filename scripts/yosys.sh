@@ -24,26 +24,26 @@ if ($#argv == 2 || $#argv == 3) then
       set sourcename=""
    endif
 else
-   echo Usage:  yosys.sh <project_path> <module_name> [<source_file>]
+   echo "Usage:  yosys.sh <project_path> <module_name> [<source_file>]"
+   echo"
+   echo "  where"
+   echo"
+   echo "      <project_path> is the name of the project directory containing"
+   echo "                a file called qflow_vars.sh."
+   echo"
+   echo "      <module_name> is the name of the verilog top-level module, and"
+   echo"
+   echo "      <source_file> is the name of the verilog file, if the module"
+   echo "                name and file root name are not the same."
+   echo"
+   echo "      Options are set from project_vars.sh.  Use the following"
+   echo "      variable names:"
    echo
-   echo   where
-   echo
-   echo	      <project_path> is the name of the project directory containing
-   echo			a file called qflow_vars.sh.
-   echo
-   echo	      <module_name> is the name of the verilog top-level module, and
-   echo
-   echo	      <source_file> is the name of the verilog file, if the module
-   echo			name and file root name are not the same.
-   echo
-   echo	      Options are set from project_vars.sh.  Use the following
-   echo	      variable names:
-   echo
-   echo			$yosys_options	for yosys
-   echo			$yosys_script	for yosys
-   echo			$nobuffers	to ignore output buffering
-   echo			$inbuffers	to force input buffering
-   echo			$fanout_options	for vlogFanout
+   echo "                $yosys_options  for yosys"
+   echo "                $yosys_script   for yosys"
+   echo "                $nobuffers      to ignore output buffering"
+   echo "                $inbuffers      to force input buffering"
+   echo "                $fanout_options for vlogFanout"
    exit 1
 endif
 
