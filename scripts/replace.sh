@@ -6,11 +6,6 @@
 # Tim Edwards, 12/26/18, for Open Circuit Design
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  replace.sh <project_path> <source_name>"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "kdf" $argv[1-]`)
 set cmdargs=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $2}'`
@@ -32,7 +27,6 @@ else
    echo
    echo "  Options to specific tools can be specified with the following"
    echo "  variables in project_vars.sh:"
-   echo
    echo
    exit 1
 endif

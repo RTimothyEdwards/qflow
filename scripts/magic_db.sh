@@ -5,11 +5,6 @@
 # Tim Edwards, 8/20/18, for Open Circuit Design
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  magic_db.sh [options] <project_path> <source_name>"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "x" $argv[1-]`)
 set options=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $1}'`
@@ -27,7 +22,6 @@ else
    echo "      <source_name> is the root name of the verilog file, and"
    echo "      [options] are:"
    echo "                -x      extract only (use existing layout)"
-   echo
    exit 1
 endif
 

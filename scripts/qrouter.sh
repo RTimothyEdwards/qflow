@@ -6,11 +6,6 @@
 # Modified April 2013 for use with qflow
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo "Usage:  qrouter.sh [options] <project_path> <source_name>"
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "nr" $argv[1-]`)
 
