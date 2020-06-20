@@ -5,11 +5,6 @@
 # Tim Edwards, 8/20/18, for Open Circuit Design
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo Usage:  magic_db.sh [options] <project_path> <source_name>
-   exit 1
-endif
-
 # Split out options from the main arguments
 set argline=(`getopt "x" $argv[1-]`)
 set options=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $1}'`
@@ -20,14 +15,13 @@ if ($argc >= 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  magic_db.sh [options] <project_path> <source_name>
-   echo   where
-   echo       <project_path> is the name of the project directory containing
-   echo                 a file called qflow_vars.sh.
-   echo       <source_name> is the root name of the verilog file, and
-   echo       [options] are:
-   echo                 -x      extract only (use existing layout)
-   echo
+   echo "Usage:  magic_db.sh [options] <project_path> <source_name>"
+   echo "  where"
+   echo "      <project_path> is the name of the project directory containing"
+   echo "                a file called qflow_vars.sh."
+   echo "      <source_name> is the root name of the verilog file, and"
+   echo "      [options] are:"
+   echo "                -x      extract only (use existing layout)"
    exit 1
 endif
 

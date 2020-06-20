@@ -2271,7 +2271,7 @@ LefReadMacro(f, mname, oscale)
     lefMacro->last = (GATE)NULL;
     lefMacro->nodes = 0;
     lefMacro->orient = 0;
-    lefMacro->restrict = FALSE;
+    lefMacro->nomirror = FALSE;
     // Allocate memory for up to 10 pins initially
     lefMacro->taps = (DSEG *)malloc(10 * sizeof(DSEG));
     lefMacro->noderec = (NODE *)malloc(10 * sizeof(NODE));
@@ -2375,10 +2375,10 @@ origin_error:
 		/* 'SYMMETRY X' (but not 'X Y') indicates no left-right flipping */
 		token = LefNextToken(f, TRUE);
 		if (*token != '\n') {
-		    if (strchr(token, 'X') != NULL) lefMacro->restrict = TRUE;
+		    if (strchr(token, 'X') != NULL) lefMacro->nomirror = TRUE;
 		    token = LefNextToken(f, TRUE);
 		    if (*token != '\n') {
-			if (strchr(token, 'Y') != NULL) lefMacro->restrict = FALSE;
+			if (strchr(token, 'Y') != NULL) lefMacro->nomirror = FALSE;
 		    }
 		}
 		if (token && (*token != ';'))
@@ -3457,7 +3457,7 @@ LefRead(inName)
 	gateginfo->placedX = 0.0;
 	gateginfo->placedY = 0.0;
 	gateginfo->nodes = 1;
-	gateginfo->restrict = FALSE;
+	gateginfo->nomirror = FALSE;
 
         gateginfo->taps = (DSEG *)malloc(sizeof(DSEG));
         gateginfo->noderec = (NODE *)malloc(sizeof(NODE));

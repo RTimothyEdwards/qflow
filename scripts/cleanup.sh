@@ -5,11 +5,6 @@
 # Tim Edwards, April 2013
 #----------------------------------------------------------
 
-if ($#argv < 2) then
-   echo Usage:  cleanup.sh [options] <project_path> <source_name>
-   exit 1
-endif
-
 # Split out options from the main arguments (no options---this is a placeholder)
 set argline=(`getopt "p" $argv[1-]`)
 set cmdargs=`echo "$argline" | awk 'BEGIN {FS = "-- "} END {print $2}'`
@@ -19,13 +14,13 @@ if ($argc == 2) then
    set argv1=`echo $cmdargs | cut -d' ' -f1`
    set argv2=`echo $cmdargs | cut -d' ' -f2`
 else
-   echo Usage:  cleanup.sh <project_path> <source_name>
-   echo   where
-   echo       <project_path> is the name of the project directory containing
-   echo                 a file called qflow_vars.sh.
-   echo       <source_name> is the root name of the verilog file, and
-   echo       [options] are:
-   echo                 -p      purge (keep sources only)
+   echo "Usage:  cleanup.sh [options] <project_path> <source_name>"
+   echo "  where"
+   echo "      <project_path> is the name of the project directory containing"
+   echo "                a file called qflow_vars.sh."
+   echo "      <source_name> is the root name of the verilog file, and"
+   echo "      [options] are:"
+   echo "                -p      purge (keep sources only)"
    exit 1
 endif
 
