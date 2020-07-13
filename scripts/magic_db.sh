@@ -59,6 +59,10 @@ if (! ${?migrate_options} ) then
    set migrate_options = ""
 endif
 
+if (! ${?migrate_gdsview} ) then
+   set migrate_gdsview = ""
+endif
+
 if ( ! ${?lef_options} ) then
    set lef_options = ""
 endif
@@ -123,6 +127,24 @@ else
    set techlefpath=${techdir}/${techleffile}
 endif
 
+# Prepend techdir to each gdsfile unless gdsfile begins with "/"
+
+# Usually "gdsfile" is set to one GDS file for the standard cell set
+# but it can be a space-separated list of GDS files to read.  This
+# is set by reading the .sh file.  If no gdsfile variable exists, or
+# is blank, then GDS views cannot be used.
+
+set gdspath=""
+foreach f (${gdsfile})
+   set abspath=`echo ${f} | cut -c1`
+   if ( "${abspath}" == "/" ) then
+      set p=${gdsfile}
+   else
+      set p=${techdir}/${gdsfile}
+   endif
+   set gdspath="${gdspath} $p"
+end
+
 #----------------------------------------------------------
 # Done with initialization
 #----------------------------------------------------------
@@ -142,11 +164,6 @@ set subv=`echo $version | cut -d. -f3`
 # Generate script for input to magic.
 #------------------------------------------------------------------
 
-# Usually "gdsfile" is set to one GDS file for the standard cell set
-# but it can be a space-separated list of GDS files to read.  This
-# is set by reading the .sh file.  If no gdsfile variable exists, or
-# is blank, then GDS generation cannot proceed.
-
 cat > ${migratefile} << EOF
 box 0 0 0 0
 drc off
@@ -159,11 +176,20 @@ lef read ${techlefpath}
 EOF
 endif
 
+if ( ${?migrate_gdsview} ) then
+foreach gfile ( ${gdspath} )
+   cat >> ${migratefile} << EOF
+gds read $gfile
+EOF
+end
+else
+
 foreach lfile ( ${lefpath} )
    cat >> ${migratefile} << EOF
 lef read $lfile
 EOF
 end
+endif
 
 # Handle additional files from the hard macro list
 if ( ${?hard_macros} ) then
@@ -220,6 +246,7 @@ endif
 cat >> ${migratefile} << EOF
 lef write ${rootname} ${lef_options}
 expand
+extract do local
 extract all
 ext2spice hierarchy on
 ext2spice format ngspice
@@ -227,7 +254,13 @@ ext2spice scale off
 ext2spice renumber off
 ext2spice cthresh infinite
 ext2spice rthresh infinite
+EOF
+if ( ! ${?migrate_gdsview} ) then
+cat >> ${migratefile} << EOF
 ext2spice blackbox on
+EOF
+endif
+cat >> ${migratefile} << EOF
 ext2spice subcircuit top auto
 ext2spice global off
 ext2spice
