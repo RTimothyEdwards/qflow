@@ -176,7 +176,7 @@ lef read ${techlefpath}
 EOF
 endif
 
-if ( ${?migrate_gdsview} ) then
+if ($migrate_gdsview != "") then
 foreach gfile ( ${gdspath} )
    cat >> ${migratefile} << EOF
 gds read $gfile
@@ -255,7 +255,7 @@ ext2spice renumber off
 ext2spice cthresh infinite
 ext2spice rthresh infinite
 EOF
-if ( ! ${?migrate_gdsview} ) then
+if ($migrate_gdsview == "") then
 cat >> ${migratefile} << EOF
 ext2spice blackbox on
 EOF

@@ -786,11 +786,17 @@ if ( ! -f ${userfile} ) then
    echo "# Other options:" >> ${userfile}
    echo "# -------------------------------------------" >> ${userfile}
 
+   if ( ${?migrate_gdsview} ) then
+      echo \# set migrate_gdsview = \"${migrate_gdsview}\" >> ${userfile}
+   else
+      echo \# set migrate_gdsview = >> ${userfile}
+   endif
    if ( ${?migrate_options} ) then
       echo \# set migrate_options = \"${migrate_options}\" >> ${userfile}
    else
       echo \# set migrate_options = >> ${userfile}
    endif
+
    if ( ${?lef_options} ) then
       echo \# set lef_options = \"${lef_options}\" >> ${userfile}
    else
@@ -802,7 +808,6 @@ if ( ! -f ${userfile} ) then
    else
       echo \# set drc_gdsview = >> ${userfile}
    endif
-
    if ( ${?drc_options} ) then
       echo \# set drc_options = \"${drc_options}\" >> ${userfile}
    else
