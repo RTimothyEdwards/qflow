@@ -108,6 +108,9 @@ endif
 
 if ( ${?netgen_setup} ) then
    set setup_script=${netgen_setup}
+   if ( ! ( -f ${setup_script} )) then
+       set setup_script=${techdir}/${netgen_setup}
+   endif
 else
    set setup_script=${techdir}/${techname}_setup.tcl
 endif

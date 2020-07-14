@@ -781,6 +781,17 @@ class QflowManager(ttk.Frame):
         window.title = ttk.Label(window, text = 'Migrate Settings', style = 'title.TLabel')
         window.title.pack(side = 'top')
 
+        window.migrategdsview = ttk.Frame(window)
+        window.migrategdsview.pack(side = 'top', fill = 'x')
+        window.migrategdsview.title = ttk.Label(window.migrategdsview,
+		style = 'normal.TLabel', text = 'Extract using GDS of standard cells:')
+        window.migrategdsview.title.pack(side = 'left')
+        self.migrategdsview = tkinter.BooleanVar(window.migrategdsview)
+        self.migrategdsview.set(0)
+
+        window.migrategdsview.check = ttk.Checkbutton(window.migrategdsview, variable = self.migrategdsview)
+        window.migrategdsview.check.pack(side = 'left')
+
         window.stop = ttk.Frame(window)
         window.stop.pack(side = 'top', fill = 'x')
         window.stop.title = ttk.Label(window.stop, style = 'normal.TLabel',
@@ -2267,6 +2278,7 @@ class QflowManager(ttk.Frame):
         disprex = re.compile('[ \t]*set display_tool =[ \t]*(.*)$')
         gdsoptrex = re.compile('[ \t]*set gds_options =[ \t]*(.*)$')
         drcgdsrex = re.compile('[ \t]*set drc_gdsview =[ \t]*(.*)$')
+        migrategdsrex = re.compile('[ \t]*set migrate_gdsview =[ \t]*(.*)$')
 
         # Power stripe defaults may be overridden, but we need to
         # grab the defaults from the file instead of setting
@@ -2291,6 +2303,7 @@ class QflowManager(ttk.Frame):
             self.route_layers.set('max')
             self.gdsview.set(0)
             self.drcgdsview.set(0)
+            self.migrategdsview.set(0)
 
             for line in varslines:
                 dmatch = densrex.match(line)
@@ -2315,6 +2328,11 @@ class QflowManager(ttk.Frame):
                 if dmatch:
                     if dmatch.group(1) == 'true' or dmatch.group(1) == '1':
                         self.drcgdsview.set(1)
+
+                mmatch = migrategdsrex.match(line)
+                if mmatch:
+                    if mmatch.group(1) == 'true' or mmatch.group(1) == '1':
+                        self.migrategdsview.set(1)
 
                 lmatch = lyerrex.match(line)
                 if lmatch:
@@ -2430,6 +2448,10 @@ class QflowManager(ttk.Frame):
         if self.drcgdsview.get() == 1:
             do_drcgdsview = True
 
+        do_migrategdsview = False
+        if self.migrategdsview.get() == 1:
+            do_migrategdsview = True
+
         do_gdsview = False
         if self.gdsview.get() == 1:
             do_gdsview = True
@@ -2446,6 +2468,7 @@ class QflowManager(ttk.Frame):
         lyerrex = re.compile('#?[ \t]*set route_layers =')
         gdsrex = re.compile('#?[ \t]*set gds_options =')
         drcrex = re.compile('#?[ \t]*set drc_gdsview =')
+        migraterex = re.compile('#?[ \t]*set migrate_gdsview =')
 
         tsynthrex = re.compile('#?[ \t]*set synthesis_tool[ \t]*=[ \t]*([^ \t]*)$')
         tplacerex = re.compile('#?[ \t]*set placement_tool[ \t]*=[ \t]*([^ \t]*)$')
@@ -2500,6 +2523,12 @@ class QflowManager(ttk.Frame):
                         linesub = 'set drc_gdsview = 1'
                     elif not is_comment:
                         linesub = '# set drc_gdsview = 0'
+
+                if migraterex.match(line):
+                    if do_migrategdsview:
+                        linesub = 'set migrate_gdsview = 1'
+                    elif not is_comment:
+                        linesub = '# set migrate_gdsview = 0'
 
                 if vstarex.match(line):
                     if do_long:
