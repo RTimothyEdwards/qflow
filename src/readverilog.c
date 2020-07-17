@@ -367,8 +367,8 @@ void TrimQuoted(char *line)
 	{
 	    qend = strchr(qstart + 1, '\"');
 	    if (qend && (qend > qstart)) {
-		slen = strlen(lptr);
 		for (lptr = qstart + 1; lptr < qend; lptr++) {
+		    slen = strlen(lptr);
 		    if (*lptr == ' ') {
 			memmove(lptr, lptr + 1, slen);
 			qend--;
