@@ -137,7 +137,7 @@ endif
 
 # Add hard macros
 
-hardmacrolibs = ""
+set hardmacrolibs = ""
 if ( ${?hard_macros} ) then
    foreach macro_path ( $hard_macros )
       foreach file ( `ls ${sourcedir}/${macro_path}` )
