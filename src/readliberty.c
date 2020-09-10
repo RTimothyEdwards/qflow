@@ -58,23 +58,24 @@ advancetoken(FILE *flib, char delimiter)
 
         // Semicolons are supposed to end lines but sloppy spec allows
         // them to go missing
-        if (lineptr && *lineptr == '\n' && delimiter == ';') *lineptr = ';';
+        if (lineptr && (*lineptr == '\n' || *lineptr == '\r') && delimiter == ';')
+	    *lineptr = ';';
 
-	if (lineptr == NULL || *lineptr == '\n' || *lineptr == '\0') {
+	if (lineptr == NULL || *lineptr == '\n' || *lineptr == '\r' || *lineptr == '\0') {
 	    result = fgets(line, LIB_LINE_MAX, flib);
 	    libCurrentLine++;
 	    if (result == NULL) return NULL;
 
 	    /* Keep pulling stuff in if the line ends with a continuation character */
  	    lptr = line;
-	    while (*lptr != '\n' && *lptr != '\0') {
+	    while (*lptr != '\n' && *lptr != '\r' && *lptr != '\0') {
 		if (*lptr == '\\') {
 		    // If there is anything besides whitespace between the
 		    // backslash and end-of-line, then don't treat as a
 		    // continuation character.
 		    char *eptr = lptr + 1;
 		    while (isblank(*eptr)) eptr++;
-		    if (*eptr == '\n') {
+		    if (*eptr == '\n' || *eptr == '\r') {
 			result = fgets(lptr, LIB_LINE_MAX - (lptr - line), flib);
 			libCurrentLine++;
 			if (result == NULL) break;
@@ -106,7 +107,7 @@ advancetoken(FILE *flib, char delimiter)
 	// if found.
 
 	while (1) {
-	    if (*lineptr == '\n' || *lineptr == '\0')
+	    if (*lineptr == '\n' || *lineptr == '\r' || *lineptr == '\0')
 		break;
 	    if (*lineptr == '/' && *(lineptr + 1) == '*')
 		break;
