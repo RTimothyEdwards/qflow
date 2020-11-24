@@ -135,7 +135,7 @@ def write_models(cellsused, celldefs, ofile, timing):
 
                     psubs = pstring
                     for j in range(0, nin):
-                        bchar = cellrec['inputs'][nin - j - 1]
+                        bchar = cellrec['inputs'][nin - j - 1].strip('"')
                         bval = binstring[j]
                         psubs = psubs.replace(bchar, bval)
 
