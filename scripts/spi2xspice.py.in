@@ -504,8 +504,9 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                     outlist = []
                     if 'inputs' in cellrec:
                         for subpin in cellrec['inputs']:
-                            if subpin in cellrec['spicepins']:
-                                i = cellrec['spicepins'].index(subpin)
+                            subpinname = subpin.strip('"')
+                            if subpinname in cellrec['spicepins']:
+                                i = cellrec['spicepins'].index(subpinname)
                                 # "pins[i]" is the name of the connecting net
                                 # on the top level
                                 if len(pins) > i:
@@ -513,12 +514,13 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                                     if pins[i] in pindefs:
                                         pindefs[pins[i]] = 'input'
                                 else:
-                                    print('Pin ' + subpin + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
+                                    print('Pin ' + subpinname + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
 
                     if 'outputs' in cellrec:
                         for subpin in cellrec['outputs']:
-                            if subpin in cellrec['spicepins']:
-                                i = cellrec['spicepins'].index(subpin)
+                            subpinname = subpin.strip('"')
+                            if subpinname in cellrec['spicepins']:
+                                i = cellrec['spicepins'].index(subpinname)
                                 # "pins[i]" is the name of the connecting net
                                 # on the top level
                                 if len(pins) > i:
@@ -526,7 +528,7 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                                     if pins[i] in pindefs:
                                         pindefs[pins[i]] = 'output'
                                 else:
-                                    print('Pin ' + subpin + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
+                                    print('Pin ' + subpinname + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
 
                     intext = ' '.join(inlist)
                     outtext = ' '.join(outlist)
