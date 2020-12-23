@@ -114,5 +114,7 @@ extern struct instance *AppendInstance(struct cellrec *cell, char *cellname);
 extern struct instance *PrependInstance(struct cellrec *cell, char *cellname);
 extern struct portrec *InstPort(struct instance *inst, char *portname, char *netname);
 extern void *BusHashLookup(char *s, struct hashtable *table);
+extern int GetBus(char *astr, struct netrec *wb, struct hashtable *nets);
+extern struct netrec *Net(struct cellrec *cell, char *netname);
 
 // readverilog.h

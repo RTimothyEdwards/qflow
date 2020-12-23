@@ -1,0 +1,46 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - '1.*'
+
+name: CI
+
+jobs:
+  build_linux:
+    name: Build/Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get the version
+        id: get_version
+        run: |
+         export VERSION_NUM=$(ruby -e "print '$GITHUB_REF'.split(/[\/\.]/).select {|v| v == v.to_i.to_s }.join('.')")
+         echo ::set-output name=value::${VERSION_NUM}
+      - name: Build project
+        run: |
+          ./configure
+          make -j$(nproc)
+          sudo make install
+          tar -cvf /tmp/qflow_binaries.tar.gz -C /usr/local/share/qflow .
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.value }}
+          release_name: ${{ steps.get_version.outputs.value }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: /tmp/qflow_binaries.tar.gz
+          asset_name: qflow_${{ steps.get_version.outputs.value }}_linux_amd64.tar.gz
+          asset_content_type: application/gzip
