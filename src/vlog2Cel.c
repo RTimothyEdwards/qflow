@@ -333,6 +333,9 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 			py = clly + ((lly + ury) / 2);
 		    }
 
+		    px -= (int)(round(gateginfo->placedX * (double)units));
+		    py -= (int)(round(gateginfo->placedY * (double)units));
+
 		    if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
 			     ((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
 			     (gateginfo->direction[j] == PORT_CLASS_INPUT)) {
@@ -462,6 +465,9 @@ int write_output(struct cellrec *topcell, int units, char *outfile)
 				    px = cllx + ((llx + urx) / 2);
 				    py = clly + ((lly + ury) / 2);
 				}
+
+				px -= (int)(round(gateginfo->placedX * (double)units));
+				py -= (int)(round(gateginfo->placedY * (double)units));
 
 				if (((sigptr = strstr(port->net, "_bF$buf")) != NULL) &&
 					((sscanf(sigptr + 7, "%d", &bufidx)) == 1) &&
