@@ -42,6 +42,7 @@ TCL_SCRIPTS += removeblocks.tcl
 PYTHON_SCRIPTS = spi2xspice.py consoletext.py pinmanager.py
 PYTHON_SCRIPTS += tksimpledialog.py helpwindow.py qflow_manager.py
 PYTHON_SCRIPTS += textreport.py tooltip.py count_lvs.py preproc.py
+PYTHON_SCRIPTS += migrate.py
 HELP_TEXT = qflow_help.txt
 
 # Master list of synthesis flow scripts to install
