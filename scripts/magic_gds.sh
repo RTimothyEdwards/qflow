@@ -117,8 +117,21 @@ set subv=`echo $version | cut -d. -f3`
 # Generate script for input to magic.
 #------------------------------------------------------------------
 
+if ( !(-r $techfile)) then
+   if (`echo $techfile | cut -c1` != "/") then
+      set techfile ${techdir}/${techfile}
+   endif
+endif
+if (-r $techfile) then
+   cat >> ${gengdsfile} << EOF
+tech load $techfile -noprompt
+EOF
+else
+   touch ${gengdsfile}
+endif
 
-cat > ${gengdsfile} << EOF
+
+cat >> ${gengdsfile} << EOF
 drc off
 box 0 0 0 0
 gds readonly true
