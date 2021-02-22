@@ -678,7 +678,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     int stripepitch_f, stripewidth_f, stripeoffset_f;
     int totalw;
     int orient;
-    int nextx, totalfx;
+    int nextx, totalfx = 0;
     FILLLIST fillseries, testfill, newfill, sfill;
     SINFO stripevals;
     char posname[32];
@@ -689,6 +689,8 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     stripevals->pitch = 0;
     stripevals->width = 0;
     stripevals->offset = 0;
+    stripevals->stretch = 0;
+    stripevals->number = 0;
 
     corew = corearea->urx - corearea->llx;
 
