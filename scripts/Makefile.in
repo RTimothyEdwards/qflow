@@ -128,7 +128,7 @@ helpwindow.py: helpwindow.py.in
 preproc.py: preproc.py.in
 	sed -e 's#ENV_PATH#$(ENV_PATH)#' $< > $@
 
-count_lvs.py: count_lvs.py.in
+migrate.py: migrate.py.in
 	sed -e 's#ENV_PATH#$(ENV_PATH)#' $< > $@
 
 qflow_manager.py: qflow_manager.py.in

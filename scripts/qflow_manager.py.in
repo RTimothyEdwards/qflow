@@ -3903,7 +3903,7 @@ class QflowManager(ttk.Frame):
                 if found:
                     self.print('Technology set to ' + pdkrootname + ' in ' + pdkdir + ' directory')
                 else:
-                    self.print('No technology setup file found.')
+                    self.print('No default technology found (punting).')
                     return False
         else:
             realpdkdir = os.path.realpath(pdkdir)

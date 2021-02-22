@@ -13,6 +13,7 @@ set qflowversion=QFLOW_VERSION.QFLOW_REVISION
 # the technology that is issued with the qflow distribution.
 
 set tech=`printenv QFLOW_TECH`
+set techdir=""
 set has_tech=0
 if ( $tech == "" ) then
    # But. . . check if there is already a "qflow_vars.sh".  If so,
@@ -20,6 +21,7 @@ if ( $tech == "" ) then
    # default technology.
    if ( -f qflow_vars.sh ) then
       set tech=`cat qflow_vars.sh | grep techname | cut -d= -f2`
+      set techdir=`cat qflow_vars.sh | grep techdir | cut -d= -f2`
       set has_tech=1
    else
       set tech=osu035
@@ -290,7 +292,7 @@ else
    echo "Technology set to $tech"
 endif
 
-source QFLOW_SCRIPT_DIR/checkdirs.sh ${tech} ${projectpath}
+source QFLOW_SCRIPT_DIR/checkdirs.sh ${tech} ${techdir} ${projectpath}
 if ($status == 1) then
    echo "Failure to verify working directories."
    echo "Check QFLOW_PROJECT_ROOT environment variable."
