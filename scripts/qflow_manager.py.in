@@ -2286,7 +2286,8 @@ class QflowManager(ttk.Frame):
             return False
 
         densrex = re.compile('[ \t]*set initial_density =[ \t]*([0-9\.]+)$')
-        powrrex = re.compile('[ \t]*set addspacers_options =[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
+        powrrex = re.compile('[ \t]*set addspacers_[^ \t]+[ \t]*=[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
+        addsrex = re.compile('[ \t]*set addspacers_options =[ \t]*(.*)$')
         vstarex = re.compile('[ \t]*set vesta_options =[ \t]*(.*)$')
         ostarex = re.compile('[ \t]*set opensta_options =[ \t]*(.*)$')
         otimerex = re.compile('[ \t]*set opentimer_options =[ \t]*(.*)$')
@@ -2309,8 +2310,8 @@ class QflowManager(ttk.Frame):
         # Power stripe defaults may be overridden, but we need to
         # grab the defaults from the file instead of setting
         # values that may be inappropriate for the process.
-        powrdef = re.compile('#[ \t]*set addspacers_options =[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
-        pow2rex = re.compile('[ \t]*set addspacers_options =[ \t]*""$')
+        powrdef = re.compile('#[ \t]*set addspacers_[^ \t]+ =[ \t]*"-stripe ([0-9\.]+) ([0-9\.]+) PG[ ]*(.*)"$')
+        pow2rex = re.compile('[ \t]*set addspacers_[^ \t]+ =[ \t]*""$')
 
         with open(varsfile, 'r') as ifile:
             varstext = ifile.read()
@@ -2382,7 +2383,7 @@ class QflowManager(ttk.Frame):
                     if 'nostretch' in dmatch.group(3):
                         self.power_space.set(0)
 
-                # Empty string for addspacers_options indicates option has been
+                # Empty string for addspacers_power indicates option has been
                 # disabled manually although the default setting is on.
                 dmatch = pow2rex.match(line)
                 if dmatch:
@@ -2486,7 +2487,8 @@ class QflowManager(ttk.Frame):
 
         commentrex = re.compile('^[ \t]*#')
         densrex = re.compile('#?[ \t]*set initial_density =')
-        powrrex = re.compile('#?[ \t]*set addspacers_options =')
+        powrrex = re.compile('#?[ \t]*set addspacers_power =')
+        addsrex = re.compile('#?[ \t]*set addspacers_options =')
         vstarex = re.compile('#?[ \t]*set vesta_options =')
         ostarex = re.compile('#?[ \t]*set opensta_options =')
         otimerex = re.compile('#?[ \t]*set opentimer_options =')
@@ -2521,6 +2523,12 @@ class QflowManager(ttk.Frame):
                     elif not is_comment:
                         linesub = '# set initial_density = '
 
+                if addsrex.match(line):
+                    # Backwards compatibility:  If "-stripe" is in the line,
+                    # change the line from "addspacers_options" to "addspacers_power"
+                    if '-stripe' in line:
+                        line = line.replace('_options', '_power')
+
                 if powrrex.match(line):
                     if seenpwr:
                         continue
@@ -2528,15 +2536,15 @@ class QflowManager(ttk.Frame):
                     linesub = ''
                     if not do_power:
                         linesub = '# '
-                    linesub += 'set addspacers_options = "-stripe ' + str(power_width) + ' ' + str(power_pitch) + ' PG'
+                    linesub += 'set addspacers_power = "-stripe ' + str(power_width) + ' ' + str(power_pitch) + ' PG'
                     if power_space == 0:
                         linesub += ' -nostretch'
                     linesub += '"'
                     if not do_power:
-                        # Copy addspacers_options to a comment so it is not used but
+                        # Copy addspacers_power to a comment so it is not used but
                         # can be found and the values read back.
                         newlines.append(linesub)
-                        linesub = 'set addspacers_options = ""'
+                        linesub = 'set addspacers_power = ""'
 
                 if gdsrex.match(line):
                     if do_gdsview:

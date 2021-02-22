@@ -715,6 +715,12 @@ if ( ! -f ${userfile} ) then
       echo \# set addspacers_options = >> ${userfile}
    endif
 
+   if ( ${?addspacers_power} ) then
+      echo \# set addspacers_power = \"${addspacers_power}\" >> ${userfile}
+   else
+      echo \# set addspacers_power = >> ${userfile}
+   endif
+
    echo "" >> ${userfile}
    echo "# Router command options:" >> ${userfile}
    echo "# -------------------------------------------" >> ${userfile}

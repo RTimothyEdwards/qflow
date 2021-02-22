@@ -61,7 +61,7 @@ vlog2Verilog$(EXEEXT): vlog2Verilog.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
 
 vlog2Cel$(EXEEXT): vlog2Cel.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
 	$(CC) $(LDFLAGS) vlog2Cel.o $(HASHLIB) $(VERILOGLIB) $(LEFLIB) \
-		-o $@ $(LIBS)
+		-o $@ $(LIBS) -lm
 
 vlog2Def$(EXEEXT): vlog2Def.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB)
 	$(CC) $(LDFLAGS) vlog2Def.o $(HASHLIB) $(LEFLIB) $(VERILOGLIB) -o $@ $(LIBS) -lm

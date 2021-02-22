@@ -593,17 +593,20 @@ if ($makedef == 1) then
       if ( !( ${?addspacers_options} )) then
          set addspacers_options = ""
       endif
-      set addspacers_options = "${addspacers_options} -p $vddnet -g $gndnet -f ${fillcell} -O"
+      if ( !( ${?addspacers_power} )) then
+         set addspacers_power = ""
+      endif
+      set addspacers_options = "${addspacers_options} ${addspacers_power} -p $vddnet -g $gndnet -f ${fillcell} -O"
 
       # Specify default power and ground names, if not present in the LEF file.
 
       echo "Running addspacers to generate power stripes and align cell right edge" \
 		|& tee -a ${synthlog}
-      echo "addspacers ${addspacers_options} ${lefoptions} -o ${rootname}_filled.def ${rootname}" \
+      echo "addspacers ${addspacers_options} ${addspacers_power} ${lefoptions} -o ${rootname}_filled.def ${rootname}" \
 		|& tee -a ${synthlog}
 
       rm -f ${rootname}_filled.def
-      ${bindir}/addspacers ${addspacers_options} ${lefoptions} \
+      ${bindir}/addspacers ${addspacers_options} ${addspacers_power} ${lefoptions} \
 		-o ${rootname}_filled.def ${rootname} >>& ${synthlog}
       set errcond = $status
       if ( ${errcond} != 0 ) then

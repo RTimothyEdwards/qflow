@@ -943,9 +943,14 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 	/* Find offset to center of 1st power stripe that results in	*/
 	/* centering the stripes on the layout.				*/
 
-	stripeoffset_i = (totalw - (numstripes - 1) * stripewidth_f) / 2;
+	stripeoffset_i = (totalw - (numstripes - 1) * stripepitch_f) / 2;
 	tp = (int)(0.5 + (float)stripeoffset_i / (float)corearea->sitew);
 	stripeoffset_f = (tp * corearea->sitew);
+
+	/* Diagnostic */
+	if (Flags & VERBOSE)
+	    fprintf(stdout, "Stripe offset = %d (%g microns)\n",
+		    stripeoffset_i, stripeoffset_f);
     }
 
     /* Record expanded area */
