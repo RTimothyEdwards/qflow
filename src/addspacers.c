@@ -1267,8 +1267,10 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     for (i = 0; i < fillgate->nodes; i++) {
 	testuse = fillgate->use[i];
 	if (testuse == PORT_USE_POWER) {
-	    powername = fillgate->node[i];
-	    break;
+	    if (!strcmp(fillgate->node[i], VddNet)) {
+		powername = fillgate->node[i];
+		break;
+	    }
 	}
     }
     if (i == fillgate->nodes) {
@@ -1301,8 +1303,10 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     for (j = 0; j < fillgate->nodes; j++) {
 	testuse = fillgate->use[j];
 	if (testuse == PORT_USE_GROUND) {
-	    groundname = fillgate->node[j];
-	    break;
+	    if (!strcmp(fillgate->node[j], GndNet)) {
+		groundname = fillgate->node[j];
+		break;
+	    }
 	}
     }
     if (j == fillgate->nodes) {

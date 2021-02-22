@@ -668,13 +668,23 @@ endif
 # NOTE:  Sometimes LEF files may not have tap pins.  If the power and/or
 # ground nets in the setup .sh file have two entries per net but the
 # nets returned by getpowerground.tcl have only one entry per net, then
-# add the tap names from the setup file.
+# add the tap names from the setup file.  If both have two entries but
+# the order is reversed, then honor the order in the original but take
+# the names from the LEF to avoid any case-sensitivity issues.
 
 set setuphastap = `echo $orig_vddnet | grep , | wc -w`
 set lefhastap = `echo $vddnet | grep , | wc -w`
 if ( $setuphastap == 1 && $lefhastap == 0 ) then
     set tapname = `echo $orig_vddnet | cut -d',' -f2`
     set vddnet = "${vddnet},${tapname}"
+else if ( $setuphastap == 1 && $lefhastap == 1 ) then
+    set name1 = `echo $orig_vddnet | cut -d',' -f1 | tr "[a-z]" "[A-Z]"`
+    set name2 = `echo $vddnet | cut -d',' -f1 | tr "[a-z]" "[A-Z]"`
+    if ( $name1 != $name2 ) then
+	set name2 = `echo $vddnet | cut -d',' -f1`
+	set name1 = `echo $vddnet | cut -d',' -f2`
+        set vddnet = "${name1},${name2}"
+    endif
 endif
 
 set setuphastap = `echo $orig_gndnet | grep , | wc -w`
@@ -682,6 +692,14 @@ set lefhastap = `echo $gndnet | grep , | wc -w`
 if ( $setuphastap == 1 && $lefhastap == 0 ) then
     set tapname = `echo $orig_gndnet | cut -d',' -f2`
     set gndnet = "${gndnet},${tapname}"
+else if ( $setuphastap == 1 && $lefhastap == 1 ) then
+    set name1 = `echo $orig_gndnet | cut -d',' -f1 | tr "[a-z]" "[A-Z]"`
+    set name2 = `echo $gndnet | cut -d',' -f1 | tr "[a-z]" "[A-Z]"`
+    if ( $name1 != $name2 ) then
+	set name2 = `echo $gndnet | cut -d',' -f1`
+	set name1 = `echo $gndnet | cut -d',' -f2`
+        set gndnet = "${name1},${name2}"
+    endif
 endif
 
 echo set vddnet=\"${vddnet}\" > ${synthdir}/${modulename}_powerground
