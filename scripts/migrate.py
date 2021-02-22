@@ -204,6 +204,11 @@ if __name__ == '__main__':
             print("Exiting.")
             sys.exit(1)
 
+    # All paths should be absolute, not relative.
+    tech_path = os.path.abspath(tech_path)
+    project_path = os.path.abspath(project_path)
+    qflow_path = os.path.abspath(qflow_path)
+
     # Get qflow version to replace "qflowversion" in qflow_vars.sh file
     qproc = subprocess.Popen(['qflow', '-v'], stdin = subprocess.DEVNULL,
 	    stdout = subprocess.PIPE, stderr = subprocess.PIPE,
