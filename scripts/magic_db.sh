@@ -164,7 +164,20 @@ set subv=`echo $version | cut -d. -f3`
 # Generate script for input to magic.
 #------------------------------------------------------------------
 
-cat > ${migratefile} << EOF
+if ( !(-r $techfile)) then
+   if (`echo $techfile | cut -c1` != "/") then
+      set techfile ${techdir}/${techfile}
+   endif
+endif
+if (-r $techfile) then
+   cat > ${migratefile} << EOF
+tech load $techfile -noprompt
+EOF
+else
+   touch ${migratefile}
+endif
+
+cat >> ${migratefile} << EOF
 box 0 0 0 0
 drc off
 snap int

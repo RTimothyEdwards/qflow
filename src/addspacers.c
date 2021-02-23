@@ -678,7 +678,7 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     int stripepitch_f, stripewidth_f, stripeoffset_f;
     int totalw;
     int orient;
-    int nextx, totalfx;
+    int nextx, totalfx = 0;
     FILLLIST fillseries, testfill, newfill, sfill;
     SINFO stripevals;
     char posname[32];
@@ -689,6 +689,8 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
     stripevals->pitch = 0;
     stripevals->width = 0;
     stripevals->offset = 0;
+    stripevals->stretch = 0;
+    stripevals->number = 0;
 
     corew = corearea->urx - corearea->llx;
 
@@ -943,9 +945,14 @@ generate_stripefill(char *VddNet, char *GndNet, char *stripepat,
 	/* Find offset to center of 1st power stripe that results in	*/
 	/* centering the stripes on the layout.				*/
 
-	stripeoffset_i = (totalw - (numstripes - 1) * stripewidth_f) / 2;
+	stripeoffset_i = (totalw - (numstripes - 1) * stripepitch_f) / 2;
 	tp = (int)(0.5 + (float)stripeoffset_i / (float)corearea->sitew);
 	stripeoffset_f = (tp * corearea->sitew);
+
+	/* Diagnostic */
+	if (Flags & VERBOSE)
+	    fprintf(stdout, "Stripe offset = %d (%g microns)\n",
+		    stripeoffset_i, stripeoffset_f);
     }
 
     /* Record expanded area */
@@ -1260,8 +1267,10 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     for (i = 0; i < fillgate->nodes; i++) {
 	testuse = fillgate->use[i];
 	if (testuse == PORT_USE_POWER) {
-	    powername = fillgate->node[i];
-	    break;
+	    if (!strcmp(fillgate->node[i], VddNet)) {
+		powername = fillgate->node[i];
+		break;
+	    }
 	}
     }
     if (i == fillgate->nodes) {
@@ -1294,8 +1303,10 @@ generate_stripes(SINFO stripevals, FILLLIST fillcells,
     for (j = 0; j < fillgate->nodes; j++) {
 	testuse = fillgate->use[j];
 	if (testuse == PORT_USE_GROUND) {
-	    groundname = fillgate->node[j];
-	    break;
+	    if (!strcmp(fillgate->node[j], GndNet)) {
+		groundname = fillgate->node[j];
+		break;
+	    }
 	}
     }
     if (j == fillgate->nodes) {

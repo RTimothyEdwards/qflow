@@ -145,6 +145,17 @@ if (! ($?drc_gdsview)) then
    set drc_gdsview=0
 endif
 
+if ( !(-r $techfile)) then
+   if (`echo $techfile | cut -c1` != "/") then
+      set techfile ${techdir}/${techfile}
+   endif
+endif
+if (-r $techfile) then
+   cat >> ${rundrcfile} << EOF
+tech load $techfile -noprompt
+EOF
+endif
+
 if ( $drc_gdsview == 1 ) then
 cat >> ${rundrcfile} << EOF
 gds readonly true

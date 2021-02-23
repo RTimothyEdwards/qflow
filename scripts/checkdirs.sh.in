@@ -19,7 +19,11 @@
 #	    ----> tech/<techname>	(optional)
 #
 # "tech" is optional if the technology is in the qflow install location,
-# QFLOW_TECH_DIR/<techname>
+# QFLOW_TECH_DIR/<techname>.  If there is already a technology specified
+# in the qflow_vars.sh file, then pass it as the 2nd argument and the
+# checkdirs script will only check the other directories.  Otherwise, the
+# 2nd argument should be an empty string, or may be omitted if the project
+# path is also omitted
 #
 # Optionally, techfiles may be in subdirectory <techname> without the
 # intervening "tech" directory.  i.e.,
@@ -51,20 +55,26 @@
 # that there are known values for the two arguments passed
 # to it.
 
-if ($#argv != 1 && $#argv != 2) then
-   echo "Usage:  checkdirs.sh <technology_name> <project_name>"
+if ($#argv != 2 && $#argv != 3) then
+   echo "Usage:  checkdirs.sh <technology_name> <tech_path> [<project_name>]"
    exit 1
 endif
 
 set techname=${argv[1]}
+
+if ($#argv >= 2) then
+   set techdir=${argv[2]}
+else
+   set techdir=""
+endif
 
 # Environment variable overrides the project root path in all cases
 # except when the project root path is specified on the command line
 # by -p.  If the environment variable does not exist, the project
 # root directory is assumed to be the current working directory.
 
-if ($#argv == 2) then
-   set projectpath=${argv[2]}
+if ($#argv == 3) then
+   set projectpath=${argv[3]}
 else
    set projectpath=`pwd`
 endif
@@ -111,9 +121,17 @@ set bindir=SUBST_BIN_DIR
 # Check for the techfile (see comments at top)
 #----------------------------------------------------
 
-set techdir=`printenv QFLOW_TECH_DIR`
+# The environment variable overrides anything else
+set techtest=`printenv QFLOW_TECH_DIR`
+if ($techtest != "") then
+   set techdir=$techtest
+endif
+
+# Check that the technology directory points to a valid path;
+# that is, that there is a file <techname>.sh in it.
+
 if ($techdir != "") then
-   if ( !(-d ${techdir}/${techname}.sh )) then
+   if ( !(-r ${techdir}/${techname}.sh )) then
       if ( -d ${techdir}/${techname} ) then
 	 set techdir=${techdir}/${techname}
       else
@@ -123,6 +141,7 @@ if ($techdir != "") then
 endif
       
 if ($techdir != "") then
+   # Technology directory has been validated, so return with no error
    exit 0
 endif
 
@@ -140,10 +159,32 @@ else
 	 else
             echo "Don't know about technology '${techname}'"
 	    echo "Check SUBST_TECH_DIR/ for known technologies"
+            exit 1
 	 endif
       endif
    endif
 endif
 
-exit 0
+# Validate the technology directory
+if ($techdir != "") then
+   if ( !(-r ${techdir}/${techname}.sh )) then
+      if ( -d ${techdir}/${techname} ) then
+	 set techdir=${techdir}/${techname}
+         if ( !(-r ${techdir}/${techname}.sh )) then
+	    set techdir=""
+         endif
+      else
+	 set techdir=""
+      endif
+   endif
+endif
+      
+if ($techdir != "") then
+   # Technology directory has been validated, so return with no error
+   exit 0
+endif
+
+# Technology directory was not found, so fail.
+echo "Technology directory not validated"
+exit 1
 #----------------------------------------------------

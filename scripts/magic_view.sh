@@ -195,7 +195,24 @@ endif
 
 set dispfile="${layoutdir}/load_${rootname}.tcl"
 
+# Determine technology file.  If path is relative, then construct the
+# absolute path.
+if ( !(-r $techfile)) then
+   if (`echo $techfile | cut -c1` != "/") then
+      set techfile ${techdir}/${techfile}
+   endif
+endif
+
 # Create a script file for loading and displaying the layout
+if ($domag == 1) then
+   if (-r $techfile) then
+      # Force loading of technology file in case startup script
+      # did not specify it.
+      cat > ${dispfile} << EOF
+tech load $techfile -noprompt
+EOF
+   endif
+endif
 
 if ($domag == 1 && $dogds == 0) then
    cat > ${dispfile} << EOF
