@@ -263,14 +263,42 @@ class QflowManager(ttk.Frame):
         self.allpdknodes = []
         self.allpdkdirs = []
         allpdks = []
-        for pdk in os.listdir(qflow_tech_dir):
-            allpdks.append(qflow_tech_dir + '/' + pdk)
+
+        # Add technologies from local "tech" directory
 
         if os.path.exists('tech'):
             if os.path.islink('tech'):
                 allpdks.append(os.path.realpath('tech'))
             else:
                 allpdks.append(os.getcwd() + '/tech')
+
+        locenv = os.environ.copy()
+        # Add technology from "PDK_PATH" directory, if variable exists
+        if 'PDK_PATH' in locenv:
+            pdkpath = locenv['PDK_PATH']
+            if os.path.isdir(pdkpath):
+                pdkrealpath = os.path.realpath(pdkpath)
+                if os.path.isdir(pdkrealpath + '/libs.tech/qflow/'):
+                    allpdks.append(pdkrealpath + '/libs.tech/qflow/')
+
+        # Add technologies from "PDK_ROOT" directories, if variable exists
+        if 'PDK_ROOT' in locenv:
+            pdkroot = locenv['PDK_ROOT']
+            if os.path.isdir(pdkroot):
+                pdkrealroot = os.path.realpath(pdkroot)
+                for pdk in os.listdir(pdkrealroot):
+                    if os.path.isdir(pdkrealroot + '/' + pdk + '/libs.tech/qflow/'):
+                        allpdks.append(pdkrealroot + '/' + pdk + '/libs.tech/qflow/')
+
+        # Add technologies from open_pdks installation, if there is one
+        if os.path.isdir('/usr/share/pdk'):
+            for pdk in os.listdir('/usr/share/pdk'):
+                if os.path.isdir('/usr/share/pdk/' + pdk + '/libs.tech/qflow/'):
+                    allpdks.append('/usr/share/pdk/' + pdk + '/libs.tech/qflow/')
+
+        # Add technologies from qflow installation
+        for pdk in os.listdir(qflow_tech_dir):
+            allpdks.append(qflow_tech_dir + '/' + pdk)
 
         for pdkdir in allpdks:
             # Check for variants and add them to the option menu
@@ -3963,6 +3991,7 @@ class QflowManager(ttk.Frame):
                             if os.path.isfile(psrch[0]):
                                 pdkdir = os.path.split(psrch[0])[0]
                                 found = True
+
                 if found:
                     self.print('Technology set to ' + pdkrootname + ' in ' + pdkdir + ' directory')
                 else:
