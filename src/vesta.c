@@ -561,13 +561,43 @@ advancetokennocont(FILE *flib, char delimiter)
 }
 
 /*--------------------------------------------------------------*/
+/* Wrapper around strdup() to remove any quotes from around the	*/
+/* text being copied.						*/
+/*--------------------------------------------------------------*/
+
+char *
+tokendup(char *token)
+{
+    char *ss, *sf, *result;
+
+    ss = token;
+    sf = NULL;
+    while (*ss == '\"') ss++;
+    if (ss != token) {
+        sf = ss + 1;
+	while (*sf && (*sf != '\"')) sf++;
+	if (*sf == '\"')
+	    *sf = '\0';
+	else
+	    sf = NULL;
+    }
+
+    result = strdup(ss);
+
+    if (sf != NULL) *sf = '\"';
+
+    return result;
+}
+
+
+/*--------------------------------------------------------------*/
 /* Parse a pin name.  Check if the cell has a pin of that name, */
 /* and if not, add the pin to the cell, giving it default       */
 /* values.  The pin name may contain quotes, parentheses, or    */
 /* negations ("!" or "'");  these should be ignored.            */
 /*--------------------------------------------------------------*/
 
-pinptr parse_pin(cellptr newcell, char *token, short sense_predef)
+pinptr parse_pin(cellptr newcell, char *token)
 {
     pinptr newpin, lastpin;
     char *pinname, *sptr;
@@ -604,7 +634,7 @@ pinptr parse_pin(cellptr newcell, char *token, short sense_predef)
     // at the end of the cell's pin list.
 
     newpin = (pin *)malloc(sizeof(pin));
-    newpin->name = strdup(pinname);
+    newpin->name = tokendup(pinname);
     newpin->next = NULL;
 
     if (lastpin != NULL)
@@ -615,7 +645,7 @@ pinptr parse_pin(cellptr newcell, char *token, short sense_predef)
     newpin->type = INPUT;       // The default; modified later, if not an input
     newpin->capr = 0.0;
     newpin->capf = 0.0;
-    newpin->sense = sense_predef;  // Again, modified later if not true.
+    newpin->sense = SENSE_NONE;
     newpin->propdelr = NULL;
     newpin->propdelf = NULL;
     newpin->transr = NULL;
@@ -1643,17 +1673,48 @@ int find_clock_to_term_paths(connlistptr clockedlist, ddataptr *masterlist, netp
 }
 
 /*--------------------------------------------------------------*/
+/* A version of strcasecmp() with a built-in check for		*/
+/* surrounding quotes (which are ignored).  Quotes are only	*/
+/* checked in str1.						*/
+/*--------------------------------------------------------------*/
+
+int
+tokencasecmp(char *str1, char *str2)
+{
+    char *ss1, *sf1;
+    int result;
+
+    ss1 = str1;
+    sf1 = NULL;
+    while (*ss1 == '\"') ss1++;
+    if (ss1 != str1) {
+        sf1 = ss1 + 1;
+	while (*sf1 && (*sf1 != '\"')) sf1++;
+	if (*sf1 == '\"')
+	    *sf1 = '\0';
+	else
+	    sf1 = NULL;
+    }
+
+    result = strcasecmp(ss1, str2);
+
+    if (sf1 != NULL) *sf1 = '\"';
+
+    return result;
+}
+
+/*--------------------------------------------------------------*/
 /* Parse a table variable type from a liberty format file       */
 /*--------------------------------------------------------------*/
 
 int get_table_type(char *token) {
-    if (!strcasecmp(token, "input_net_transition"))
+    if (!tokencasecmp(token, "input_net_transition"))
         return TRANSITION_TIME;
-    else if (!strcasecmp(token, "total_output_net_capacitance"))
+    else if (!tokencasecmp(token, "total_output_net_capacitance"))
         return OUTPUT_CAP;
-    else if (!strcasecmp(token, "related_pin_transition"))
+    else if (!tokencasecmp(token, "related_pin_transition"))
         return RELATED_TIME;
-    else if (!strcasecmp(token, "constrained_pin_transition"))
+    else if (!tokencasecmp(token, "constrained_pin_transition"))
         return CONSTRAINED_TIME;
     else
         return UNKNOWN;
@@ -1694,7 +1755,7 @@ expand_buses(pin *curpin, bus *curbus, char *busformat)
 	    newpin = curpin;
 	else
 	    newpin = (pin *)malloc(sizeof(pin));
-	newpin->name = strdup(busbit);
+	newpin->name = tokendup(busbit);
 	newpin->next = NULL;
 	if (i != low) {
 	    curpin->next = newpin;
@@ -1734,11 +1795,12 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
     pinptr testpin;
     lutable *tableptr;
 
+    pin proxypin;
     int i, j;
     double gval;
     char *iptr;
     char *busformat;
-    short timing_type, sense_type;
+    short timing_type;
 
     lutable *newtable, *reftable;
     cell *newcell, *lastcell;
@@ -1747,6 +1809,19 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 
     lastcell = NULL;
     timing_type = UNKNOWN;
+
+    /* Set up pin placeholder */
+    proxypin.name = NULL;
+    proxypin.type = GATE;
+    proxypin.capr = 0.0;
+    proxypin.capf = 0.0;
+    proxypin.sense = SENSE_NONE;
+    proxypin.propdelr = NULL;
+    proxypin.propdelf = NULL;
+    proxypin.transr = NULL;
+    proxypin.transf = NULL;
+    proxypin.refcell = NULL;
+    proxypin.next = NULL;
 
     /* Set default bus format (verilog style) */
     busformat = strdup("%s[%d]");
@@ -1759,7 +1834,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
         switch (section) {
             case INIT:
 		if (debug == 2) fprintf(stdout, "INIT: %s\n", token);
-                if (!strcasecmp(token, "library")) {
+                if (!tokencasecmp(token, "library")) {
                     token = advancetoken(flib, 0);
                     if (strcmp(token, "("))
                         fprintf(stderr, "Library not followed by name\n");
@@ -1767,7 +1842,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         token = advancetoken(flib, ')');
 		    /* Diagnostic */
                     fprintf(stdout, "Parsing library \"%s\"\n", token);
-                    libname = strdup(token);
+                    libname = tokendup(token);
                     token = advancetoken(flib, 0);
                     if (strcmp(token, "{")) {
                         fprintf(stderr, "Did not find opening brace "
@@ -1789,19 +1864,19 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     fprintf(stdout, "End of library at line %d\n", fileCurrentLine);
                     section = INIT;                     // End of library block
                 }
-                else if (!strcasecmp(token, "delay_model")) {
+                else if (!tokencasecmp(token, "delay_model")) {
                     token = advancetoken(flib, 0);
                     if (strcmp(token, ":"))
                         fprintf(stderr, "Input missing colon\n");
                     token = advancetoken(flib, ';');
-                    if (strcasecmp(token, "table_lookup")) {
+                    if (tokencasecmp(token, "table_lookup")) {
                         fprintf(stderr, "Sorry, only know how to "
                                         "handle table lookup!\n");
                         exit(1);
                     }
                 }
-                else if (!strcasecmp(token, "lu_table_template") ||
-                         !strcasecmp(token, "power_lut_template")) {
+                else if (!tokencasecmp(token, "lu_table_template") ||
+                         !tokencasecmp(token, "power_lut_template")) {
                     // Read in template information;
                     newtable = (lutable *)malloc(sizeof(lutable));
                     newtable->name = NULL;
@@ -1821,24 +1896,24 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         fprintf(stderr, "Input missing open parens\n");
                     else
                         token = advancetoken(flib, ')');
-                    newtable->name = strdup(token);
+                    newtable->name = tokendup(token);
                     while (*token != '}') {
                         token = advancetoken(flib, 0);
-                        if (!strcasecmp(token, "variable_1")) {
+                        if (!tokencasecmp(token, "variable_1")) {
                             token = advancetoken(flib, 0);
                             token = advancetoken(flib, ';');
                             newtable->var1 = get_table_type(token);
                             if (newtable->var1 == OUTPUT_CAP || newtable->var1 == CONSTRAINED_TIME)
                                 newtable->invert = 1;
                         }
-                        else if (!strcasecmp(token, "variable_2")) {
+                        else if (!tokencasecmp(token, "variable_2")) {
                             token = advancetoken(flib, 0);
                             token = advancetoken(flib, ';');
                             newtable->var2 = get_table_type(token);
                             if (newtable->var2 == TRANSITION_TIME || newtable->var2 == RELATED_TIME)
                                 newtable->invert = 1;
                         }
-                        else if (!strcasecmp(token, "index_1")) {
+                        else if (!tokencasecmp(token, "index_1")) {
 			    char dnum = ',';
 
                             token = advancetoken(flib, 0);      // Open parens
@@ -1907,7 +1982,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 
                             token = advancetoken(flib, ';'); // EOL semicolon
                         }
-                        else if (!strcasecmp(token, "index_2")) {
+                        else if (!tokencasecmp(token, "index_2")) {
 			    char dnum = ',';
 
                             token = advancetoken(flib, 0);      // Open parens
@@ -1989,7 +2064,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     if (!strcmp(token, "("))
                         token = advancetoken(flib, ')');        // Cellname
 		    if (debug == 2) fprintf(stdout, "   cell = %s\n", token);
-                    newcell->name = strdup(token);
+                    newcell->name = tokendup(token);
                     token = advancetoken(flib, 0);      // Find start of block
                     if (strcmp(token, "{"))
                         fprintf(stderr, "Error: failed to find start of block\n");
@@ -2062,30 +2137,30 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 			 while ((*qptr != '\"') && (*qptr != '\0')) qptr++;
 			 *qptr = '\0';
 		      }
-                      if (!strcasecmp(metric, "af"))
+                      if (!tokencasecmp(metric, "af"))
                          cap_unit *= 1E-3;
-                      else if (!strcasecmp(metric, "pf"))
+                      else if (!tokencasecmp(metric, "pf"))
                          cap_unit *= 1000;
-                      else if (!strcasecmp(metric, "nf"))
+                      else if (!tokencasecmp(metric, "nf"))
                          cap_unit *= 1E6;
-                      else if (!strcasecmp(metric, "uf"))
+                      else if (!tokencasecmp(metric, "uf"))
                          cap_unit *= 1E9;
-                      else if (strcasecmp(metric, "ff"))
+                      else if (tokencasecmp(metric, "ff"))
                          fprintf(stderr, "Don't understand capacitive units \"%s\"\n",
                                 token);
                    }
                    else {
                       token = advancetoken(flib, 0);
                       if (token == NULL) break;
-                      if (!strcasecmp(token, "af"))
+                      if (!tokencasecmp(token, "af"))
                          cap_unit *= 1E-3;
-                      else if (!strcasecmp(token, "pf"))
+                      else if (!tokencasecmp(token, "pf"))
                          cap_unit *= 1000;
-                      else if (!strcasecmp(token, "nf"))
+                      else if (!tokencasecmp(token, "nf"))
                          cap_unit *= 1E6;
-                      else if (!strcasecmp(token, "uf"))
+                      else if (!tokencasecmp(token, "uf"))
                          cap_unit *= 1E9;
-                      else if (strcasecmp(token, "ff"))
+                      else if (tokencasecmp(token, "ff"))
                          fprintf(stderr, "Don't understand capacitive units \"%s\"\n",
                                 token);
                    }
@@ -2103,7 +2178,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 			if (token == NULL) break;
 		    }
 		    free(busformat);
-		    busformat = strdup(token);
+		    busformat = tokendup(token);
                     token = advancetoken(flib, ';');
 		}
 		else if (!strcasecmp(token, "type")) {
@@ -2118,7 +2193,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 			fprintf(stderr, "Input missing open parenthesis.\n");
 		    else
 			token = advancetoken(flib, ')');
-		    newbus->name = strdup(token);
+		    newbus->name = tokendup(token);
 		    while (*token != '}') {
 			token = advancetoken(flib, 0);
 			if (!strcasecmp(token, "bit_from")) {
@@ -2169,7 +2244,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     if (!strcmp(token, "("))
                         token = advancetoken(flib, ')');        // Close parens
 
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
 		    if (debug == 2) fprintf(stdout, "   pin = %s\n", token);
 
                     token = advancetoken(flib, 0);      // Find start of block
@@ -2221,7 +2296,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                 else if (!strcasecmp(token, "next_state")) {
                     token = advancetoken(flib, 0);      // Colon
                     token = advancetoken(flib, ';');    // To end-of-statement
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= DFFIN;
                 }
                 else if (!strcasecmp(token, "clocked_on")) {
@@ -2231,7 +2306,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         newcell->type |= CLK_SENSE_MASK;
                     else if (strchr(token, '!') != NULL)
                         newcell->type |= CLK_SENSE_MASK;
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= DFFCLK;
                 }
                 else if (!strcasecmp(token, "clear")) {
@@ -2242,7 +2317,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         newcell->type |= RST_SENSE_MASK;
                     else if (strchr(token, '!') != NULL)
                         newcell->type |= RST_SENSE_MASK;
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= DFFRST;
                 }
                 else if (!strcasecmp(token, "preset")) {
@@ -2253,7 +2328,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         newcell->type |= SET_SENSE_MASK;
                     else if (strchr(token, '!') != NULL)
                         newcell->type |= SET_SENSE_MASK;
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= DFFSET;
                 }
                 else
@@ -2270,7 +2345,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                 else if (!strcasecmp(token, "data_in")) {
                     token = advancetoken(flib, 0);      // Colon
                     token = advancetoken(flib, ';');    // To end-of-statement
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= LATCHIN;
                 }
                 else if (!strcasecmp(token, "enable")) {
@@ -2280,7 +2355,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         newcell->type |= EN_SENSE_MASK;
                     else if (strchr(token, '!') != NULL)
                         newcell->type |= EN_SENSE_MASK;
-                    newpin = parse_pin(newcell, token, SENSE_NONE);
+                    newpin = parse_pin(newcell, token);
                     newpin->type |= LATCHEN;
                 }
                 else
@@ -2321,7 +2396,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     if (!strcmp(token, "\""))
                         token = advancetoken(flib, '\"');       // Find function string
                     if (newpin->type & OUTPUT) {
-                        newcell->function = strdup(token);
+                        newcell->function = tokendup(token);
                     }
                     token = advancetoken(flib, 0);
                     if (strcmp(token, ";")) {
@@ -2336,7 +2411,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     token = advancetoken(flib, ';');
 		    /* Find the bus definition */
 		    for (curbus = buses; curbus; curbus = curbus->next)
-			if (!strcmp(curbus->name, token))
+			if (!tokencasecmp(token, curbus->name))
 			    break;
 		    if (curbus == NULL)
 			fprintf(stderr, "Failed to find a valid bus type \"%s\"\n",
@@ -2345,10 +2420,10 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                 else if (!strcasecmp(token, "direction")) {
                     token = advancetoken(flib, 0);      // Colon
                     token = advancetoken(flib, ';');
-                    if (!strcasecmp(token, "input")) {
+                    if (!tokencasecmp(token, "input")) {
                         newpin->type |= INPUT;
                     }
-                    else if (!strcasecmp(token, "output")) {
+                    else if (!tokencasecmp(token, "output")) {
                         newpin->type |= OUTPUT;
                         if (newcell->type & DFF) newpin->type |= DFFOUT;
                         if (newcell->type & LATCH) newpin->type |= LATCHOUT;
@@ -2375,8 +2450,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     token = advancetoken(flib, 0);      // Find start of block
                     if (strcmp(token, "{"))
                         fprintf(stderr, "Error: failed to find start of block\n");
-                    testpin = NULL;
-                    sense_type = SENSE_NONE;
+                    testpin = &proxypin;    /* Placeholder */
                     section = TIMING;
                 }
                 else {
@@ -2406,30 +2480,35 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                 else if (!strcasecmp(token, "related_pin")) {
                     token = advancetoken(flib, 0);      // Colon
                     token = advancetoken(flib, ';');    // Read to end of statement
-                    // Create the related pin if needed
-                    testpin = parse_pin(newcell, token, sense_type);
+		    if (testpin != &proxypin) {
+			fprintf(stderr, "Error:  Record already created"
+				" for related_pin");
+			free(testpin);
+		    }
+                    // Create the related pin
+                    testpin = parse_pin(newcell, token);
+		    // Copy any records from the placeholder
+		    testpin->sense = proxypin.sense;
+                    testpin->propdelr = proxypin.propdelr;
+                    testpin->propdelf = proxypin.propdelf;
+                    testpin->transr = proxypin.transr;
+                    testpin->transf = proxypin.transf;
+		    // Reset the placeholder records
+		    proxypin.sense = SENSE_NONE;
+		    proxypin.propdelr = NULL;
+		    proxypin.propdelf = NULL;
+		    proxypin.transr = NULL;
+		    proxypin.transf = NULL;
                 }
                 else if (!strcasecmp(token, "timing_sense")) {
                     token = advancetoken(flib, 0);      // Colon
                     token = advancetoken(flib, ';');    // Read to end of statement
-                    if (!strcasecmp(token, "positive_unate")) {
-                        if (testpin)
-                           testpin->sense = SENSE_POSITIVE;
-                        else
-                           sense_type = SENSE_POSITIVE;
-                    }
-                    else if (!strcasecmp(token, "negative_unate")) {
-                        if (testpin)
-                           testpin->sense = SENSE_NEGATIVE;
-                        else
-                           sense_type = SENSE_NEGATIVE;
-                    }
-                    else if (!strcasecmp(token, "non_unate")) {
-                        if (testpin)
-                           testpin->sense = SENSE_NONE;
-                        else
-                           sense_type = SENSE_NONE;
-                    }
+                    if (!tokencasecmp(token, "positive_unate"))
+                        testpin->sense = SENSE_POSITIVE;
+                    else if (!tokencasecmp(token, "negative_unate"))
+                        testpin->sense = SENSE_NEGATIVE;
+                    else if (!tokencasecmp(token, "non_unate"))
+                        testpin->sense = SENSE_NONE;
                 }
                 else if (!strcasecmp(token, "timing_type")) {
                     token = advancetoken(flib, 0);      // Colon
@@ -2439,33 +2518,33 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                     // e.g., "falling_edge" can be determined by "clocked_on : !CLK"
                     // in the ff {} block.  How reliable is this?
 
-                    if (!strcasecmp(token, "rising_edge"))
+                    if (!tokencasecmp(token, "rising_edge"))
                         timing_type = TIMING_PROP_TRANS;
-                    else if (!strcasecmp(token, "falling_edge"))
+                    else if (!tokencasecmp(token, "falling_edge"))
                         timing_type = TIMING_PROP_TRANS;
-                    else if (!strcasecmp(token, "hold_rising"))
+                    else if (!tokencasecmp(token, "hold_rising"))
                         timing_type = TIMING_HOLD;
-                    else if (!strcasecmp(token, "hold_falling"))
+                    else if (!tokencasecmp(token, "hold_falling"))
                         timing_type = TIMING_HOLD;
-                    else if (!strcasecmp(token, "setup_rising"))
+                    else if (!tokencasecmp(token, "setup_rising"))
                         timing_type = TIMING_SETUP;
-                    else if (!strcasecmp(token, "setup_falling"))
+                    else if (!tokencasecmp(token, "setup_falling"))
                         timing_type = TIMING_SETUP;
-                    else if (!strcasecmp(token, "clear"))
+                    else if (!tokencasecmp(token, "clear"))
                         timing_type = TIMING_SET_RESET;
-                    else if (!strcasecmp(token, "preset"))
+                    else if (!tokencasecmp(token, "preset"))
                         timing_type = TIMING_SET_RESET;
-                    else if (!strcasecmp(token, "recovery_rising"))
+                    else if (!tokencasecmp(token, "recovery_rising"))
                         timing_type = TIMING_RECOVERY;
-                    else if (!strcasecmp(token, "recovery_falling"))
+                    else if (!tokencasecmp(token, "recovery_falling"))
                         timing_type = TIMING_RECOVERY;
-                    else if (!strcasecmp(token, "removal_rising"))
+                    else if (!tokencasecmp(token, "removal_rising"))
                         timing_type = TIMING_REMOVAL;
-                    else if (!strcasecmp(token, "removal_falling"))
+                    else if (!tokencasecmp(token, "removal_falling"))
                         timing_type = TIMING_REMOVAL;
-                    else if (!strcasecmp(token, "three_state_enable"))
+                    else if (!tokencasecmp(token, "three_state_enable"))
                         timing_type = TIMING_TRISTATE;
-                    else if (!strcasecmp(token, "three_state_disable"))
+                    else if (!tokencasecmp(token, "three_state_disable"))
                         timing_type = TIMING_TRISTATE;
                 }
                 else if ((!strcasecmp(token, "cell_rise")) ||
@@ -2522,7 +2601,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                         token = advancetoken(flib, ')');
 
                     for (reftable = *tablelist; reftable; reftable = reftable->next)
-                        if (!strcmp(reftable->name, token))
+                        if (!tokencasecmp(token, reftable->name))
                             break;
                     if (reftable == NULL)
                         fprintf(stderr, "Failed to find a valid table \"%s\"\n",
@@ -2552,7 +2631,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 
                     while (*token != '}') {
                         token = advancetoken(flib, 0);
-                        if (!strcasecmp(token, "index_1")) {
+                        if (!tokencasecmp(token, "index_1")) {
 			    char dnum = ',';
 
                             // Local index values override those in the template
@@ -2605,7 +2684,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             token = advancetoken(flib, ')');    // Close paren
                             token = advancetoken(flib, ';');    // EOL semicolon
                         }
-                        else if (!strcasecmp(token, "index_2")) {
+                        else if (!tokencasecmp(token, "index_2")) {
 			    char dnum = ',';
 
                             // Local index values override those in the template
@@ -2652,7 +2731,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             token = advancetoken(flib, ')');    // Close paren
                             token = advancetoken(flib, ';');    // EOL semicolon
                         }
-                        else if (!strcasecmp(token, "values")) {
+                        else if (!tokencasecmp(token, "values")) {
                             token = advancetoken(flib, 0);
                             if (strcmp(token, "("))
                                 fprintf(stderr, "Failed to find start of"
@@ -2707,7 +2786,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
                             if (strcmp(token, ";"))
                                 fprintf(stderr, "Failed to find end of value table\n");
 			}
-                        else if (!strcasecmp(token, "ecsm_waveform")) {
+                        else if (!tokencasecmp(token, "ecsm_waveform")) {
 			    /* Not handled:  this takes the form of index_1 */
 			    /* key : value or index_2 key : value and	    */
 			    /* values key : value.			    */
@@ -2716,7 +2795,7 @@ libertyRead(FILE *flib, lutable **tablelist, cell **celllist)
 			    token = advancetoken(flib, '{');	// Open brace
 			    token = advancetoken(flib, '}');	// Close brace
 			}
-                        else if (!strcasecmp(token, "ecsm_capacitance")) {
+                        else if (!tokencasecmp(token, "ecsm_capacitance")) {
 			    /* Not handled:  this takes the form of index_1 */
 			    /* key : value or index_2 key : value and	    */
 			    /* values key : value.			    */
@@ -2798,7 +2877,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
 	net = HashLookup(port->name, &topcell->nets);
 	if (net->start == 0 && net->end == 0) {
 	    newnet = create_net(netlist);
-	    newnet->name = strdup(port->name);
+	    newnet->name = tokendup(port->name);
 	    HashPtrInstall(newnet->name, newnet, Nethash);
 
 	    testconn = (connptr)malloc(sizeof(connect));
@@ -2881,7 +2960,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
         newinst->refcell = testcell;
         newinst->in_connects = NULL;
         newinst->out_connects = NULL;
-        newinst->name = strdup(inst->instname);
+        newinst->name = tokendup(inst->instname);
 
 	for (port = inst->portlist; port; port = port->next) {
             newconn = (connptr)malloc(sizeof(connect));
@@ -2920,7 +2999,7 @@ verilogRead(char *filename, cell *cells, net **netlist, instance **instlist,
             if (testnet == NULL) {
                 // This is a new net, and we need to record it
                 newnet = create_net(netlist);
-                newnet->name = strdup(port->net);
+                newnet->name = tokendup(port->net);
                 HashPtrInstall(newnet->name, newnet, Nethash);
                 newconn->refnet = newnet;
             }
