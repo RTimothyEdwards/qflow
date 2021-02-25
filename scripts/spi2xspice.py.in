@@ -275,12 +275,12 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
 
             # If there is an include line, parse it and read the
             # library cells from that include file.
-            imatch = increx.match(line)
+            imatch = increx.match(line) if not skipsub else []
             if imatch:
                 read_spice_lib(imatch.group(1), celldefs, debug) 
                 continue
 
-            xmatch = xrex.match(line)
+            xmatch = xrex.match(line) if not skipsub else []
             if xmatch:
                 # Replace subcircuit call with xspice call
                 instname = xmatch.group(1)
