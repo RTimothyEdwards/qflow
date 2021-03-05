@@ -242,7 +242,8 @@ EOF
 
    # Note:  Remove backslashes and brackets to avoid problems with tcsh
    set yerrors = `eval ${bindir}/yosys -s ${modulename}.ys |& sed -e "/\\/s#\\#/#g" \
-		-e "/\[/s/\[//g" -e "/\]/s/\]//g" | grep ERROR`
+		-e "/\[/s/\[//g" -e "/\]/s/\]//g" | grep ERROR | \
+		sed 's/^.*\(ERROR.*\).*$/\1/'`
    set yerrcnt = `echo $yerrors | wc -c`
 
    if ($yerrcnt > 1) then
@@ -377,7 +378,8 @@ EOF
 
    # Note:  Remove backslashes and brackets to avoid problems with tcsh
    set yerrors = `eval ${bindir}/yosys -s ${modulename}.ys |& sed -e "/\\/s#\\#/#g" \
-		-e "/\[/s/\[//g" -e "/\]/s/\]//g" | grep ERROR`
+		-e "/\[/s/\[//g" -e "/\]/s/\]//g" | grep ERROR | \
+		sed 's/^.*\(ERROR.*\).*$/\1/'`
    set yerrcnt = `echo $yerrors | wc -c`
 
    if ($yerrcnt > 1) then
