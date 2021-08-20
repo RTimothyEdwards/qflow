@@ -3962,7 +3962,7 @@ class QflowManager(ttk.Frame):
         # then in the install tech directory.  Otherwise, look for pdkname
         # in pdkdir.  If pdkname has an extension (like ".sh"), then
         # remove it first.
-
+			
         found = False
         if not pdkdir:
             pdkdir = os.path.split(pdkname)[0]
@@ -4002,17 +4002,43 @@ class QflowManager(ttk.Frame):
             if not os.path.isdir(realpdkdir):
                 self.print('Error:  No tech directory ' + pdkdir + ' found.', file=sys.stderr)
                 return False
+            '''
             else:
                 if pdkname == None:
                     pdkname = os.path.split(pdkdir)[1]
+                
                     pdkdir = os.path.split(pdkdir)[0]
                 pdkrootname = os.path.splitext(pdkname)[0]
                 if not os.path.isfile(pdkdir + '/' + pdkrootname + '.sh'):
                     self.print('Error:  No tech setup file ' + pdkdir + '/' + pdkrootname + '.sh.', file=sys.stderr)
                     return False
+            '''
+        
+        # Reset technology menu to available standard cell libraries
+        
+        window = self.toppane.settings.prep_settings
+        window.pframe.choosepdk['menu'].delete(0,'end')
+        
+        if not os.path.exists(pdkdir + '/.config/nodeinfo.json'):
+            self.print('Error: Could not find nodeinfo.json for ' + pdkdir, file=sys.stderr)
+            return False
+        
+        self.allpdknodes.clear()
+        self.allpdkdirs.clear()
+        with open(pdkdir + '/.config/nodeinfo.json', 'r') as f:
+            data = json.load(f)
+            for lib in data['stdcells'].keys():
+                if data['stdcells'][lib]!='unknown':
+                    self.allpdknodes.append(lib)
+                    
+        for lib in self.allpdknodes:
+            window.pframe.choosepdk['menu'].add_command(label=lib, command=tkinter._setit(self.pdknode, lib, lambda _: self.check_reset(args=None)))
+            self.allpdkdirs.append(pdkdir)
             
+        
         # "Technology" is set to the directory containing the setup file
         found = False
+        '''
         for testname, testdir in zip(self.allpdknodes, self.allpdkdirs):
             if testname == pdkrootname:
                 found = True
@@ -4026,7 +4052,7 @@ class QflowManager(ttk.Frame):
                         self.print('Error:  Tech directory mismatch for technology ' + pdkrootname + ': ' + pdkdir + ' vs. ' + testdir, file=sys.stderr)
                     self.check_reset(args=None)
                 break
-
+                
         if not found:
             self.allpdknodes.append(pdkrootname)
             self.allpdkdirs.append(pdkdir)
@@ -4036,6 +4062,13 @@ class QflowManager(ttk.Frame):
 
         self.pdknode.set(pdkrootname)
         self.currentpdk = pdkrootname
+        self.pdkdir = pdkdir
+        '''
+        if pdkname == None:
+            pdkname = self.allpdknodes[0]
+            
+        self.pdknode.set(pdkname)
+        self.currentpdk = pdkname #standard cell library
         self.pdkdir = pdkdir
 
         # self.print("Diagnostic: set_pdk()")
@@ -4294,15 +4327,15 @@ if __name__ == '__main__':
 
     if numargs > 4:
         print('Usage:')
-        print('qflow_manager.py [<tech_name> [<project_name> [<module_name>]]]')
+        print('qflow_manager.py [<pdk_directory> [<project_name> [<module_name>]]]')
         sys.exit(1)
 
     root = tkinter.Tk()
     app = QflowManager(root)
 
     if numargs > 1:
-        tech_name = sys.argv[1]
-        app.set_pdk(None, tech_name)
+        pdk_directory = sys.argv[1]
+        app.set_pdk(pdk_directory, None)
 
     if numargs <= 2:
         app.print('No project set from command line.  Will check current directory.')
