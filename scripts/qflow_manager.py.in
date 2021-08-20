@@ -3962,6 +3962,7 @@ class QflowManager(ttk.Frame):
         # then in the install tech directory.  Otherwise, look for pdkname
         # in pdkdir.  If pdkname has an extension (like ".sh"), then
         # remove it first.
+
 			
         found = False
         if not pdkdir:
@@ -3998,7 +3999,7 @@ class QflowManager(ttk.Frame):
                     self.print('No default technology found (punting).')
                     return False
         else:
-            realpdkdir = os.path.realpath(pdkdir)
+            realpdkdir = os.path.split(os.path.split(pdkdir)[0])[0]
             if not os.path.isdir(realpdkdir):
                 self.print('Error:  No tech directory ' + pdkdir + ' found.', file=sys.stderr)
                 return False
@@ -4006,7 +4007,6 @@ class QflowManager(ttk.Frame):
             else:
                 if pdkname == None:
                     pdkname = os.path.split(pdkdir)[1]
-                
                     pdkdir = os.path.split(pdkdir)[0]
                 pdkrootname = os.path.splitext(pdkname)[0]
                 if not os.path.isfile(pdkdir + '/' + pdkrootname + '.sh'):
@@ -4015,20 +4015,23 @@ class QflowManager(ttk.Frame):
             '''
         
         # Reset technology menu to available standard cell libraries
-        
         window = self.toppane.settings.prep_settings
         window.pframe.choosepdk['menu'].delete(0,'end')
         
-        if not os.path.exists(pdkdir + '/.config/nodeinfo.json'):
+        if not os.path.exists(realpdkdir + '/.config/nodeinfo.json'):
             self.print('Error: Could not find nodeinfo.json for ' + pdkdir, file=sys.stderr)
             return False
         
         self.allpdknodes.clear()
         self.allpdkdirs.clear()
-        with open(pdkdir + '/.config/nodeinfo.json', 'r') as f:
+        with open(realpdkdir + '/.config/nodeinfo.json', 'r') as f:
             data = json.load(f)
-            for lib in data['stdcells'].keys():
-                if data['stdcells'][lib]!='unknown':
+            try: # stdcells in dict
+                for lib in data['stdcells'].keys():
+                    if data['stdcells'][lib]!='unknown':
+                        self.allpdknodes.append(lib)
+            except: # stdcells in list
+                for lib in data['stdcells']:
                     self.allpdknodes.append(lib)
                     
         for lib in self.allpdknodes:
@@ -4327,7 +4330,7 @@ if __name__ == '__main__':
 
     if numargs > 4:
         print('Usage:')
-        print('qflow_manager.py [<pdk_directory> [<project_name> [<module_name>]]]')
+        print('qflow_manager.py [<pdk_qflow_directory> [<project_name> [<module_name>]]]')
         sys.exit(1)
 
     root = tkinter.Tk()
