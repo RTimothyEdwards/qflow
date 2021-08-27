@@ -147,7 +147,7 @@ endif
 
 if ( !(-r $techfile)) then
    if (`echo $techfile | cut -c1` != "/") then
-      set techfile ${techdir}/${techfile}
+      set techfile=${techdir}/${techfile}
    endif
 endif
 if (-r $techfile) then
