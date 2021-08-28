@@ -45,7 +45,7 @@ if (-f project_vars.sh) then
 endif
 
 if (! ${?lvs_options} ) then
-   set lvs_options = ${options}
+   set lvs_options=${options}
 endif
 
 if (!($?logdir)) then
@@ -64,7 +64,7 @@ echo "Qflow LVS logfile created on $date" > ${synthlog}
 if ( ! -f ${lastlog} ) then
    echo "Warning:  No migration logfile found."
 else
-   set errcond = `tail -1 ${lastlog} | grep "error condition" | wc -l`
+   set errcond=`tail -1 ${lastlog} | grep "error condition" | wc -l`
    if ( ${errcond} == 1 ) then
       echo "Synthesis flow stopped on error condition.  LVS comparison"
       echo "will not proceed until error condition is cleared."
@@ -156,7 +156,7 @@ ${bindir}/netgen ${lvs_options} -batch lvs "${rootname}.spice ${rootname}" \
 	"${synthdir}/${rootname}.spc ${rootname}" ${setup_script} ${outfile} \
 	-json -blackbox |& tee -a ${synthlog}
 
-set errcond = $status
+set errcond=$status
 if ( ${errcond} != 0 ) then
    echo "netgen failed with exit status ${errcond}" |& tee -a ${synthlog}
    echo "Premature exit." |& tee -a ${synthlog}
@@ -183,7 +183,7 @@ echo "Running count_lvs.py"
 echo "${scriptdir}/count_lvs.py" |& tee -a ${synthlog}
 ${scriptdir}/count_lvs.py |& tee -a ${synthlog}
 
-set err_total = `tail -1 ${synthlog} | cut -d' ' -f4`
+set err_total=`tail -1 ${synthlog} | cut -d' ' -f4`
 if ( ${err_total} > 0 ) then
    echo "Design fails LVS with ${err_total} errors." |& tee -a ${synthlog}
    echo "See lvs.log and comp.out for error details." |& tee -a ${synthlog}
@@ -195,7 +195,7 @@ endif
 # Done!
 #------------------------------------------------------------
 
-set endtime = `date`
+set endtime=`date`
 echo "LVS checking script ended on $endtime" >> $synthlog
 
 exit 0
