@@ -1421,7 +1421,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	}
 	else if (!strcmp(nexttok, "wire") ||
 		 !strcmp(nexttok, "assign")) {	/* wire = node */
-	    struct netrec wb, *nb;
+	    struct netrec wb, *nb = NULL;
 	    char *eptr, *wirename;
 	    char is_assignment = FALSE;
 	    char is_lhs_bundle = FALSE, is_rhs_bundle = FALSE;
@@ -1474,7 +1474,7 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 			/* until this tool handles bus joining.  If the	    */
 			/* assignment is made on an undeclared wire, then   */
 			/* adjust the wire bounds.			    */
-			if (nb && nb->start == -1) {
+			if (nb && (nb->start == -1)) {
 			    nb->start = wb.start;
 			    nb->end = wb.end;
 			}
