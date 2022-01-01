@@ -66,7 +66,7 @@ set tielo=""		;# Cell to connect to ground, if one exists
 set tielopin_out=""	;# Output pin name of tielo cell, if it exists
 
 set separator=""		;# Separator between gate names and drive strengths
-set techfile=SCN4M_SUBM.20	;# magic techfile
+set techfile=SCN6M_SUBM.10	;# magic techfile
 set magicrc=osu018.magicrc	;# magic startup script
 set gdsfile=osu018_stdcells.gds2	;# GDS database of standard cells
 
