@@ -415,6 +415,8 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                             if 'funcpos' in cellrec:
                                 if cellrec['funcpos'] == function:
                                     dq = pins[i]
+                        elif debug:
+                            print('Pin ' + subpin + ' not in pin list of ' + instname)
 
                     print('A' + instname + ' ' + ddata + ' ' + dclk + ' ' + dset + ' ' + dreset + ' ' + dq + ' ' + dqbar + ' ddflop', file=ofile)
 
@@ -605,6 +607,7 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
 
                         # Write d_dff, d_dlatch, d_pullup, and d_pulldown models
                         print(".model ddflop d_dff(ic=0 rise_delay=" + time + " fall_delay=" + time + ")", file=ofile)
+                        print(".model dlatch d_dlatch(ic=0 rise_delay=" + time + " fall_delay=" + time + ")", file=ofile)
                         print(".model dzero d_pulldown(load=" + cload + ")", file=ofile)
                         print(".model done d_pullup(load=" + cload + ")", file=ofile)
                         print("", file=ofile)
@@ -755,7 +758,7 @@ def read_liberty(filein, debug):
                 
             pmatch = pinrex.match(line)
             if pmatch:
-                pinname = pmatch.group(1)
+                pinname = pmatch.group(1).strip('"')
                 if debug:
                     print("Found input pin " + pinname)
                 cellrec['inputs'].append(pinname)
@@ -764,7 +767,7 @@ def read_liberty(filein, debug):
 
             bmatch = busrex.match(line)
             if bmatch:
-                pinname = bmatch.group(1)
+                pinname = bmatch.group(1).strip('"')
                 if debug:
                     print("Found input bus " + pinname)
                 cellrec['inputs'].append(pinname)
@@ -776,8 +779,8 @@ def read_liberty(filein, debug):
                 if debug:
                     print("Found latch");
                 cellrec['type'] = 'latch'
-                cellrec['funcpos'] = lmatch.group(1)
-                cellrec['funcneg'] = lmatch.group(2)
+                cellrec['funcpos'] = lmatch.group(1).strip('"')
+                cellrec['funcneg'] = lmatch.group(2).strip('"')
                 continue
 
             lmatch = lat2rex.match(line)
@@ -785,7 +788,7 @@ def read_liberty(filein, debug):
                 if debug:
                     print("Found latch");
                 cellrec['type'] = 'latch'
-                cellrec['funcpos'] = lmatch.group(1)
+                cellrec['funcpos'] = lmatch.group(1).strip('"')
                 continue
 
             rmatch = ff2rex.match(line)
@@ -793,17 +796,17 @@ def read_liberty(filein, debug):
                 if debug:
                     print("Found flop");
                 cellrec['type'] = 'flop'
-                cellrec['funcpos'] = rmatch.group(1)
-                cellrec['funcneg'] = rmatch.group(2)
+                cellrec['funcpos'] = rmatch.group(1).strip('"')
+                cellrec['funcneg'] = rmatch.group(2).strip('"')
                 continue
-
-            rmatch = ff1rex.match(line)
-            if rmatch:
-                if debug:
-                    print("Found flop");
-                cellrec['type'] = 'flop'
-                cellrec['funcpos'] = rmatch.group(1)
-                continue
+            else:
+                rmatch = ff1rex.match(line)
+                if rmatch:
+                    if debug:
+                        print("Found flop");
+                    cellrec['type'] = 'flop'
+                    cellrec['funcpos'] = rmatch.group(1).strip('"')
+                    continue
 
             fmatch = funcrex.match(line)
             if fmatch:
