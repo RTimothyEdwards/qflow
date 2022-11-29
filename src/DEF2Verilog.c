@@ -151,6 +151,30 @@ struct nlist *hash_nets(struct hashlist *p, void *cptr)
 	    if (bptr != NULL) *bptr = ' ';
 	}
     }
+    else if (aidx != -1) {
+	/* If a net name is not backslashed but contains illegal	*/
+	/* characters, then make this a backslashed name in verilog.	*/
+	char *s;
+	char illegal = 0;
+	s = net->netname;
+	if ((*s != '_') && !(isalpha(*s))) illegal = 1;
+	else {
+	    for (++s; *s; s++) {
+		if ((*s != '_') && (*s != '$') && !(isalnum(*s))) {
+		    illegal = 1;
+		    break;
+		}
+	    }
+	}
+ 	if (illegal == 1) {
+	    char *newname;
+	    newname = (char *)malloc(strlen(net->netname) + 3);
+	    sprintf(newname, "\\%s ", net->netname);
+	    free(net->netname);
+	    net->netname = newname;
+	}
+    }
+
 
     /* Check if record already exists */
     bdata = HashLookup(net->netname, NetHash);  
@@ -415,7 +439,7 @@ void write_output(struct cellrec *topcell, char *vlogoutname)
     fprintf(outfptr, "/* Verilog module written by DEF2Verilog (qflow) */\n");
     fprintf(outfptr, "module %s (\n", topcell->name);
 
-    /* Output the verilog netlist verbatim through the	list of ports.	*/
+    /* Output the verilog netlist verbatim through the list of ports. */
 
     for (port = topcell->portlist; port; port = port->next) {
 	if (port->name == NULL) continue;
@@ -471,13 +495,14 @@ void helpmessage(FILE *outf)
     fprintf(outf, "DEF2Verilog [-options] <netlist>\n");
     fprintf(outf, "\n");
     fprintf(outf, "DEF2Verilog converts a DEF file to a verilog structural\n");
-    fprintf(outf, "netlist. Output on stdout.\n");
+    fprintf(outf, "netlist. Output is on stdout if -o option is not provided.\n");
     fprintf(outf, "\n");
     fprintf(outf, "options:\n");
     fprintf(outf, "  -v <path>  Path to verilog file (for I/O list)\n");
     fprintf(outf, "  -l <path>  Path to standard cell LEF file (for macro list)\n");
     fprintf(outf, "  -p <name>  Name of power net\n");
     fprintf(outf, "  -g <name>  Name of ground net\n");
+    fprintf(outf, "  -o <name>  Name of output file\n");
     fprintf(outf, "\n");
     fprintf(outf, "  -h         Print this message\n");    
 
