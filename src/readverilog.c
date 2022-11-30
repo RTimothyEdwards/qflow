@@ -1419,6 +1419,22 @@ void ReadVerilogFile(char *fname, struct cellstack **CellStackPtr,
 	    while (strcmp(nexttok, ";")) SkipTok("X///**/X,;");
 	    continue;
 	}
+	else if (!strcmp(nexttok, "genvar")) {
+	    fprintf(stdout, "Ignoring '%s' in module '%s' (line %d)\n",
+		    nexttok, top->name, vlinenum);
+	    while (strcmp(nexttok, ";")) SkipTok("X///**/X,;");
+	    continue;
+	}
+	else if (!strcmp(nexttok, "generate")) {
+	    // Generate blocks should definitely not be ignored!
+	    // Work to do. . . 
+	    fprintf(stdout, "Warning:  Ignoring generate block in module"
+			" '%s' (line %d)\n",
+			top->name, vlinenum);
+	    while (strcmp(nexttok, "endgenerate"))
+		SkipTokComments(VLOG_DELIMITERS);
+	    continue;
+	}
 	else if (!strcmp(nexttok, "wire") ||
 		 !strcmp(nexttok, "assign")) {	/* wire = node */
 	    struct netrec wb, *nb = NULL;
