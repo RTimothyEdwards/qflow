@@ -3512,7 +3512,7 @@ find_clock_skews(ddataptr pathlist, char minmax)
     btptr    backtrace, freebt, pathbt, btcommon;
     btptr    selectedsource, selecteddest;
 
-    short srcdir, destdir;		// Signal direction in/out
+    short srcdir = 0, destdir;		// Signal direction in/out
     double setupdelay, holddelay;
     unsigned char result;
     char	clk_invert, clk_sense_inv;
