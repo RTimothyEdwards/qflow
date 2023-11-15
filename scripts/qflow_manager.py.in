@@ -1412,7 +1412,7 @@ class QflowManager(ttk.Frame):
                 for gdsfile in gdsfiles:
                     print('gds read ' + gdsfile, file=ofile)
                 if laystate == 'gds2':
-                    print('load gds_top', file=ofile)
+                    print('load gds_top -silent', file=ofile)
                     print('gds read ' + self.project, file=ofile)
                 else:
                     if laystate == 'route1':
