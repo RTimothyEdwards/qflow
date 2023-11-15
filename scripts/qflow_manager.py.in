@@ -1353,16 +1353,33 @@ class QflowManager(ttk.Frame):
                 rclines = ifile.read().splitlines()
 
             tech_loaded = False
+            sysdirs = []
             for line in rclines:
-                if 'tech load' in line and not line.startswith('#'):
+                # The 'tech load' may depend on a 'path sys' line to specify
+                # the path of the tech file.
+                if 'path sys' in line and not line.startswith('#'):
+                    for token in line.split():
+                        if token.startswith('+'):
+                            sysdirs.append(token.strip('+')) 
+                elif 'tech load' in line and not line.startswith('#'):
                     # Confirm that this techfile gets found
                     print('Diagnostic:  Found a tech load command in .magicrc')
                     tokens = line.split()
                     if len(tokens) > 2:
                         testtech = tokens[2]
+                        if not testtech.endswith('.tech'):
+                            testtech = testtech + '.tech'
                         if os.path.isfile(testtech):
                             tech_loaded = True
                             print('Diagnostic:  tech load will be honored')
+                        elif sysdirs != []:
+                            for path in sysdirs:
+                                if os.path.isfile(path + '/' + testtech):
+                                    tech_loaded = True
+                                    print('Diagnostic:  tech load will be honored')
+                                    break
+                            if tech_loaded == False:
+                                print('Diagnostic:  tech load not trusted')
                         else:
                             print('Diagnostic:  tech load not trusted')
 
@@ -1374,7 +1391,10 @@ class QflowManager(ttk.Frame):
                         print('tech load ' + techfile + ' -noprompt', file=ofile)
 
                 for line in rclines:
-                    if 'tech load' in line:
+                    if 'path sys' in line:
+                        if tech_loaded == True:
+                            print(line, file=ofile)
+                    elif 'tech load' in line:
                         if tech_loaded == True:
                             print(line, file=ofile)
                     else:
