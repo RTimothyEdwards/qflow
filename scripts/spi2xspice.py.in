@@ -13,6 +13,9 @@
 # May 17, 2017
 # Updated Dec. 22, 2018 to accomodate in-lined standard cell subcircuits
 # (i.e., not from a .include statement) and corrected duplicate .end statement.
+# Updated Jan. 12, 2024 to fix port direction when inputs and outputs are not
+# buffered, and a subcircuit output signal is also fed back to other gates in
+# the subcircuit.
 #
 # This script is in the public domain
 #--------------------------------------------------------------------------
@@ -514,7 +517,8 @@ def read_spice(filein, fileout, celldefs, debug, modelfile, timing):
                                 if len(pins) > i:
                                     inlist.append(pins[i])
                                     if pins[i] in pindefs:
-                                        pindefs[pins[i]] = 'input'
+                                        if pindefs[pins[i]] != 'output':
+                                            pindefs[pins[i]] = 'input'
                                 else:
                                     print('Pin ' + subpinname + ' of subckt ' + cellname + ' does not have a connecting net', file=sys.stderr)
 
