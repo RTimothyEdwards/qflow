@@ -114,7 +114,6 @@ def write_models(cellsused, celldefs, ofile, timing):
             tabstr = ''
             nout = cellrec['nout']
             nin = cellrec['nin']
-            #print("* nout=[" + str(nout) + "] nin=[" + str(nin) + "]", file=ofile) #FIXME
             for k in range(0, nout):
                 # Handle tristate functions
                 # If triidx < nin then triidx, tripin, and tripos are all valid
