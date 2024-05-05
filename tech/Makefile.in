@@ -44,6 +44,6 @@ distclean:
 	done
 
 uninstall:
-	@echo "Uninstalling built-in tech files
+	@echo "Uninstalling built-in tech files"
 	$(RM) -rf $(DESTDIR)${TECHINSTALL}
 

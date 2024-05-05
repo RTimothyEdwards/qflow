@@ -3519,6 +3519,7 @@ find_clock_skews(ddataptr pathlist, char minmax)
 
     clocklist = NULL;
     clock2list = NULL;
+    srcdir = EDGE_UNKNOWN;
     
     for (testddata = pathlist; testddata; testddata = testddata->next) {
 
