@@ -122,7 +122,10 @@ def write_models(cellsused, celldefs, ofile, timing):
                     if trirec[0] == '~':
                         tripos = False
                         tripin = trirec[1:]
-                    else:
+                    elif re.search(r"_b$", trirec, re.IGNORECASE): #in sky130, tristate buffers with negative logic e>
+                        tripos = False
+                        tripin = trirec
+		    else:
                         tripos = True
                         tripin = trirec
                     for triidx in range(0, nin):
@@ -169,9 +172,9 @@ def write_models(cellsused, celldefs, ofile, timing):
                         bitstr = '0'
 
                     if triidx < nin:
-                        if binstring[triidx] == '1' and tripos == True:
-                            bitstr = 'Z'
-                        elif binstring[triidx] == '0' and tripos == False:
+                        if binstring[nin - 1 - triidx] == '1' and tripos == False: #bit index is LSB first in xspice so need to flip index
+			    bitstr = 'Z'
+                        elif binstring[nin - 1 - triidx] == '0' and tripos == True:
                             bitstr = 'Z'
 
                     tabstr += bitstr
