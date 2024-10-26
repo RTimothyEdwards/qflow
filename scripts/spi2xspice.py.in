@@ -128,12 +128,17 @@ def write_models(cellsused, celldefs, ofile, timing):
                     for triidx in range(0, nin):
                         if cellrec['inputs'][triidx] == tripin:
                            break
+                    # Index into binstring is the reverse of the pin order
+                    triidx = nin - triidx - 1
                 else:
                     triidx = nin
 
                 pstring = parse_pin(cellrec['function'][k])
                 nvals = 2**nin
                 for i in range(0, nvals):
+                    # binstring is the binary count of input bits.  Note that
+                    # the index into binstring is reverse of the pin order.
+                    # (e.g., "000", "001", "010", "011", ...)
                     binstring = '{0:{fill}{width}b}'.format(i, fill='0', width=nin)
 
                     psubs = pstring
@@ -168,6 +173,9 @@ def write_models(cellsused, celldefs, ofile, timing):
                     else:
                         bitstr = '0'
 
+                    # For tristate gates, the function will not include the
+                    # tristate condition, so determine if tristate is active
+                    # for this set of inputs and set the output to 'Z' if so.
                     if triidx < nin:
                         if binstring[triidx] == '1' and tripos == True:
                             bitstr = 'Z'
