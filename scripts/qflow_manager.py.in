@@ -1384,12 +1384,6 @@ class QflowManager(ttk.Frame):
                             print('Diagnostic:  tech load not trusted')
 
             with open(ldir + '/qflow.magicrc', 'w') as ofile:
-                if tech_loaded == False:
-                    print('Diagnostic:  Inserting own tech load')
-                    techfile = self.get_project_techfile()
-                    if techfile:
-                        print('tech load ' + techfile + ' -noprompt', file=ofile)
-
                 for line in rclines:
                     if 'path sys' in line:
                         if tech_loaded == True:
@@ -1397,6 +1391,11 @@ class QflowManager(ttk.Frame):
                     elif 'tech load' in line:
                         if tech_loaded == True:
                             print(line, file=ofile)
+                        else:
+                            techfile = self.get_project_techfile()
+                            print('Diagnostic:  Inserting own tech load')
+                            if techfile:
+                                print('tech load ' + techfile + ' -noprompt', file=ofile)
                     else:
                         print(line, file=ofile)
 
